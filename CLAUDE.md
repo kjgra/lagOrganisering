@@ -37,7 +37,6 @@ Web app for football coaches in Nymark: sign in with Spond, fetch participants f
 - Short and concise answers. Ask if an instruction is unclear. Technical suggestions for improvement are welcome.
 - Run `pnpm lint`, `pnpm typecheck` and `pnpm test` yourself before reporting that something is done. Check the UI at both mobile and desktop width.
 - Small, focused changes. Work on a feature branch, PR to `main`.
-- One commit: write the files and suggest a commit message — Kjetil commits himself.
 
 ## Commands
 - `pnpm dev` – local development
