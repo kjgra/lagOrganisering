@@ -7,8 +7,12 @@ const nextConfig: NextConfig = {
   // PGlite (simulated database) and react-pdf ship their own assets; keep them as Node packages.
   serverExternalPackages: ["@electric-sql/pglite", "@react-pdf/renderer"],
   poweredByHeader: false,
+  // Tailwind CSS v4 through its Turbopack loader (no PostCSS config needed).
+  turbopack: {
+    rules: { "*.css": { loaders: ["@tailwindcss/turbopack"], as: "*.css" } },
+  },
   // The simulated database runs the SQL migrations at start-up.
-  outputFileTracingIncludes: { "/**": ["./supabase/migrations/*.sql"] },
+  outputFileTracingIncludes: { "/**": ["./supabase/migrations/*.sql", "./lib/pdf/fonts/*.ttf"] },
 };
 
 export default nextConfig;

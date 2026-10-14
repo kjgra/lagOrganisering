@@ -496,3 +496,27 @@ details > summary { list-style-position: inside; }
 .nm-tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--primary); }
 .nm-h2 { margin: 0 0 var(--space-3); font-size: 20px; line-height: 26px; }
 .nm-section { margin-bottom: var(--space-6); }
+
+/* Forms: text areas, native selects, checkboxes */
+textarea.nm-input { min-height: 96px; padding: 10px 14px; line-height: 24px; resize: vertical; }
+select.nm-input { appearance: auto; }
+.nm-check { display: flex; gap: var(--space-3); align-items: flex-start; min-height: var(--touch-min); padding: 8px 0; font-size: 17px; line-height: 24px; cursor: pointer; }
+.nm-check input { width: 22px; height: 22px; margin-top: 1px; accent-color: var(--ink); flex: none; }
+.nm-form { display: grid; gap: var(--space-4); }
+.nm-form-row { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.nm-hint { font-size: 15px; line-height: 20px; color: var(--ink-muted); }
+.nm-plan-list { margin: 0; padding-left: 22px; display: grid; gap: 4px; font-size: 17px; line-height: 24px; }
+.nm-versions { display: flex; flex-wrap: wrap; gap: 6px; }
+.nm-versions a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border-radius: var(--radius-pill); border: var(--border-1) solid var(--line-strong); font-weight: 700; font-size: 15px; }
+.nm-versions a[aria-current="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.nm-exercise { border-top: var(--border-1) solid var(--line); padding-top: var(--space-3); }
+.nm-pick { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row-min); padding: 6px 0; border-top: var(--border-1) solid var(--line); }
+.nm-pick > div { flex: 1; min-width: 0; }
+.nm-rate { display: flex; gap: 6px; flex-wrap: wrap; }
+.nm-rate button[aria-pressed="true"], .nm-chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.nm-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.nm-table th, .nm-table td { text-align: left; padding: 6px 8px; border-bottom: var(--border-1) solid var(--line); vertical-align: top; }
+.nm-table th { font-weight: 700; }
+.nm-table td.num, .nm-table th.num { text-align: right; white-space: nowrap; }
+.nm-scroll-x { overflow-x: auto; }
+.nm-h3 { margin: 0; font-size: 17px; line-height: 24px; font-weight: 700; }

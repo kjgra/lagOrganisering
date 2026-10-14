@@ -23,6 +23,8 @@ import { listTags, tagSuggestions } from "@/lib/store/tags";
 export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arrangementer/[eventId]">) {
   const ctx = await contextFromParams(props.params);
   const { eventId } = await props.params;
+  const sp = await props.searchParams;
+  const selectedPlan = Number(typeof sp.opplegg === "string" ? sp.opplegg : "") || undefined;
   const event = await findEvent(ctx.user, ctx.group.id, decodeURIComponent(eventId));
   if (!event) notFound();
 
@@ -141,7 +143,7 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
           )}
         </section>
 
-        {!event.match ? <PlanSection ctx={ctx} event={event} /> : null}
+        {!event.match ? <PlanSection ctx={ctx} event={event} selected={selectedPlan} /> : null}
 
         <section aria-labelledby="sp-h">
           <h2 className="nm-section-label" id="sp-h">
