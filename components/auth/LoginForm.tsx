@@ -33,6 +33,9 @@ export function LoginForm({ notice, demoAccounts }: { notice?: string; demoAccou
               Appen er for trenere og lagledere i Nymark. Be en administrator i appen om å gi deg app-tilgang
               (Innstillinger → Trenere).
             </p>
+            <p className="nm-hint" style={{ margin: 0 }}>
+              Din Spond-profil-ID: <code>{state.profileId}</code>
+            </p>
           </>
         )}
         <a href="/logg-inn" className="nm-btn nm-btn--secondary nm-btn--block">

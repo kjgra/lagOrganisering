@@ -5,14 +5,14 @@ Web app for football coaches in Nymark: sign in with Spond, fetch participants f
 ## Stack
 - Next.js 16 (App Router, TypeScript strict, Turbopack)
 - Tailwind CSS + shadcn/ui
-- Supabase (PostgreSQL) via `@supabase/ssr` and `@supabase/supabase-js`
+- Supabase (PostgreSQL), reached directly from the server with `postgres.js` (transaction pooler). PGlite runs the same migrations in simulation and tests.
 - Hosting: Vercel (preview deploy per branch, production from `main`)
 - Package manager: pnpm. Node 20+
 
 ## Architecture
 - `app/` – routes. Server Components by default; `"use client"` only where needed (drag-and-drop, forms).
 - `lib/spond/` – Spond client (unofficial REST API). **Server only** (`import "server-only"`).
-- `lib/supabase/` – `server.ts` and `client.ts` from the `@supabase/ssr` pattern.
+- `lib/db/` – Postgres connection (or PGlite); `lib/store/` – all queries, each checking group access. No Supabase client or Data API.
 - `components/` – UI components. Names match the design: `LoginForm`, `EventList`, `ParticipantList`, `TeamBoard`.
 - `supabase/migrations/` – all schema changes as SQL migrations. Never change the database by hand.
 
@@ -41,5 +41,5 @@ Web app for football coaches in Nymark: sign in with Spond, fetch participants f
 ## Commands
 - `pnpm dev` – local development
 - `pnpm build` – production build
-- `pnpm test` – Vitest (unit) / Playwright (e2e)
+- `pnpm test` – Vitest (unit); `pnpm test:e2e` – Playwright (e2e, mobile + desktop)
 - `supabase db push` – apply migrations

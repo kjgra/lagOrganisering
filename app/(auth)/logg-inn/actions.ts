@@ -15,7 +15,7 @@ export type LoginState =
   | { status: "idle" }
   | { status: "error"; message: string; identifier: string }
   | { status: "no_role"; firstName: string }
-  | { status: "no_app" };
+  | { status: "no_app"; profileId: string };
 
 const g = globalThis as unknown as { __nymarkThrottle?: Throttle };
 const throttle = (g.__nymarkThrottle ??= new Throttle());
@@ -63,13 +63,13 @@ export async function login(_prev: LoginState, form: FormData): Promise<LoginSta
 
   // App access: only trainers given access in the app (and admins, and the superadmin).
   const rights = await readRights(data.profile.id);
-  if (!rights.app) return { status: "no_app" };
+  if (!rights.app) return { status: "no_app", profileId: data.profile.id };
   if (!data.groups.length) return { status: "no_role", firstName: data.profile.firstName };
 
   const sid = randomUUID();
   await writeSession({ token, profileId: data.profile.id, sid }, expiration);
   cacheSessionData(sid, data);
   // Clean-up at most once a day, after the answer has been sent.
-  after(() => runMaintenanceIfDue("oppstart"));
+  after(() => runMaintenanceIfDue(data.profile.id));
   redirect("/");
 }

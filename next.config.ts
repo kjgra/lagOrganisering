@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
   // PGlite (simulated database) and react-pdf ship their own assets; keep them as Node packages.
   serverExternalPackages: ["@electric-sql/pglite", "@react-pdf/renderer"],
   poweredByHeader: false,
+  // The e2e tests run their own dev server next to `pnpm dev`.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   // Tailwind CSS v4 through its Turbopack loader (no PostCSS config needed).
   turbopack: {
     rules: { "*.css": { loaders: ["@tailwindcss/turbopack"], as: "*.css" } },
