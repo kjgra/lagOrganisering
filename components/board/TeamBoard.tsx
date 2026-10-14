@@ -14,7 +14,7 @@ import {
 } from "@dnd-kit/core";
 import { ArrowDown, Bookmark, GripVertical, Minus, Pencil, Plus, Send, Shuffle, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { lockAction, saveProposalAction, unlockAction } from "@/app/actions/proposals";
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
@@ -330,6 +330,7 @@ function Column({ label, index, members, pool }: { label: string; index: number;
 export function TeamBoard() {
   const b = useBoard();
   const [dragging, setDragging] = useState<string | null>(null);
+  const dndId = useId();
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
@@ -395,7 +396,7 @@ export function TeamBoard() {
           {b.error}
         </div>
       ) : null}
-      <DndContext sensors={sensors} onDragStart={(e: DragStartEvent) => setDragging(String(e.active.id))} onDragEnd={onEnd} onDragCancel={() => setDragging(null)}>
+      <DndContext id={dndId} sensors={sensors} onDragStart={(e: DragStartEvent) => setDragging(String(e.active.id))} onDragEnd={onEnd} onDragCancel={() => setDragging(null)}>
         <div className={`nm-teams${selP ? " is-moving" : ""}`}>
           {b.labels.map((l, i) => (
             <Column key={l} label={l} index={i} members={byLabel(l)} />

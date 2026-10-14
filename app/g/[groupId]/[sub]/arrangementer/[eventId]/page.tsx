@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ParticipantList, type ParticipantRow } from "@/components/events/ParticipantList";
 import { ProposalCard } from "@/components/proposals/ProposalCard";
+import { AutoRefresh } from "@/components/ui/AutoRefresh";
 import { AppShell } from "@/components/shell/AppShell";
 import { Icon } from "@/components/ui/icon";
 import { ResponseCounts, Tag } from "@/components/ui/status";
@@ -65,6 +66,7 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
         ) : undefined
       }
     >
+      <AutoRefresh />
       <div className="nm-stack" style={{ gap: 16 }}>
         <div>
           <div style={{ fontSize: 20, lineHeight: "26px", fontWeight: 700 }}>{event.heading}</div>

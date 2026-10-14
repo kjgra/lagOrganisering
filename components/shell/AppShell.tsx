@@ -101,7 +101,7 @@ export async function AppShell({
               <h1 className="nm-appbar__title nm-desk-only">{title}</h1>
             </>
           )}
-          <Link href={`/innstillinger?fra=${encodeURIComponent(ctx.path(sectionPath))}`} className="nm-iconbtn nm-iconbtn--chrome" aria-label="Innstillinger">
+          <Link href={`/innstillinger?fra=${encodeURIComponent(ctx.path(sectionPath))}&lag=${encodeURIComponent(ctx.group.id)}`} className="nm-iconbtn nm-iconbtn--chrome" aria-label="Innstillinger">
             <Icon icon={Settings} />
           </Link>
         </header>
