@@ -1,5 +1,6 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth/current";
 import { db } from "@/lib/db";
@@ -14,5 +15,8 @@ export async function toggleFavorite(ref: string, on: boolean): Promise<string[]
   const user = await requireUser();
   const r = validRef(user.data.groups, v.ref);
   if (!r) throw new Error("Ukjent gruppe.");
-  return setFavorite(await db(), user.session.profileId, r, v.on);
+  const favorites = await setFavorite(await db(), user.session.profileId, r, v.on);
+  // Re-render the page with the saved list, so the optimistic star stays.
+  refresh();
+  return favorites;
 }

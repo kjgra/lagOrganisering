@@ -12,7 +12,7 @@ test("wrong password gives a message", async ({ page }) => {
   await page.getByLabel("E-post eller mobilnummer").fill("kjetil@demo.no");
   await page.getByLabel("Passord", { exact: true }).fill("feil");
   await page.getByRole("button", { name: "Logg inn" }).click();
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.locator(".nm-alert")).toBeVisible();
 });
 
 test("make teams with tap-to-move and save the proposal", async ({ page }) => {
@@ -70,4 +70,25 @@ test("admin: give KI access and save the season plan", async ({ page }) => {
   await page.getByLabel("Januar").fill("Pasning");
   await page.getByRole("button", { name: "Lagre årshjulet" }).click();
   await expect(page.locator(".nm-toast")).toContainText(/Årshjulet for \d{4} er lagret/);
+});
+
+test("a starred group stays starred", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/velg-gruppe");
+  // On the phone the subgroups show after picking the main group.
+  const main = page.getByRole("button", { name: /^Nymark IL – Fotball/ });
+  if (await main.isVisible()) await main.click();
+  const star = page.getByRole("button", { name: /^Legg .* til i favoritter$/ }).first();
+  const label = (await star.getAttribute("aria-label"))!.replace(/^Legg (.*) til i favoritter$/, "$1");
+  await star.click();
+  const on = page.getByRole("button", { name: `Fjern ${label} fra favoritter` }).first();
+  await expect(on).toHaveAttribute("aria-pressed", "true");
+  await page.waitForTimeout(1500);
+  await expect(on).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  if (await main.isVisible()) await main.click();
+  await expect(page.getByRole("button", { name: `Fjern ${label} fra favoritter` }).first()).toBeVisible();
+  // Clean up for the next run.
+  await page.getByRole("button", { name: `Fjern ${label} fra favoritter` }).first().click();
 });
