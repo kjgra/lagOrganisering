@@ -26,7 +26,7 @@ export default async function MembersPage(props: PageProps<"/g/[groupId]/[sub]/m
               <Avatar name={m.displayName} />
               <span className="nm-list__main">
                 <span className="nm-list__name">{m.displayName}</span>
-                <span className="nm-muted" style={{ fontSize: 15 }}>
+                <span className="nm-muted" style={{ fontSize: "var(--fs-caption)" }}>
                   {m.roles}
                 </span>
               </span>
@@ -45,7 +45,7 @@ export default async function MembersPage(props: PageProps<"/g/[groupId]/[sub]/m
       ) : (
         <p className="nm-muted">Ingen spillere her.</p>
       )}
-      <p className="nm-muted" style={{ fontSize: 15 }}>
+      <p className="nm-muted" style={{ fontSize: "var(--fs-caption)" }}>
         Trykk på en spiller for å legge til eller fjerne tagger. Tagger gjelder hele {ctx.group.name}.
       </p>
       {adults.length ? (

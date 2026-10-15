@@ -64,7 +64,7 @@ export function FeedbackForm(p: {
         const session = x.exercise_no === null;
         return (
           <fieldset key={i} className="nm-card nm-proposal" style={{ margin: 0 }}>
-            <legend style={{ fontWeight: 700, fontSize: 18, padding: "0 4px" }}>{x.title}</legend>
+            <legend style={{ fontWeight: 700, fontSize: "var(--fs-body-lg)", padding: "0 var(--space-1)" }}>{x.title}</legend>
             <div className="nm-rate" role="group" aria-label="Vurdering">
               {Object.entries(p.ratings)
                 .sort((a, b) => Number(b[0]) - Number(a[0]))
@@ -76,7 +76,7 @@ export function FeedbackForm(p: {
             </div>
             {!session ? (
               <>
-                <div className="nm-row" style={{ gap: 6 }} role="group" aria-label="Stikkord">
+                <div className="nm-row" style={{ gap: "var(--space-2)" }} role="group" aria-label="Stikkord">
                   {Object.entries(p.tags).map(([k, label]) => (
                     <button
                       key={k}

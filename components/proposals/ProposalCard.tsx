@@ -60,18 +60,18 @@ export function ProposalCard({ p, editHref, eventLine }: { p: ProposalView; edit
   return (
     <article className="nm-card nm-proposal" aria-busy={pending}>
       {eventLine ? (
-        <Link href={eventLine.href} className="nm-muted" style={{ fontSize: 15, fontWeight: 700 }}>
+        <Link href={eventLine.href} className="nm-muted" style={{ fontSize: "var(--fs-caption)", fontWeight: 700 }}>
           {eventLine.text}
         </Link>
       ) : null}
       <div className="nm-row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <div style={{ fontSize: 20, lineHeight: "26px", fontWeight: 700 }}>{p.name}</div>
-          <div className="nm-muted" style={{ fontSize: 16 }}>
+          <div style={{ fontSize: "var(--fs-heading)", lineHeight: "var(--lh-heading)", fontWeight: 700 }}>{p.name}</div>
+          <div className="nm-muted" style={{ fontSize: "var(--fs-body)" }}>
             {p.groups.length} lag · {p.nPlayers} spillere · Laget av {p.createdBy} · Lagret {p.updated}
           </div>
         </div>
-        <div className="nm-row" style={{ gap: 6 }}>
+        <div className="nm-row" style={{ gap: "var(--space-2)" }}>
           {p.lockedBy ? (
             <span className="nm-badge nm-badge--neutral">
               <Icon icon={Pencil} size={16} />
@@ -90,7 +90,7 @@ export function ProposalCard({ p, editHref, eventLine }: { p: ProposalView; edit
       </div>
       <details>
         <summary style={{ cursor: "pointer", fontWeight: 700, minHeight: 32 }}>Vis lagene</summary>
-        <div className="nm-teams" style={{ marginTop: 8 }}>
+        <div className="nm-teams" style={{ marginTop: "var(--space-2)" }}>
           {p.groups.map((g) => (
             <section key={g.label} className={`nm-team nm-team--${g.vest}`} aria-label={g.title}>
               <div className="nm-team__head">
@@ -104,11 +104,11 @@ export function ProposalCard({ p, editHref, eventLine }: { p: ProposalView; edit
           ))}
         </div>
         {p.unplaced.length ? (
-          <div style={{ marginTop: 8 }}>
+          <div style={{ marginTop: "var(--space-2)" }}>
             <span className="nm-muted">
               {p.unplacedLabel} ({p.unplaced.length}):
             </span>
-            <div className="nm-row" style={{ gap: 6, marginTop: 4 }}>
+            <div className="nm-row" style={{ gap: "var(--space-2)", marginTop: "var(--space-1)" }}>
               {p.unplaced.map((c) => (
                 <MiniChip key={c.id} c={c} />
               ))}
@@ -124,7 +124,7 @@ export function ProposalCard({ p, editHref, eventLine }: { p: ProposalView; edit
       {confirmDelete ? (
         <div className="nm-note" role="alertdialog" aria-label={`Slette «${p.name}»?`}>
           <span style={{ flex: 1 }}>Slette «{p.name}»? Historikken beholdes, men forslaget vises ikke lenger.</span>
-          <div className="nm-row" style={{ gap: 8 }}>
+          <div className="nm-row" style={{ gap: "var(--space-2)" }}>
             <button type="button" className="nm-btn nm-btn--danger" onClick={() => act("delete")} disabled={pending}>
               <Icon icon={Trash2} size={20} />
               Slett
@@ -135,7 +135,7 @@ export function ProposalCard({ p, editHref, eventLine }: { p: ProposalView; edit
           </div>
         </div>
       ) : (
-        <div className="nm-row" style={{ gap: 8 }}>
+        <div className="nm-row" style={{ gap: "var(--space-2)" }}>
           {p.editable && editHref ? (
             <Link href={editHref} className="nm-btn nm-btn--secondary">
               <Icon icon={Pencil} size={20} />
@@ -161,11 +161,11 @@ export function ProposalCard({ p, editHref, eventLine }: { p: ProposalView; edit
       )}
       <details>
         <summary style={{ cursor: "pointer", fontWeight: 700, minHeight: 32 }}>Kommentarer ({p.comments.length})</summary>
-        <div className="nm-stack" style={{ marginTop: 8 }}>
+        <div className="nm-stack" style={{ marginTop: "var(--space-2)" }}>
           {p.comments.length ? (
             p.comments.map((c, i) => (
               <div key={i}>
-                <div className="nm-muted" style={{ fontSize: 14 }}>
+                <div className="nm-muted" style={{ fontSize: "var(--fs-caption)" }}>
                   <strong>{c.who}</strong> · {c.when}
                 </div>
                 <div>{c.text}</div>
@@ -197,14 +197,14 @@ export function ProposalCard({ p, editHref, eventLine }: { p: ProposalView; edit
               Kommenter
             </button>
           </form>
-          <p className="nm-muted" style={{ fontSize: 14, margin: 0 }}>
+          <p className="nm-muted" style={{ fontSize: "var(--fs-caption)", margin: 0 }}>
             Ikke skriv helseopplysninger eller andre sensitive opplysninger.
           </p>
         </div>
       </details>
       <details>
         <summary style={{ cursor: "pointer", fontWeight: 700, minHeight: 32 }}>Historikk</summary>
-        <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
+        <ul style={{ margin: "var(--space-2) 0 0", paddingLeft: "var(--space-5)" }}>
           {p.history.map((h, i) => (
             <li key={i}>
               {h.when} · <strong>{h.who}</strong> {h.text}

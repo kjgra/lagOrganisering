@@ -75,7 +75,7 @@ export default async function ProposalsPage(props: PageProps<"/g/[groupId]/[sub]
   return (
     <AppShell ctx={ctx} title="Lagrede lagforslag" section="proposals">
       <AutoRefresh />
-      <div className="nm-seg" role="group" aria-label="Vis lagforslag" style={{ marginBottom: 8 }}>
+      <div className="nm-seg" role="group" aria-label="Vis lagforslag" style={{ marginBottom: "var(--space-2)" }}>
         <Link href={ctx.path("/lagforslag")} aria-current={view === "alle" ? "page" : undefined}>
           Per arrangement
         </Link>
@@ -96,7 +96,7 @@ export default async function ProposalsPage(props: PageProps<"/g/[groupId]/[sub]
         byEvent.length ? (
           byEvent.map(({ e, list }, i) => (
             <section key={e.id}>
-              <h2 className="nm-section-label" style={i === 0 ? { marginTop: 12 } : undefined}>
+              <h2 className="nm-section-label" style={i === 0 ? { marginTop: "var(--space-3)" } : undefined}>
                 <Link href={eventPath(e.id)} style={{ color: "inherit" }}>
                   {e.heading} · {e.start ? dayLabel(e.start) : ""}
                 </Link>
@@ -105,7 +105,7 @@ export default async function ProposalsPage(props: PageProps<"/g/[groupId]/[sub]
             </section>
           ))
         ) : (
-          <p style={{ fontSize: 18 }}>Ingen lagrede forslag ennå. Lag lag fra et arrangement og trykk «Lagre forslag».</p>
+          <p style={{ fontSize: "var(--fs-body-lg)" }}>Ingen lagrede forslag ennå. Lag lag fra et arrangement og trykk «Lagre forslag».</p>
         )
       ) : null}
 
@@ -115,7 +115,7 @@ export default async function ProposalsPage(props: PageProps<"/g/[groupId]/[sub]
           {pending.length ? (
             <div className="nm-stack nm-proposals">{pending.map((p) => card(p, true))}</div>
           ) : (
-            <p style={{ fontSize: 18 }}>Ingen forslag venter på godkjenning.</p>
+            <p style={{ fontSize: "var(--fs-body-lg)" }}>Ingen forslag venter på godkjenning.</p>
           )}
         </>
       ) : null}
@@ -126,14 +126,14 @@ export default async function ProposalsPage(props: PageProps<"/g/[groupId]/[sub]
             Skisser til nye undergrupper i {ctx.label}. Dette er bare forslag; de gjelder først når undergruppene opprettes eller
             endres i Spond.
           </p>
-          <Link href={ctx.path("/lagforslag/utkast/ny")} className="nm-btn nm-btn--secondary" style={{ marginBottom: 12 }}>
+          <Link href={ctx.path("/lagforslag/utkast/ny")} className="nm-btn nm-btn--secondary" style={{ marginBottom: "var(--space-3)" }}>
             <Icon icon={Plus} />
             Lag gruppeutkast
           </Link>
           {drafts.length ? (
             <div className="nm-stack nm-proposals">{drafts.map((p) => card(p, false))}</div>
           ) : (
-            <p style={{ fontSize: 18 }}>Ingen gruppeutkast her ennå.</p>
+            <p style={{ fontSize: "var(--fs-body-lg)" }}>Ingen gruppeutkast her ennå.</p>
           )}
         </>
       ) : null}

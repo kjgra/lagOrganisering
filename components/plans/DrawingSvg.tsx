@@ -4,7 +4,7 @@ import { drawingShapes, type Drawing } from "@/lib/plans/drawing";
 export function DrawingSvg({ drawing, title }: { drawing: Drawing; title?: string }) {
   const { width, height, shapes } = drawingShapes(drawing, 1200);
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} width="100%" role="img" aria-label={title ?? "Tegning av øvelsen"} style={{ display: "block", borderRadius: 10 }}>
+    <svg viewBox={`0 0 ${width} ${height}`} width="100%" role="img" aria-label={title ?? "Tegning av øvelsen"} style={{ display: "block", borderRadius: "var(--radius-md)" }}>
       {shapes.map((s, i) => {
         switch (s.k) {
           case "rect":

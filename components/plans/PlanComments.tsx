@@ -40,14 +40,14 @@ export function PlanComments({ groupId, planId, exercises, comments, canWrite }:
 
   if (!comments.length && !canWrite) return null;
   return (
-    <div className="nm-stack" style={{ gap: 8 }} aria-busy={pending}>
+    <div className="nm-stack" style={{ gap: "var(--space-2)" }} aria-busy={pending}>
       <h3 className="nm-h3">Kommentarer</h3>
       {comments.length ? (
-        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
+        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "var(--space-2)" }}>
           {comments.map((c) => (
             <li key={c.id} className="nm-note" style={{ display: "block" }}>
-              <div className="nm-row" style={{ justifyContent: "space-between", gap: 8 }}>
-                <span style={{ fontSize: 15 }}>
+              <div className="nm-row" style={{ justifyContent: "space-between", gap: "var(--space-2)" }}>
+                <span style={{ fontSize: "var(--fs-caption)" }}>
                   <strong>{c.author}</strong>
                   <span className="nm-muted">
                     {" "}
@@ -75,7 +75,7 @@ export function PlanComments({ groupId, planId, exercises, comments, canWrite }:
       {canWrite ? (
         <form
           className="nm-stack"
-          style={{ gap: 8 }}
+          style={{ gap: "var(--space-2)" }}
           onSubmit={(e) => {
             e.preventDefault();
             if (body.trim()) send();

@@ -239,6 +239,6 @@ export async function feedbackAction(input: z.input<typeof feedbackInput>): Prom
     const activated = await saveFeedback(d, user.access, pl.id, rows, v.registered);
     refresh();
     const act = activated.length ? ` ${activated.length === 1 ? "Én øvelse" : `${activated.length} øvelser`} er nå aktive i banken.` : "";
-    return { data: undefined, message: `Evalueringen er lagret. Takk!${act}` };
+    return { data: undefined, message: `Evalueringen er lagret.${act}` };
   });
 }

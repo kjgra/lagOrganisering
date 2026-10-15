@@ -27,8 +27,8 @@ export function EventCard({
     <Link href={href} className="nm-card nm-event">
       <span className="nm-sr">{event.start ? longDate(event.start) : ""}</span>
       <DateBlock start={event.start} sent={sent} cancelled={event.cancelled} />
-      <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-        <div style={{ fontSize: 20, lineHeight: "26px", fontWeight: 700, textDecoration: event.cancelled ? "line-through" : undefined }}>
+      <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+        <div style={{ fontSize: "var(--fs-heading)", lineHeight: "var(--lh-heading)", fontWeight: 700, textDecoration: event.cancelled ? "line-through" : undefined }}>
           {event.heading}
         </div>
         <div className="nm-meta">
@@ -44,7 +44,7 @@ export function EventCard({
           ) : null}
         </div>
         {sentTo?.length || event.match || event.cancelled || badges ? (
-          <div className="nm-row" style={{ gap: 6 }}>
+          <div className="nm-row" style={{ gap: "var(--space-2)" }}>
             {event.cancelled ? <Tag>Avlyst</Tag> : null}
             {event.match ? <Tag>Kamp</Tag> : null}
             {sentTo?.map((s) => (
@@ -62,18 +62,18 @@ export function EventCard({
           <>
             <ResponseCounts accepted={counts.accepted} unanswered={counts.unanswered} declined={counts.declined} />
             {counts.coachesComing ? (
-              <span className="nm-muted" style={{ fontSize: 15 }}>
+              <span className="nm-muted" style={{ fontSize: "var(--fs-caption)" }}>
                 {counts.coachesComing} {counts.coachesComing === 1 ? "trener" : "trenere"} kommer
               </span>
             ) : null}
           </>
         ) : (
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "var(--space-2)" }}>
             <span className="nm-badge nm-badge--neutral">
               <Icon icon={Send} size={16} />
               Ikke sendt
             </span>
-            <span className="nm-muted" style={{ fontSize: 16 }}>
+            <span className="nm-muted" style={{ fontSize: "var(--fs-body)" }}>
               {counts.invited} blir invitert{event.inviteTime ? ` · sendes ${shortDate(event.inviteTime)}` : ""}
             </span>
           </div>

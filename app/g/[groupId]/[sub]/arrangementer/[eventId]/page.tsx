@@ -69,9 +69,9 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
       }
     >
       <AutoRefresh />
-      <div className="nm-stack" style={{ gap: 16 }}>
+      <div className="nm-stack" style={{ gap: "var(--space-4)" }}>
         <div>
-          <div style={{ fontSize: 20, lineHeight: "26px", fontWeight: 700 }}>{event.heading}</div>
+          <div style={{ fontSize: "var(--fs-heading)", lineHeight: "var(--lh-heading)", fontWeight: 700 }}>{event.heading}</div>
           <div className="nm-meta">
             {event.start ? (
               <span>
@@ -90,8 +90,8 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
               </span>
             ) : null}
           </div>
-          <div className="nm-row" style={{ gap: 6, marginTop: 8 }}>
-            <span className="nm-muted" style={{ fontSize: 15 }}>
+          <div className="nm-row" style={{ gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
+            <span className="nm-muted" style={{ fontSize: "var(--fs-caption)" }}>
               Sendt til:
             </span>
             {eventSentTo(event, ctx.group).map((s) => (
@@ -107,12 +107,12 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
             ) : null}
           </div>
           {coaches.length ? (
-            <p style={{ margin: "8px 0 0", fontSize: 16 }}>
+            <p style={{ margin: "var(--space-2) 0 0", fontSize: "var(--fs-body)" }}>
               <strong>Trenere:</strong> {coaches.map((c) => c.displayName).join(", ")}
             </p>
           ) : null}
           {!event.notSent ? (
-            <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ marginTop: "var(--space-3)", display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
               <ResponseCounts accepted={counts.accepted} unanswered={counts.unanswered} declined={counts.declined} />
             </div>
           ) : null}
@@ -123,7 +123,7 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
             Lag
           </h2>
           {newLocks.map((l) => (
-            <div key={l.sessionKey} className="nm-note" role="status" style={{ marginBottom: 8 }}>
+            <div key={l.sessionKey} className="nm-note" role="status" style={{ marginBottom: "var(--space-2)" }}>
               <Icon icon={Pencil} />
               <span>
                 {profileName(ctx.group, l.editor)} lager et nytt lagforslag her nå (startet kl. {clock(l.startedAt)}).

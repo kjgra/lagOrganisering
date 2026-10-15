@@ -13,10 +13,10 @@ export function LoginForm({ notice, demoAccounts }: { notice?: string; demoAccou
   if (state.status === "no_role" || state.status === "no_app") {
     return (
       <div className="nm-login__card">
-        <h2 style={{ margin: 0, fontSize: 26, lineHeight: "32px" }}>Ingen tilgang</h2>
+        <h2 style={{ margin: 0, fontSize: "var(--fs-title)", lineHeight: "var(--lh-title)" }}>Ingen tilgang</h2>
         {state.status === "no_role" ? (
           <>
-            <p style={{ margin: 0, fontSize: 18, lineHeight: "26px" }}>
+            <p style={{ margin: 0, fontSize: "var(--fs-body-lg)", lineHeight: "var(--lh-heading)" }}>
               Du er logget inn som {state.firstName}, men har ingen rolle i Spond som gir tilgang til appen.
             </p>
             <p className="nm-muted" style={{ margin: 0 }}>
@@ -26,7 +26,7 @@ export function LoginForm({ notice, demoAccounts }: { notice?: string; demoAccou
           </>
         ) : (
           <>
-            <p style={{ margin: 0, fontSize: 18, lineHeight: "26px" }}>
+            <p style={{ margin: 0, fontSize: "var(--fs-body-lg)", lineHeight: "var(--lh-heading)" }}>
               Innloggingen i Spond var riktig, men du har ikke fått tilgang til denne appen.
             </p>
             <p className="nm-muted" style={{ margin: 0 }}>
@@ -48,8 +48,8 @@ export function LoginForm({ notice, demoAccounts }: { notice?: string; demoAccou
   const error = state.status === "error" ? state.message : notice;
   return (
     <form className="nm-login__card" action={action} noValidate>
-      <h2 style={{ margin: 0, fontSize: 26, lineHeight: "32px" }}>Logg inn med Spond</h2>
-      <p style={{ margin: 0, fontSize: 18, lineHeight: "26px" }}>Bruk samme e-post eller mobilnummer og passord som i Spond-appen.</p>
+      <h2 style={{ margin: 0, fontSize: "var(--fs-title)", lineHeight: "var(--lh-title)" }}>Logg inn med Spond</h2>
+      <p style={{ margin: 0, fontSize: "var(--fs-body-lg)", lineHeight: "var(--lh-heading)" }}>Bruk samme e-post eller mobilnummer og passord som i Spond-appen.</p>
       {error ? (
         <div className="nm-alert" role="alert">
           <Icon icon={CircleAlert} />
@@ -88,7 +88,7 @@ export function LoginForm({ notice, demoAccounts }: { notice?: string; demoAccou
         <span>Passordet ditt lagres ikke. Det sendes direkte til Spond én gang for å logge deg inn.</span>
       </div>
       {demoAccounts?.length ? (
-        <div className="nm-note" style={{ flexDirection: "column", gap: 4 }}>
+        <div className="nm-note" style={{ flexDirection: "column", gap: "var(--space-1)" }}>
           <strong>Demo: passord «demo»</strong>
           {demoAccounts.map((a) => (
             <span key={a.email}>
@@ -97,7 +97,7 @@ export function LoginForm({ notice, demoAccounts }: { notice?: string; demoAccou
           ))}
         </div>
       ) : null}
-      <p className="nm-muted" style={{ margin: 0, fontSize: 14, lineHeight: "20px" }}>
+      <p className="nm-muted" style={{ margin: 0, fontSize: "var(--fs-caption)", lineHeight: "var(--lh-caption)" }}>
         Uoffisielt verktøy for trenere i Nymark. Ikke laget eller støttet av Spond AS.
       </p>
     </form>

@@ -116,7 +116,7 @@ export function KiForm(p: KiFormProps) {
       </label>
       {p.comments.length ? (
         <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-          <legend className="nm-field__label" style={{ marginBottom: 4 }}>
+          <legend className="nm-field__label" style={{ marginBottom: "var(--space-1)" }}>
             Kommentarer KI skal ta hensyn til
           </legend>
           {p.comments.map((c) => (
@@ -128,7 +128,7 @@ export function KiForm(p: KiFormProps) {
         </fieldset>
       ) : null}
       <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-        <legend className="nm-field__label" style={{ marginBottom: 4 }}>
+        <legend className="nm-field__label" style={{ marginBottom: "var(--space-1)" }}>
           Modell
         </legend>
         {p.models.map((m) => (
@@ -143,7 +143,7 @@ export function KiForm(p: KiFormProps) {
         <button type="button" className="nm-btn nm-btn--ghost" onClick={estimate} disabled={pending}>
           Beregn pris
         </button>
-        <p className="nm-hint" style={{ margin: "4px 0 0" }}>
+        <p className="nm-hint" style={{ margin: "var(--space-1) 0 0" }}>
           {p.budgetText}
         </p>
       </fieldset>

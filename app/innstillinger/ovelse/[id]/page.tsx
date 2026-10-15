@@ -40,7 +40,7 @@ export default async function ExercisePage(props: PageProps<"/innstillinger/ovel
   const listHref = `/innstillinger/ovelser${ctx.q()}`;
   return (
     <SettingsShell user={ctx.user} back={ctx.back} tab="ovelser" groupId={ctx.group.id}>
-      <p style={{ margin: "0 0 8px" }}>
+      <p style={{ margin: "0 0 var(--space-2)" }}>
         <Link href={listHref} style={{ textDecoration: "underline" }}>
           Øvelser
         </Link>{" "}

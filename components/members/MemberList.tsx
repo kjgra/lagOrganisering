@@ -29,7 +29,7 @@ export function MemberList({ groupId, rows }: { groupId: string; rows: MemberRow
               <span className="nm-list__main">
                 <span className="nm-list__name">{r.name}</span>
                 {r.tags.length ? (
-                  <span className="nm-row" style={{ gap: 6 }}>
+                  <span className="nm-row" style={{ gap: "var(--space-2)" }}>
                     {r.tags.map((t) => (
                       <Tag key={t}>{t}</Tag>
                     ))}

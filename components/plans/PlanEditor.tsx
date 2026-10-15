@@ -87,8 +87,8 @@ export function PlanEditor(props: {
         <input className="nm-input" value={s.tema} maxLength={80} onChange={(e) => set("tema", e.target.value)} />
       </label>
 
-      <section className="nm-stack" style={{ gap: 4 }} aria-labelledby="ov-h">
-        <h2 className="nm-section-label" id="ov-h" style={{ marginTop: 8 }}>
+      <section className="nm-stack" style={{ gap: "var(--space-1)" }} aria-labelledby="ov-h">
+        <h2 className="nm-section-label" id="ov-h" style={{ marginTop: "var(--space-2)" }}>
           Øvelser ({list.length})
         </h2>
         {list.length ? null : <p className="nm-muted" style={{ margin: 0 }}>Velg øvelser fra banken under.</p>}
@@ -117,11 +117,11 @@ export function PlanEditor(props: {
       </section>
 
       <details open={bankOpen} onToggle={(e) => setBankOpen(e.currentTarget.open)}>
-        <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 17, minHeight: 32 }}>Øvelsesbanken ({props.bank.length})</summary>
+        <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-body-lg)", minHeight: 32 }}>Øvelsesbanken ({props.bank.length})</summary>
         <label className="nm-sr" htmlFor="bank-q">
           Søk i øvelsesbanken
         </label>
-        <input id="bank-q" className="nm-input" style={{ margin: "8px 0" }} placeholder="Søk" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <input id="bank-q" className="nm-input" style={{ margin: "var(--space-2) 0" }} placeholder="Søk" value={query} onChange={(e) => setQuery(e.target.value)} />
         {filtered.map((b) => (
           <div key={b.key} className="nm-pick">
             <div>
@@ -140,7 +140,7 @@ export function PlanEditor(props: {
         {!filtered.length ? <p className="nm-muted">Ingen flere øvelser.</p> : null}
       </details>
 
-      <h2 className="nm-section-label" style={{ marginTop: 8 }}>
+      <h2 className="nm-section-label" style={{ marginTop: "var(--space-2)" }}>
         Tidsplan · ca. {total} min
       </h2>
       <div className="nm-form-row">
@@ -167,7 +167,7 @@ export function PlanEditor(props: {
         <input className="nm-input" value={s.avslutning_tekst} maxLength={300} onChange={(e) => set("avslutning_tekst", e.target.value)} />
       </label>
 
-      <h2 className="nm-section-label" style={{ marginTop: 8 }}>
+      <h2 className="nm-section-label" style={{ marginTop: "var(--space-2)" }}>
         Fokus og stikkord
       </h2>
       <label className="nm-field">

@@ -47,7 +47,7 @@ export function ParticipantList({ groupId, rows }: { groupId: string; rows: Part
         ))}
       </div>
       {shown.length ? (
-        <ul className="nm-list" style={{ marginTop: 12 }}>
+        <ul className="nm-list" style={{ marginTop: "var(--space-3)" }}>
           {shown.map((r) => {
             const body = (
               <>
@@ -55,7 +55,7 @@ export function ParticipantList({ groupId, rows }: { groupId: string; rows: Part
                 <span className="nm-list__main">
                   <span className="nm-list__name">{r.name}</span>
                   {r.tags.length ? (
-                    <span className="nm-row" style={{ gap: 6 }}>
+                    <span className="nm-row" style={{ gap: "var(--space-2)" }}>
                       {r.tags.map((t) => (
                         <Tag key={t}>{t}</Tag>
                       ))}
@@ -86,7 +86,7 @@ export function ParticipantList({ groupId, rows }: { groupId: string; rows: Part
       ) : (
         <p className="nm-muted">Ingen her.</p>
       )}
-      <p className="nm-muted" style={{ fontSize: 15, display: "flex", gap: 6, alignItems: "center" }}>
+      <p className="nm-muted" style={{ fontSize: "var(--fs-caption)", display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
         <Icon icon={Tags} size={18} />
         Trykk på en spiller for å legge til eller fjerne tagger.
       </p>

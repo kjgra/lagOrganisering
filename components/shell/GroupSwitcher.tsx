@@ -122,14 +122,14 @@ function Sheet({ data, onClose }: { data: SwitcherData; onClose: () => void }) {
           </>
         ) : null}
         {!favs.length && !recent.length ? (
-          <p className="nm-muted" style={{ fontSize: 16 }}>
+          <p className="nm-muted" style={{ fontSize: "var(--fs-body)" }}>
             Ingen favoritter ennå. Trykk på stjerna ved en gruppe under «Alle grupper».
           </p>
         ) : null}
         <button
           type="button"
           className="nm-btn nm-btn--secondary nm-btn--block"
-          style={{ marginTop: 16 }}
+          style={{ marginTop: "var(--space-4)" }}
           onClick={() => {
             onClose();
             router.push("/velg-gruppe");

@@ -21,7 +21,7 @@ export default async function SettingsPage(props: PageProps<"/innstillinger">) {
       </section>
       <section className="nm-section">
         <h2 className="nm-h2">Konto</h2>
-        <p style={{ margin: "0 0 12px" }}>
+        <p style={{ margin: "0 0 var(--space-3)" }}>
           Innlogget som <strong>{user.data.profile.firstName} {user.data.profile.lastName}</strong> med Spond.
           {rights.superadmin ? " Du er superadmin." : rights.admin ? " Du er administrator." : ""}
           {rights.ai ? " Du har tilgang til KI." : ""}

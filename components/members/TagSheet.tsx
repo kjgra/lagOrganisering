@@ -59,7 +59,7 @@ export function TagSheet({ groupId, target, onClose }: { groupId: string; target
           </button>
         </div>
         {error ? (
-          <div className="nm-alert" role="alert" style={{ marginBottom: 12 }}>
+          <div className="nm-alert" role="alert" style={{ marginBottom: "var(--space-3)" }}>
             {error}
           </div>
         ) : null}
@@ -67,7 +67,7 @@ export function TagSheet({ groupId, target, onClose }: { groupId: string; target
           Har nå
         </h3>
         {tags.length ? (
-          <div className="nm-row" style={{ gap: 8 }}>
+          <div className="nm-row" style={{ gap: "var(--space-2)" }}>
             {tags.map((t) => (
               <button key={t} type="button" className="nm-chip" style={{ cursor: "pointer" }} onClick={() => remove(t)} aria-label={`Fjern ${t}`}>
                 {t}
@@ -83,7 +83,7 @@ export function TagSheet({ groupId, target, onClose }: { groupId: string; target
         {suggestions.length ? (
           <>
             <h3 className="nm-section-label">Legg til</h3>
-            <div className="nm-row" style={{ gap: 8 }}>
+            <div className="nm-row" style={{ gap: "var(--space-2)" }}>
               {suggestions.slice(0, 12).map((s) => (
                 <button key={s} type="button" className="nm-chip" style={{ cursor: "pointer" }} onClick={() => add(s)}>
                   <Icon icon={Plus} size={18} />
@@ -95,7 +95,7 @@ export function TagSheet({ groupId, target, onClose }: { groupId: string; target
         ) : null}
         <form
           className="nm-row"
-          style={{ marginTop: 16, flexWrap: "nowrap" }}
+          style={{ marginTop: "var(--space-4)", flexWrap: "nowrap" }}
           onSubmit={(e) => {
             e.preventDefault();
             if (text.trim()) add(text);
@@ -109,7 +109,7 @@ export function TagSheet({ groupId, target, onClose }: { groupId: string; target
             Legg til
           </button>
         </form>
-        <p className="nm-muted" style={{ fontSize: 14, lineHeight: "20px", marginBottom: 0 }}>
+        <p className="nm-muted" style={{ fontSize: "var(--fs-caption)", lineHeight: "var(--lh-caption)", marginBottom: 0 }}>
           Tagger gjelder hele hovedgruppa. Ikke skriv helseopplysninger eller andre sensitive opplysninger.
         </p>
       </div>

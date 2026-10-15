@@ -245,7 +245,7 @@ function Column({ label, index, members, pool }: { label: string; index: number;
         {editing && !pool ? (
           <form
             className="nm-row"
-            style={{ flex: 1, flexWrap: "nowrap", gap: 6 }}
+            style={{ flex: 1, flexWrap: "nowrap", gap: "var(--space-2)" }}
             onClick={(e) => e.stopPropagation()}
             onSubmit={(e) => {
               e.preventDefault();
@@ -254,13 +254,13 @@ function Column({ label, index, members, pool }: { label: string; index: number;
               if (!p) setEditing(false);
             }}
           >
-            <input className="nm-input" style={{ minHeight: 36, fontSize: 16 }} value={text} maxLength={60} autoFocus aria-label="Lagnavn" onChange={(e) => setText(e.target.value)} />
+            <input className="nm-input" style={{ minHeight: 36, fontSize: "var(--fs-body)" }} value={text} maxLength={60} autoFocus aria-label="Lagnavn" onChange={(e) => setText(e.target.value)} />
             <button type="submit" className="nm-btn nm-btn--secondary" style={{ minHeight: 36 }}>
               OK
             </button>
           </form>
         ) : (
-          <span className="nm-row" style={{ gap: 6 }}>
+          <span className="nm-row" style={{ gap: "var(--space-2)" }}>
             {title}
             {!pool ? (
               <button
@@ -279,7 +279,7 @@ function Column({ label, index, members, pool }: { label: string; index: number;
             ) : null}
           </span>
         )}
-        <span className="nm-row" style={{ gap: 4 }}>
+        <span className="nm-row" style={{ gap: "var(--space-1)" }}>
           <span className="nm-team__count">{members.length}</span>
           {!pool && b.labels.length > 1 ? (
             <button
@@ -298,18 +298,18 @@ function Column({ label, index, members, pool }: { label: string; index: number;
         </span>
       </div>
       {problem ? (
-        <div className="nm-alert" role="alert" style={{ margin: 8 }}>
+        <div className="nm-alert" role="alert" style={{ margin: "var(--space-2)" }}>
           {problem}
         </div>
       ) : null}
       <div className="nm-team__body">
         {members.map((m) => (
-          <span key={m.id} className="nm-row" style={{ gap: 2, flexDirection: "column", alignItems: "flex-start" }}>
+          <span key={m.id} className="nm-row" style={{ gap: "var(--space-1)", flexDirection: "column", alignItems: "flex-start" }}>
             <Chip p={m} />
             {notes[m.id] ? <span className="nm-minichip__note">{notes[m.id]}</span> : null}
           </span>
         ))}
-        {!members.length ? <span className="nm-muted" style={{ fontSize: 15 }}>{pool ? "Alle er fordelt" : "Slipp spillere her"}</span> : null}
+        {!members.length ? <span className="nm-muted" style={{ fontSize: "var(--fs-caption)" }}>{pool ? "Alle er fordelt" : "Slipp spillere her"}</span> : null}
         <button
           type="button"
           className="nm-team__drop"
@@ -349,20 +349,20 @@ export function TeamBoard() {
 
   return (
     <div onClick={() => b.setSelected(null)}>
-      <label className="nm-field" style={{ marginBottom: 16, maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+      <label className="nm-field" style={{ marginBottom: "var(--space-4)", maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
         <span className="nm-field__label">Navn på forslaget</span>
         <input className="nm-input" value={b.name} maxLength={120} onChange={(e) => b.setName(e.target.value)} />
       </label>
       {b.lockedBy ? (
-        <div className="nm-note" role="status" style={{ marginBottom: 12 }}>
+        <div className="nm-note" role="status" style={{ marginBottom: "var(--space-3)" }}>
           <Icon icon={Pencil} />
           <span>{b.lockedBy} redigerer dette nå. Redigerer dere samtidig, blir den siste som lagrer stående.</span>
         </div>
       ) : null}
-      <div className="nm-row" style={{ justifyContent: "space-between", marginBottom: 16 }}>
-        <div className="nm-stack" style={{ gap: 2 }}>
-          <span style={{ fontSize: 16, fontWeight: 700 }}>Antall lag</span>
-          <span className="nm-muted" style={{ fontSize: 14 }}>
+      <div className="nm-row" style={{ justifyContent: "space-between", marginBottom: "var(--space-4)" }}>
+        <div className="nm-stack" style={{ gap: "var(--space-1)" }}>
+          <span style={{ fontSize: "var(--fs-body)", fontWeight: 700 }}>Antall lag</span>
+          <span className="nm-muted" style={{ fontSize: "var(--fs-caption)" }}>
             {nPlayers} {nPlayers === 1 ? "spiller" : "spillere"}
           </span>
         </div>
@@ -379,20 +379,20 @@ export function TeamBoard() {
         </div>
       </div>
       {selP ? (
-        <div className="nm-movebar" style={{ marginBottom: 12 }} onClick={(e) => e.stopPropagation()}>
+        <div className="nm-movebar" style={{ marginBottom: "var(--space-3)" }} onClick={(e) => e.stopPropagation()}>
           {selP.name} er valgt. Trykk på laget spilleren skal til.
           <button type="button" className="nm-btn" onClick={() => b.setSelected(null)}>
             Avbryt
           </button>
         </div>
       ) : (
-        <p className="nm-muted" style={{ margin: "0 0 12px", fontSize: 16, lineHeight: "22px" }}>
+        <p className="nm-muted" style={{ margin: "0 0 var(--space-3)", fontSize: "var(--fs-body)", lineHeight: "var(--lh-body)" }}>
           <span className="nm-phone-only">Trykk på en spiller, deretter på et lag for å flytte.</span>
           <span className="nm-desk-only">Dra spillere mellom lagene, eller trykk på spiller og deretter lag.</span>
         </p>
       )}
       {b.error ? (
-        <div className="nm-alert" role="alert" style={{ marginBottom: 12 }}>
+        <div className="nm-alert" role="alert" style={{ marginBottom: "var(--space-3)" }}>
           {b.error}
         </div>
       ) : null}
@@ -405,7 +405,7 @@ export function TeamBoard() {
         </div>
         <DragOverlay>{dragging ? <Chip p={b.members.find((m) => m.id === dragging)!} overlay /> : null}</DragOverlay>
       </DndContext>
-      <div className="nm-row" style={{ marginTop: 16 }}>
+      <div className="nm-row" style={{ marginTop: "var(--space-4)" }}>
         <button type="button" className="nm-btn nm-btn--ghost" disabled={b.pending} onClick={(e) => { e.stopPropagation(); b.save(true); }}>
           <Icon icon={Send} size={20} />
           Lagre og send til godkjenning

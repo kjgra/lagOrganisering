@@ -22,7 +22,7 @@ export function MaintenancePanel({ keys, nPending }: { keys: string[]; nPending:
       setConfirm(false);
     });
   return (
-    <div className="nm-stack" style={{ gap: 12 }} aria-busy={pending}>
+    <div className="nm-stack" style={{ gap: "var(--space-3)" }} aria-busy={pending}>
       {error ? (
         <div className="nm-alert" role="alert">
           {error}
@@ -35,8 +35,8 @@ export function MaintenancePanel({ keys, nPending }: { keys: string[]; nPending:
         </button>
       </div>
       {nPending ? (
-        <div className="nm-stack" style={{ gap: 8 }}>
-          <div className="nm-row" style={{ gap: 8 }}>
+        <div className="nm-stack" style={{ gap: "var(--space-2)" }}>
+          <div className="nm-row" style={{ gap: "var(--space-2)" }}>
             <a href="/api/arkiv" className="nm-btn nm-btn--primary" onClick={() => setDownloaded(true)}>
               <Icon icon={Download} />
               Last ned arkiv (ZIP)

@@ -19,7 +19,7 @@ function Lines({ title, items }: { title: string; items: string[] }) {
   if (!items.length) return null;
   return (
     <div>
-      <h4 className="nm-h3" style={{ margin: "10px 0 4px", fontSize: 16 }}>{title}</h4>
+      <h4 className="nm-h3" style={{ margin: "var(--space-3) 0 var(--space-1)", fontSize: "var(--fs-body)" }}>{title}</h4>
       <ul className="nm-plan-list">
         {items.map((t, i) => (
           <li key={i}>{t.replaceAll("**", "")}</li>
@@ -32,15 +32,15 @@ function Lines({ title, items }: { title: string; items: string[] }) {
 function ExerciseDetails({ e, n }: { e: PlanExercise; n: number }) {
   return (
     <details className="nm-exercise">
-      <summary style={{ cursor: "pointer", fontSize: 17, fontWeight: 700, minHeight: 32 }}>
+      <summary style={{ cursor: "pointer", fontSize: "var(--fs-body-lg)", fontWeight: 700, minHeight: 32 }}>
         {n}. {e.navn}
         <span className="nm-muted" style={{ fontWeight: 400 }}>
           {e.kategori ? ` · ${e.kategori}` : ""}
           {e.kilde === "ny" ? " · ny" : e.kilde === "justert" ? " · justert" : ""}
         </span>
       </summary>
-      <div style={{ paddingTop: 8 }}>
-        {e.fokus ? <p style={{ margin: "0 0 8px" }}>Fokus: {e.fokus.replaceAll("**", "")}</p> : null}
+      <div style={{ paddingTop: "var(--space-2)" }}>
+        {e.fokus ? <p style={{ margin: "0 0 var(--space-2)" }}>Fokus: {e.fokus.replaceAll("**", "")}</p> : null}
         {e.tegning ? <DrawingSvg drawing={e.tegning} title={`Tegning av ${e.navn}`} /> : null}
         <Lines title="Organisering" items={e.organisering} />
         <Lines title="Gjennomføring" items={e.gjennomforing} />
@@ -49,7 +49,7 @@ function ExerciseDetails({ e, n }: { e: PlanExercise; n: number }) {
         <Lines title="Spørsmål til spillerne" items={e.sporsmal} />
         <Lines title="Variasjoner" items={[e.enklere && `Enklere: ${e.enklere}`, e.vanskeligere && `Vanskeligere: ${e.vanskeligere}`].filter(Boolean)} />
         {e.nff_url ? (
-          <p style={{ margin: "8px 0 0", fontSize: 15 }}>
+          <p style={{ margin: "var(--space-2) 0 0", fontSize: "var(--fs-caption)" }}>
             Kilde:{" "}
             <a href={e.nff_url} target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>
               {e.nff_url}
@@ -82,11 +82,11 @@ export async function PlanSection({ ctx, event, selected }: { ctx: GroupContext;
     return (
       <section aria-labelledby="plan-h">
         {head}
-        <p className="nm-muted" style={{ margin: "0 0 12px" }}>
+        <p className="nm-muted" style={{ margin: "0 0 var(--space-3)" }}>
           {past ? "Det ble ikke laget noe opplegg for denne økta." : "Ingen opplegg ennå. Sett sammen et fra øvelsesbanken, eller la KI foreslå et."}
         </p>
         {!past ? (
-          <div className="nm-row" style={{ gap: 8 }}>
+          <div className="nm-row" style={{ gap: "var(--space-2)" }}>
             <Link href={`${base}/opplegg/endre`} className="nm-btn nm-btn--secondary">
               <Icon icon={Pencil} />
               Lag opplegg
@@ -135,19 +135,26 @@ export async function PlanSection({ ctx, event, selected }: { ctx: GroupContext;
         ) : null}
         <div className="nm-row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <div style={{ fontSize: 20, lineHeight: "26px", fontWeight: 700 }}>{p.tittel}</div>
-            {p.undertittel ? <div style={{ fontSize: 16 }}>{p.undertittel}</div> : null}
-            <div className="nm-muted" style={{ fontSize: 15 }}>
+            <div style={{ fontSize: "var(--fs-heading)", lineHeight: "var(--lh-heading)", fontWeight: 700 }}>{p.tittel}</div>
+            {p.undertittel ? <div style={{ fontSize: "var(--fs-body)" }}>{p.undertittel}</div> : null}
+            <div className="nm-muted" style={{ fontSize: "var(--fs-caption)" }}>
               Versjon {current.version} · laget {source} av {profileName(group, stored.createdBy)} · {savedAt(stored.createdAt)}
             </div>
             {stored.approvedBy && stored.approvedAt ? (
-              <div className="nm-muted" style={{ fontSize: 15 }}>
+              <div className="nm-muted" style={{ fontSize: "var(--fs-caption)" }}>
                 Godkjent av {profileName(group, stored.approvedBy)} {savedAt(stored.approvedAt)}
               </div>
             ) : null}
           </div>
           <span className={`nm-badge ${current.status === "approved" ? "nm-badge--kommer" : "nm-badge--neutral"}`}>{current.status === "approved" ? "Godkjent" : "Utkast"}</span>
         </div>
+
+        {stored.source === "ai" ? (
+          <div className="nm-note" role="note">
+            <Icon icon={Sparkles} />
+            <span>Forslag fra KI. Les gjennom og endre det som ikke passer før opplegget godkjennes og brukes.</span>
+          </div>
+        ) : null}
 
         {p.fokus.forsvar || p.fokus.angrep ? (
           <div className="nm-note" style={{ display: "block" }}>
@@ -157,7 +164,7 @@ export async function PlanSection({ ctx, event, selected }: { ctx: GroupContext;
         ) : null}
 
         <div>
-          <h3 className="nm-h3" style={{ marginBottom: 4 }}>Tidsplan · {sched.total} min</h3>
+          <h3 className="nm-h3" style={{ marginBottom: "var(--space-1)" }}>Tidsplan · {sched.total} min</h3>
           <ul className="nm-plan-list" style={{ listStyle: "none", paddingLeft: 0 }}>
             {sched.rows.map((r, i) => (
               <li key={i}>
@@ -176,7 +183,7 @@ export async function PlanSection({ ctx, event, selected }: { ctx: GroupContext;
           ))}
         </div>
 
-        <div className="nm-row" style={{ gap: 8 }}>
+        <div className="nm-row" style={{ gap: "var(--space-2)" }}>
           <a href={`/api/opplegg/${stored.id}/pdf`} target="_blank" rel="noreferrer" className="nm-btn nm-btn--primary">
             <Icon icon={FileDown} />
             Last ned PDF
@@ -202,7 +209,7 @@ export async function PlanSection({ ctx, event, selected }: { ctx: GroupContext;
         <PlanControls planId={stored.id} version={current.version} approved={current.status === "approved"} candidates={candidates} />
 
         {past ? (
-          <div className="nm-stack" style={{ gap: 8 }}>
+          <div className="nm-stack" style={{ gap: "var(--space-2)" }}>
             <h3 className="nm-h3">Evaluering</h3>
             {fbForPlan.length ? (
               <ul className="nm-plan-list" style={{ listStyle: "none", paddingLeft: 0 }}>

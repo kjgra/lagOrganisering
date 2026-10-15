@@ -160,8 +160,8 @@ export function ExerciseForm(p: {
         <label className="nm-field__label" htmlFor="drawing-json">
           Tegning (JSON)
         </label>
-        <textarea id="drawing-json" className="nm-input" rows={10} style={{ fontFamily: "ui-monospace, monospace", fontSize: 14 }} value={v.drawing} onChange={set("drawing")} spellCheck={false} />
-        <div className="nm-row" style={{ gap: 8 }}>
+        <textarea id="drawing-json" className="nm-input" rows={10} style={{ fontFamily: "ui-monospace, monospace", fontSize: "var(--fs-caption)" }} value={v.drawing} onChange={set("drawing")} spellCheck={false} />
+        <div className="nm-row" style={{ gap: "var(--space-2)" }}>
           <button type="button" className="nm-btn nm-btn--ghost" onClick={() => setV((x) => ({ ...x, drawing: prettyDrawing(validateDrawing(EXAMPLE_DRAWING)) }))}>
             Sett inn eksempel
           </button>
@@ -185,7 +185,7 @@ export function ExerciseForm(p: {
           {error}
         </div>
       ) : null}
-      <div className="nm-row" style={{ gap: 8 }}>
+      <div className="nm-row" style={{ gap: "var(--space-2)" }}>
         <button type="submit" className="nm-btn nm-btn--primary" disabled={pending}>
           <Icon icon={Save} />
           Lagre øvelsen

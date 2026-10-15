@@ -28,6 +28,8 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/opplegg/[planId
   const event = await findEvent(user, group.id, pl.eventId);
   const groups = event ? await planGroups(d, user, group, event.id) : [];
   const info = event ? [event.start ? dayLabel(event.start) : "", timeRange(event.start, event.end), event.heading] : [];
+  // KI content is always marked as a proposal.
+  if (pl.source === "ai") info.push("Forslag fra KI");
   const buf = await planPdf({
     plan: pl.plan,
     info: info.filter(Boolean),

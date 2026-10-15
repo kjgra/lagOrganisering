@@ -37,7 +37,7 @@ export function PlanControls({ planId, version, approved, candidates }: { planId
   return (
     <div aria-busy={pending}>
       {error && !open ? (
-        <div className="nm-alert" role="alert" style={{ marginBottom: 8 }}>
+        <div className="nm-alert" role="alert" style={{ marginBottom: "var(--space-2)" }}>
           {error}
         </div>
       ) : null}
@@ -54,28 +54,28 @@ export function PlanControls({ planId, version, approved, candidates }: { planId
       )}
       {open ? (
         <Sheet title={`Godkjenn versjon ${version}`} onClose={() => setOpen(false)} busy={pending}>
-          <p style={{ margin: "0 0 12px" }}>Opplegget har øvelser som ikke er i øvelsesbanken. Skal de lagres der som kandidater?</p>
+          <p style={{ margin: "0 0 var(--space-3)" }}>Opplegget har øvelser som ikke er i øvelsesbanken. Skal de lagres der som kandidater?</p>
           {error ? (
-            <div className="nm-alert" role="alert" style={{ marginBottom: 12 }}>
+            <div className="nm-alert" role="alert" style={{ marginBottom: "var(--space-3)" }}>
               {error}
             </div>
           ) : null}
-          <div className="nm-stack" style={{ gap: 12 }}>
+          <div className="nm-stack" style={{ gap: "var(--space-3)" }}>
             {candidates.map((c) => (
               <fieldset key={c.index} style={{ border: 0, padding: 0, margin: 0 }}>
-                <legend style={{ fontWeight: 700, fontSize: 17 }}>
+                <legend style={{ fontWeight: 700, fontSize: "var(--fs-body-lg)" }}>
                   {c.index}. {c.navn}
                   <span className="nm-muted" style={{ fontWeight: 400 }}>
                     {c.kilde === "justert" ? " · justert" : " · ny"}
                   </span>
                 </legend>
                 {c.match ? (
-                  <p className="nm-hint" style={{ margin: "2px 0 4px" }}>
+                  <p className="nm-hint" style={{ margin: "var(--space-1) 0 var(--space-1)" }}>
                     Ligner «{c.match.name}» i banken ({Math.round(c.match.score * 100)} %).
                   </p>
                 ) : null}
                 {(["save", ...(c.match ? (["variant"] as const) : []), "skip"] as Choice[]).map((ch) => (
-                  <label key={ch} className="nm-check" style={{ minHeight: 36, padding: "4px 0" }}>
+                  <label key={ch} className="nm-check" style={{ minHeight: 36, padding: "var(--space-1) 0" }}>
                     <input type="radio" name={`c${c.index}`} checked={(choices[c.index] ?? c.default) === ch} onChange={() => setChoices((x) => ({ ...x, [c.index]: ch }))} />
                     {ch === "save" ? "Lagre som ny øvelse" : ch === "variant" ? `Lagre som variant av «${c.match?.name}»` : "Ikke lagre"}
                   </label>
@@ -83,7 +83,7 @@ export function PlanControls({ planId, version, approved, candidates }: { planId
               </fieldset>
             ))}
           </div>
-          <button type="button" className="nm-btn nm-btn--primary nm-btn--block" style={{ marginTop: 16 }} onClick={approve} disabled={pending}>
+          <button type="button" className="nm-btn nm-btn--primary nm-btn--block" style={{ marginTop: "var(--space-4)" }} onClick={approve} disabled={pending}>
             <Icon icon={Check} />
             Godkjenn
           </button>

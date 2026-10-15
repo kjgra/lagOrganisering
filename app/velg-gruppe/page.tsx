@@ -13,7 +13,7 @@ export default async function PickGroupPage() {
     <div className="nm-login">
       <div className="nm-login__top nm-chrome">
         <Brand env={envLabel()} />
-        <span className="nm-desk-only" style={{ color: "var(--on-chrome-muted)", fontSize: 16 }}>
+        <span className="nm-desk-only" style={{ color: "var(--on-chrome-muted)", fontSize: "var(--fs-body)" }}>
           Innlogget som <strong style={{ color: "var(--on-chrome)" }}>{user.data.profile.firstName}</strong>
         </span>
       </div>

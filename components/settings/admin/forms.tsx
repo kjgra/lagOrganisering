@@ -187,7 +187,7 @@ export function LearningForm({ groupId, initial, canKi, nNew }: { groupId: strin
         <textarea className="nm-input" style={{ minHeight: 220 }} value={text} maxLength={3000} onChange={(e) => setText(e.target.value)} />
       </Field>
       {errorBox}
-      <div className="nm-row" style={{ gap: 8 }}>
+      <div className="nm-row" style={{ gap: "var(--space-2)" }}>
         <button type="submit" className="nm-btn nm-btn--primary" disabled={pending}>
           <Icon icon={Save} />
           Lagre

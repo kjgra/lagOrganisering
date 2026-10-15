@@ -46,7 +46,7 @@ export function RoleTable({ groupId, rows, canAdmin }: { groupId: string; rows: 
   return (
     <div>
       {error ? (
-        <div className="nm-alert" role="alert" style={{ marginBottom: 12 }}>
+        <div className="nm-alert" role="alert" style={{ marginBottom: "var(--space-3)" }}>
           {error}
         </div>
       ) : null}
@@ -65,7 +65,7 @@ export function RoleTable({ groupId, rows, canAdmin }: { groupId: string; rows: 
               <tr key={r.profileId}>
                 <td>
                   <strong>{r.name}</strong>
-                  {r.superadmin ? <span className="nm-badge nm-badge--neutral" style={{ marginLeft: 6 }}>Superadmin</span> : null}
+                  {r.superadmin ? <span className="nm-badge nm-badge--neutral" style={{ marginLeft: "var(--space-2)" }}>Superadmin</span> : null}
                   <div className="nm-hint">
                     {r.roles}
                     {r.changed ? ` · ${r.changed}` : ""}

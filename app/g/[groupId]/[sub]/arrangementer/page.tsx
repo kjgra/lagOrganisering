@@ -93,7 +93,7 @@ export default async function EventsPage(props: PageProps<"/g/[groupId]/[sub]/ar
       </div>
 
       {pending.length && !past ? (
-        <div className="nm-note" style={{ marginTop: 12 }}>
+        <div className="nm-note" style={{ marginTop: "var(--space-3)" }}>
           <span style={{ flex: 1 }}>
             {pending.length === 1 ? "1 lagforslag venter" : `${pending.length} lagforslag venter`} på godkjenning.
           </span>
@@ -104,11 +104,11 @@ export default async function EventsPage(props: PageProps<"/g/[groupId]/[sub]/ar
       ) : null}
 
       {error ? (
-        <div className="nm-alert" role="alert" style={{ marginTop: 16 }}>
+        <div className="nm-alert" role="alert" style={{ marginTop: "var(--space-4)" }}>
           {error}
         </div>
       ) : !events.length ? (
-        <p style={{ fontSize: 18 }}>
+        <p style={{ fontSize: "var(--fs-body-lg)" }}>
           {past ? `Ingen gjennomførte arrangementer de siste ${days} dagene.` : "Ingen kommende arrangementer i Spond-gruppa."}
         </p>
       ) : (
@@ -137,7 +137,7 @@ export default async function EventsPage(props: PageProps<"/g/[groupId]/[sub]/ar
       )}
 
       {!past && hidden > 0 ? (
-        <div className="nm-row" style={{ marginTop: 16 }}>
+        <div className="nm-row" style={{ marginTop: "var(--space-4)" }}>
           <span className="nm-muted">{hidden} flere som ikke er sendt ut.</span>
           <Link className="nm-btn nm-btn--secondary" href={query({ flere: unsentLimit + UNSENT_STEP })} scroll={false}>
             Vis flere
@@ -145,7 +145,7 @@ export default async function EventsPage(props: PageProps<"/g/[groupId]/[sub]/ar
         </div>
       ) : null}
       {past && !error ? (
-        <div className="nm-row" style={{ marginTop: 16 }}>
+        <div className="nm-row" style={{ marginTop: "var(--space-4)" }}>
           <span className="nm-muted">Viser siste {days} dager.</span>
           <Link className="nm-btn nm-btn--secondary" href={query({ vis: "tidligere", dager: days + PAST_STEP })} scroll={false}>
             Vis eldre

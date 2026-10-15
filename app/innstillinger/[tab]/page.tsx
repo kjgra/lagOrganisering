@@ -104,7 +104,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
     const KIND: Record<string, string> = { draft: "Nytt opplegg", revision: "Justering", visual: "Tegning", learning: "Lærdommer" };
     const table = (title: string, rows: [string, { n: number; usd: number; err: number }][]) =>
       rows.length ? (
-        <div className="nm-scroll-x" style={{ marginBottom: 16 }}>
+        <div className="nm-scroll-x" style={{ marginBottom: "var(--space-4)" }}>
           <table className="nm-table">
             <thead>
               <tr>
@@ -133,7 +133,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
     return (
       <>
         <section className="nm-section">
-          <div className="nm-versions" style={{ marginBottom: 12 }}>
+          <div className="nm-versions" style={{ marginBottom: "var(--space-3)" }}>
             {months.slice(0, 6).map((p) => {
               const key = `${p.year}-${String(p.month).padStart(2, "0")}`;
               return (
@@ -143,29 +143,29 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
               );
             })}
           </div>
-          <div className="nm-form-row" style={{ marginBottom: 12 }}>
+          <div className="nm-form-row" style={{ marginBottom: "var(--space-3)" }}>
             {[
               ["Kall", String(usage.rows.length)],
               [`${group.name}`, nok(groupUsd)],
               ["Hele appen", nok(usage.totalUsd)],
               ["Grense per lag", `${settings.group_limit_nok} kr`],
             ].map(([l, v]) => (
-              <div key={l} className="nm-card" style={{ padding: 12 }}>
+              <div key={l} className="nm-card" style={{ padding: "var(--space-3)" }}>
                 <div className="nm-hint">{l}</div>
-                <div style={{ fontSize: 22, fontWeight: 700 }}>{v}</div>
+                <div style={{ fontSize: "var(--fs-title)", fontWeight: 700 }}>{v}</div>
               </div>
             ))}
           </div>
           {!budget.ok ? (
-            <div className="nm-alert" role="status" style={{ marginBottom: 12 }}>
+            <div className="nm-alert" role="status" style={{ marginBottom: "var(--space-3)" }}>
               {budget.message}
             </div>
           ) : null}
           {usage.rows.length ? (
-            <div aria-label="Kostnad per dag" role="img" style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 80, marginBottom: 16, borderBottom: "1px solid var(--line)" }}>
+            <div aria-label="Kostnad per dag" role="img" style={{ display: "flex", alignItems: "flex-end", gap: "var(--space-1)", height: 80, marginBottom: "var(--space-4)", borderBottom: "1px solid var(--line)" }}>
               {Array.from({ length: nDays }, (_, i) => {
                 const v = days.get(i + 1) ?? 0;
-                return <div key={i} title={`${i + 1}.: ${nok(v)}`} style={{ flex: 1, height: `${maxDay ? Math.max(v ? 4 : 0, (v / maxDay) * 100) : 0}%`, background: "var(--primary)", borderRadius: 2 }} />;
+                return <div key={i} title={`${i + 1}.: ${nok(v)}`} style={{ flex: 1, height: `${maxDay ? Math.max(v ? 4 : 0, (v / maxDay) * 100) : 0}%`, background: "var(--primary)", borderRadius: "var(--radius-sm)" }} />;
               })}
             </div>
           ) : (
@@ -177,7 +177,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
           <p className="nm-hint">Bare antall tokens og kostnad lagres, aldri teksten som sendes til eller kommer fra KI.</p>
         </section>
         <section className="nm-section">
-          <h3 className="nm-h3" style={{ marginBottom: 8 }}>
+          <h3 className="nm-h3" style={{ marginBottom: "var(--space-2)" }}>
             Innstillinger
           </h3>
           <AiSettingsForm
@@ -206,7 +206,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
     return (
       <>
         <p style={{ marginTop: 0 }}>Månedens tema foreslås når trenerne lager opplegg, og KI bruker det.</p>
-        <div className="nm-versions" style={{ marginBottom: 16 }}>
+        <div className="nm-versions" style={{ marginBottom: "var(--space-4)" }}>
           {[now.year - 1, now.year, now.year + 1].map((y) => (
             <Link key={y} href={`/innstillinger/arshjul${q({ ar: y })}`} aria-current={y === year}>
               {y}
@@ -243,8 +243,8 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
       <>
         <LearningForm key={current?.id ?? 0} groupId={group.id} initial={current?.body ?? ""} canKi={user.rights.ai} nNew={st.nNew} />
         {st.versions.length ? (
-          <section className="nm-section" style={{ marginTop: 24 }}>
-            <h3 className="nm-h3" style={{ marginBottom: 8 }}>
+          <section className="nm-section" style={{ marginTop: "var(--space-5)" }}>
+            <h3 className="nm-h3" style={{ marginBottom: "var(--space-2)" }}>
               Historikk
             </h3>
             {st.versions.map((v) => (
@@ -270,7 +270,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
         <p style={{ marginTop: 0 }}>
           Lagets øvelsesbank. Nye øvelser fra godkjente opplegg kommer inn som <em>kandidater</em>, og blir aktive når en trener gir 👍 og «Bruke igjen: Ja».
         </p>
-        <Link href={`/innstillinger/ovelse/ny${q()}`} className="nm-btn nm-btn--primary" style={{ marginBottom: 16 }}>
+        <Link href={`/innstillinger/ovelse/ny${q()}`} className="nm-btn nm-btn--primary" style={{ marginBottom: "var(--space-4)" }}>
           <Icon icon={Plus} />
           Ny øvelse
         </Link>
@@ -344,7 +344,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
           </p>
         </section>
         <section className="nm-section">
-          <h3 className="nm-h3" style={{ marginBottom: 8 }}>
+          <h3 className="nm-h3" style={{ marginBottom: "var(--space-2)" }}>
             Arkiv
           </h3>
           {pending.length ? (
@@ -359,7 +359,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
           )}
           <MaintenancePanel keys={pending.map(archiveKey)} nPending={pending.length} />
           {log.archives.length ? (
-            <div className="nm-scroll-x" style={{ marginTop: 16 }}>
+            <div className="nm-scroll-x" style={{ marginTop: "var(--space-4)" }}>
               <table className="nm-table">
                 <thead>
                   <tr>

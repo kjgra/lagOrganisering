@@ -126,7 +126,7 @@ export function GroupPicker({
             <button
               type="button"
               className="nm-btn nm-btn--ghost nm-phone-only"
-              style={{ paddingLeft: 4, margin: "0 0 4px -4px" }}
+              style={{ paddingLeft: "var(--space-1)", margin: "0 0 var(--space-1) -var(--space-1)" }}
               onClick={() => setStep("main")}
             >
               <Icon icon={ChevronLeft} />
@@ -149,7 +149,7 @@ export function GroupPicker({
               />
             </label>
           ) : null}
-          <ul className="nm-list nm-groups" style={{ marginTop: 12 }}>
+          <ul className="nm-list nm-groups" style={{ marginTop: "var(--space-3)" }}>
             <li className={current === subKey(main.id, null) ? "nm-grow is-current" : "nm-grow"}>
               <button type="button" className="nm-grow__main" onClick={() => pick(main, null)}>
                 <span className="nm-grow__name">
@@ -172,7 +172,7 @@ export function GroupPicker({
           {rest.length ? (
             <ul className="nm-list nm-groups">{rest.map((s) => row(main, s))}</ul>
           ) : (
-            <p className="nm-muted" style={{ fontSize: 16 }}>
+            <p className="nm-muted" style={{ fontSize: "var(--fs-body)" }}>
               {query ? `Ingen treff på «${q}».` : "Ingen undergrupper."}
             </p>
           )}

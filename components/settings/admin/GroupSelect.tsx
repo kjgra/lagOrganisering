@@ -7,7 +7,7 @@ export function GroupSelect({ groups, current, hrefFor }: { groups: { id: string
   const router = useRouter();
   if (groups.length < 2) return null;
   return (
-    <label className="nm-field" style={{ maxWidth: 420, marginBottom: 16 }}>
+    <label className="nm-field" style={{ maxWidth: 420, marginBottom: "var(--space-4)" }}>
       <span className="nm-field__label">Gruppe</span>
       <select className="nm-input" value={current} onChange={(e) => router.push(hrefFor[e.target.value])}>
         {groups.map((g) => (
