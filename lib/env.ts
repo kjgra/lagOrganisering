@@ -1,0 +1,98 @@
+import "server-only";
+import { z } from "zod";
+
+/**
+ * Environment variables, checked once. Secrets are never logged.
+ *
+ * Simulation: with SPOND_MOCK=true the app uses a fake Spond with demo data,
+ * without DATABASE_URL it uses PGlite (Postgres in the process), and with
+ * AI_MOCK=true (and no ANTHROPIC_API_KEY) KI answers with a canned plan.
+ * Production (VERCEL_ENV=production) refuses all three.
+ */
+
+const list = (fallback: string[]) =>
+  z
+    .string()
+    .optional()
+    .transform((s) => (s && s.trim() ? s.split(",").map((x) => x.trim()).filter(Boolean) : fallback));
+
+const flag = z
+  .string()
+  .optional()
+  .transform((s) => s === "true" || s === "1");
+
+const schema = z.object({
+  APP_ENV: z.string().optional().default(""),
+  SESSION_SECRET: z.string().optional().default(""),
+  DATABASE_URL: z.string().optional().default(""),
+  PGLITE_DIR: z.string().optional().default(""),
+  SPOND_MOCK: flag,
+  SUPERADMIN_PROFILE_ID: z.string().optional().default(""),
+  ANTHROPIC_API_KEY: z.string().optional().default(""),
+  AI_MOCK: flag,
+  ACCESS_ROLE_NAMES: list(["Teamleder", "Trener", "Lagleder", "Hovedlagleder"]),
+  COACH_ROLE_NAMES: list([
+    "Teamleder",
+    "Trener",
+    "Lagleder",
+    "Hovedlagleder",
+    "Hjelpetrener",
+    "Keepertrener",
+    "Hjelper",
+  ]),
+  TAG_SUGGESTIONS: list(["Keeper", "Kaptein", "Forsvar", "Midtbane", "Angrep", "Ny"]),
+  VERCEL_ENV: z.string().optional().default(""),
+  NODE_ENV: z.string().optional().default("development"),
+});
+
+export type Env = z.infer<typeof schema>;
+
+let cached: Env | null = null;
+
+// A fixed key for local simulation only. Production must set SESSION_SECRET.
+const DEV_SECRET = "dev-only-secret-not-for-production-use-0123456789";
+
+export function env(): Env {
+  if (cached) return cached;
+  const parsed = schema.parse(process.env);
+  const prod = parsed.VERCEL_ENV === "production";
+  if (prod) {
+    const problems = [
+      parsed.SPOND_MOCK && "SPOND_MOCK kan ikke brukes i produksjon",
+      parsed.AI_MOCK && "AI_MOCK kan ikke brukes i produksjon",
+      !parsed.DATABASE_URL && "DATABASE_URL mangler",
+      parsed.SESSION_SECRET.length < 32 && "SESSION_SECRET må ha minst 32 tegn",
+    ].filter(Boolean);
+    if (problems.length) throw new Error(`Feil i miljøvariabler: ${problems.join("; ")}.`);
+  }
+  if (!parsed.SESSION_SECRET) {
+    if (parsed.NODE_ENV === "production" && !parsed.SPOND_MOCK) {
+      throw new Error("Feil i miljøvariabler: SESSION_SECRET mangler.");
+    }
+    parsed.SESSION_SECRET = DEV_SECRET;
+  }
+  cached = parsed;
+  return parsed;
+}
+
+/** "TEST", "DEMO" or "" for production, shown next to the logo. */
+export function envLabel(): string {
+  const e = env();
+  const label = e.APP_ENV.trim().toUpperCase();
+  if (label && label !== "PROD" && label !== "PRODUCTION") return label.replace(/[^A-Z0-9 _-]/g, "").slice(0, 12);
+  if (e.SPOND_MOCK) return "DEMO";
+  return "";
+}
+
+export function appTitle(): string {
+  const name = "Nymark – Gruppeorganisering";
+  const label = envLabel();
+  return label ? `${name} (${label})` : name;
+}
+
+export function aiMode(): "real" | "mock" | "off" {
+  const e = env();
+  if (e.ANTHROPIC_API_KEY) return "real";
+  if (e.AI_MOCK) return "mock";
+  return "off";
+}

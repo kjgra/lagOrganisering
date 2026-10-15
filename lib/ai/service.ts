@@ -1,0 +1,199 @@
+import "server-only";
+import type { CurrentUser } from "@/lib/auth/current";
+import type { Db } from "@/lib/db";
+import { osloMonthStart, shortDate } from "@/lib/format";
+import type { Plan } from "@/lib/plans/plan";
+import { FEEDBACK_TAGS, USE_AGAIN } from "@/lib/plans/feedback";
+import { isSensitive, memberNames, namesProblem } from "@/lib/sensitive";
+import { UserError, type Rights } from "@/lib/store/access";
+import { aiSpend, getAiSettings, logAiUsage, typicalOutput } from "@/lib/store/ai";
+import {
+  feedbackSince,
+  learningState,
+  listExercises,
+  latestLearning,
+  markCommentsUsed,
+  saveLearning,
+  savePlan,
+  teamExperience,
+} from "@/lib/store/training";
+import type { Group } from "@/lib/spond/types";
+import { callClaude, countTokens, type CallInput } from "./client";
+import { LEARNING_INSTRUCTIONS } from "./prompts";
+import {
+  AI_MODELS,
+  AiError,
+  aiCost,
+  budgetCheck,
+  catalogue,
+  checkLearning,
+  experienceText,
+  formatNok,
+  orderText,
+  PLAN_SCHEMA,
+  planFromAnswer,
+  revisionText,
+  systemText,
+  type AiSettings,
+  type OrderContext,
+} from "./plan-ai";
+
+const MAX_TOKENS = 32000;
+const LEARNING_MODEL = "claude-haiku-5-5";
+
+export interface KiPrep {
+  groupId: string;
+  kind: "draft" | "revision";
+  model: string;
+  settings: AiSettings;
+  budget: ReturnType<typeof budgetCheck>;
+  call: CallInput;
+  answerCtx: { theme: string; minutes: number | null; maxNew: number; linkUrls: string[]; base: Plan | null };
+  bank: Awaited<ReturnType<typeof listExercises>>;
+}
+
+/**
+ * Step 1: check rights and budget, and build the request. Throws AiError
+ * (shown to the user) when KI may not be used.
+ */
+export async function prepareKi(
+  d: Db,
+  user: CurrentUser,
+  rights: Rights,
+  group: Group,
+  order: OrderContext,
+  opts: { base?: Plan | null; model?: string; now?: Date } = {},
+): Promise<KiPrep> {
+  if (!rights.ai) throw new AiError("Du har ikke tilgang til KI. Spør en administrator.");
+  const settings = await getAiSettings(d);
+  const model = opts.model && opts.model in AI_MODELS ? opts.model : settings.model;
+  const now = opts.now ?? new Date();
+  const budget = budgetCheck(await aiSpend(d, user.access, group.id, osloMonthStart(now)), settings);
+  if (!budget.ok) throw new AiError(budget.message);
+  const bank = await listExercises(d, user.access, group.id);
+  const exp = await teamExperience(d, user.access, group.id, new Date(now.getTime() - 365 * 86_400_000));
+  const experience = experienceText(exp, bank, await latestLearning(d, user.access, group.id));
+  const ctx: OrderContext = { ...order, maxNew: settings.max_new_exercises };
+  const base = opts.base ?? null;
+  const userText = base ? revisionText(base, ctx) : orderText(ctx);
+  let cat = catalogue(bank, order.theme);
+  if (experience) cat = `${cat}\n\n${experience}`;
+  return {
+    groupId: group.id,
+    kind: base ? "revision" : "draft",
+    model,
+    settings,
+    budget,
+    bank,
+    call: { model, system: [systemText(), cat], user: userText, schema: PLAN_SCHEMA, maxTokens: MAX_TOKENS, kind: base ? "revision" : "draft" },
+    answerCtx: { theme: base?.tema ?? order.theme, minutes: order.minutes, maxNew: settings.max_new_exercises, linkUrls: order.links.map((l) => l.url), base },
+  };
+}
+
+/** Price estimate per model: input counted by the API (free), output from earlier calls (or 6 000). */
+export async function estimateKi(d: Db, prep: KiPrep): Promise<Record<string, string> | null> {
+  const nIn = await countTokens(prep.call);
+  if (nIn === null) return null;
+  const nOut = (await typicalOutput(d, prep.kind, prep.model)) ?? 6000;
+  return Object.fromEntries(
+    Object.keys(AI_MODELS).map((m) => [m, formatNok(aiCost({ input_tokens: nIn, output_tokens: nOut, cache_read_tokens: 0, cache_write_tokens: 0 }, m), prep.settings.usd_nok)]),
+  );
+}
+
+/**
+ * Step 2 and 3: call the model, log the call (also when it failed, since it
+ * may have cost money), turn the answer into a plan and save it as a new version.
+ */
+export async function runKi(d: Db, user: CurrentUser, prep: KiPrep, eventId: string, commentIds: number[] = []) {
+  const r = await callClaude(prep.call);
+  let result: ReturnType<typeof planFromAnswer> | null = null;
+  let errorCode = r.errorCode;
+  let message = r.message;
+  if (r.ok) {
+    try {
+      result = planFromAnswer(r.text, prep.bank, prep.answerCtx);
+    } catch (err) {
+      errorCode = "ugyldig_svar";
+      message = `KI-svaret kunne ikke brukes: ${(err as Error).message}`;
+    }
+  }
+  const cost = aiCost(r.usage, prep.model);
+  const usageId = await logAiUsage(
+    d,
+    user.access,
+    prep.groupId,
+    { kind: prep.kind, model: prep.model, ...r.usage, cost_usd: cost, duration_ms: r.durationMs, status: result ? "ok" : "error", error_code: errorCode },
+    eventId,
+  );
+  if (!result) throw new AiError(message || "Noe gikk galt med KI. Prøv igjen om litt.");
+  const saved = await savePlan(d, user.access, prep.groupId, eventId, result.plan, { source: "ai", model: prep.model, costUsd: cost });
+  await d.query("UPDATE ai_usage SET plan_id = $2 WHERE id = $1", [usageId, saved.id]);
+  if (commentIds.length) await markCommentsUsed(d, user.access, prep.groupId, commentIds, saved.id);
+  return { ...saved, warnings: result.warnings, costText: formatNok(cost, prep.settings.usd_nok) };
+}
+
+// Learnings with KI: the old text and the evaluations since the last KI version give a new version.
+
+function learningOrder(rows: Awaited<ReturnType<typeof feedbackSince>>, old: string, names: string[]): string {
+  const words: Record<number, string> = { 3: "bra", 2: "ok", 1: "dårlig" };
+  const again: Record<string, string> = { yes: "ja", changes: "med endringer", no: "nei" };
+  const safe = (x: string) => {
+    const t = x.replace(/\s+/g, " ").trim();
+    return !t || isSensitive(t) || namesProblem(t, names) ? "" : ` «${t}»`;
+  };
+  const events = [...new Set(rows.map((r) => r.spond_event_id))];
+  const blocks = events.map((ev, k) => {
+    const list = rows.filter((r) => r.spond_event_id === ev);
+    const first = new Date(Math.min(...list.map((r) => new Date(r.created_at).getTime())));
+    const head = `## Økt ${k + 1}, evaluert ${shortDate(first)}${list[0].theme ? `, tema: ${list[0].theme}` : ""}`;
+    const lines = list.map((r) => {
+      const what = r.exercise_no === null ? "Hele økta" : `Øvelse ${r.exercise_no}${r.exercise_name ? `, ${r.exercise_name}` : ""}`;
+      const parts = [
+        r.rating ? words[r.rating] : "",
+        r.tags.filter((t) => t in FEEDBACK_TAGS).map((t) => FEEDBACK_TAGS[t]).join(", "),
+        r.actual_minutes !== null ? `${r.actual_minutes} min${r.planned_minutes !== null ? ` (plan ${r.planned_minutes})` : ""}` : "",
+        r.use_again ? `bruke igjen: ${again[r.use_again] ?? USE_AGAIN[r.use_again]}` : "",
+        r.actual_players !== null ? `${r.actual_players} spillere kom${r.registered_players !== null ? ` av ${r.registered_players} påmeldte` : ""}` : "",
+      ].filter(Boolean);
+      return `- ${what}: ${parts.join("; ")}${safe(r.body)}`;
+    });
+    return [head, ...lines].join("\n");
+  });
+  return `# Lærdommer nå\n\n${old || "Ingen ennå."}\n\n# Nye evalueringer (${rows.length} fra ${events.length} økter)\n\n${blocks.join("\n\n")}\n\nSkriv de oppdaterte lærdommene.`;
+}
+
+/** «Oppdater med KI» for the team's learnings (admins with KI). Saves a new version. */
+export async function updateLearningsWithKi(d: Db, user: CurrentUser, rights: Rights, group: Group, baseText: string | null, now = new Date()) {
+  if (!rights.admin) throw new AiError("Bare administratorer kan oppdatere lærdommene.");
+  if (!rights.ai) throw new AiError("Du har ikke tilgang til KI. Spør en administrator.");
+  const settings = await getAiSettings(d);
+  const budget = budgetCheck(await aiSpend(d, user.access, group.id, osloMonthStart(now)), settings);
+  if (!budget.ok) throw new AiError(budget.message);
+  const names = memberNames(group.members);
+  const state = await learningState(d, user.access, group.id, 1);
+  const old = checkLearning(baseText ?? state.versions[0]?.body ?? "", names, true);
+  const rows = await feedbackSince(d, user.access, group.id, state.since ?? new Date(now.getTime() - 365 * 86_400_000));
+  if (!rows.length) throw new AiError("Ingen nye evalueringer siden lærdommene sist ble oppdatert med KI.");
+  const r = await callClaude({ model: LEARNING_MODEL, system: [LEARNING_INSTRUCTIONS], user: learningOrder(rows, old, names), maxTokens: 1500, kind: "learning" });
+  let text: string | null = null;
+  let errorCode = r.errorCode;
+  let message = r.message;
+  if (r.ok) {
+    try {
+      text = checkLearning(r.text.replace(/^\s*```[a-z]*\s*|\s*```\s*$/g, ""), names);
+    } catch (err) {
+      errorCode = "ugyldig_svar";
+      message = `KI-svaret kunne ikke brukes: ${(err as Error).message}`;
+    }
+  }
+  const cost = aiCost(r.usage, LEARNING_MODEL);
+  await logAiUsage(d, user.access, group.id, { kind: "learning", model: LEARNING_MODEL, ...r.usage, cost_usd: cost, duration_ms: r.durationMs, status: text ? "ok" : "error", error_code: errorCode }, null);
+  if (!text) throw new AiError(message);
+  try {
+    await saveLearning(d, user.access, rights, group.id, text, "ai");
+  } catch (err) {
+    if (err instanceof UserError) throw new AiError(err.message);
+    throw err;
+  }
+  return { nRows: rows.length, costText: formatNok(cost, settings.usd_nok) };
+}
