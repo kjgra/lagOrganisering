@@ -25,13 +25,30 @@ Web app for football coaches in Nymark: sign in with Spond, fetch participants f
 
 ## Environments
 - Local: `.env.local` (not in git). `.env.example` documents the variables.
-- Preview (Vercel branches) → Supabase test project.
+- Preview (Vercel branches) → simulated by default (`SPOND_MOCK`, `AI_MOCK`, in-memory database). The Supabase test project belongs to the old app.
 - Production (`main`) → Supabase prod project.
 
 ## UI
 - Mobile first (375 px), used by coaches on their phones at the pitch.
 - Language in the UI: Norwegian (bokmål).
 - Drag-and-drop of players between teams (dnd-kit) with an alternative tap-to-move option.
+
+## Design system
+The design lives in `design/` (exported from the Nymark design system artifact: https://claude.ai/artifact/HqE27Tf8tGad8MKNjc6vfG). **Read `design/README.md` before building or changing UI.**
+- `design/README.md` – brand book: language and microcopy, colors, typography, spacing, layout, flow, icons, interaction. Includes the Tailwind mapping.
+- `design/tokens.json` – source of truth for all tokens. `design/tokens.css` is generated from it (`python design/generate-tokens-css.py design/tokens.json design/tokens.css`); never edit `tokens.css` by hand.
+- `design/components/<Name>.md` – guidelines per component (props, shadcn/ui building blocks, states, copy). Component names in code match these file names.
+- `design/types.ts` – shared types (`Player`, `SpondEvent`, `MainGroup`, `GroupRef`, `Proposal`, component props). Copy into `lib/types.ts` when the app is scaffolded.
+- `design/reference/` – `bundle.css`/`bundle.js` from the design previews (plain HTML/JS, `nm-*` classes). Reference for look and behaviour only; do not import into the app.
+- `design/logo.md` – the logo in the design is a placeholder cut from a screenshot. Ask Kjetil for the real SVG.
+
+Rules to follow without exception:
+- Use tokens only (CSS variables via Tailwind) – no hard-coded colors, sizes or radii.
+- Import `design/tokens.css` (or its contents) in `app/globals.css`. Load Barlow (400/500/700) and Barlow Condensed (700/800) with `next/font/local` (Barlow files in `app/fonts/`) and point `--font-sans` / `--font-display` at the next/font variables.
+- Light theme is default; dark theme via `data-theme="dark"` or `prefers-color-scheme`.
+- Touch targets ≥ `touch-min` (44 px), borders 2 px, status always icon + word, team colors always with number and colour name.
+- Icons: `lucide-react`, stroke width 2.25.
+- Drag-and-drop always has a tap-to-move alternative, and every move is announced in an `aria-live` region.
 
 ## Working with Kjetil
 - Short and concise answers. Ask if an instruction is unclear. Technical suggestions for improvement are welcome.
