@@ -19,9 +19,10 @@ Nyttige filer: `R/spond_client.R`, `R/fct_*.R`, `R/data_store.R`, `R/mod_*.R`, `
 - Personvern som før: databasen lagrer bare Spond-ID-er, aldri navn/kontaktinfo. Navn hentes fra Spond ved visning. Avslagsmeldinger, fødselsdato osv. kastes.
 - Mock-modus (`SPOND_MOCK=1`) med fiktive Spond-data, så appen kan kjøres og testes uten Spond. Brukes i CI og i sky-økten.
 - Data: start med tomt skjema, ingen import fra gammel database.
-- PDF: utskriftsvennlig side (print-CSS, A4), ikke generert fil.
+- PDF: generert A4-fil med `@react-pdf/renderer`, samme oppsett som Typst-malen i den gamle appen (tegninger som vektorgrafikk, grupper fra godkjent lagforslag). Brukes også i arkivet.
 - Logo: `favicon.svg` fra SpondNymark er den ekte logoen.
-- Nøkler: legges inn av Kjetil i Vercel (Preview = Supabase test, Production = prod). Aldri i git eller chat.
+- Databaser: den gamle appen beholder Supabase test. Denne appen bruker Supabase prod i Production. Preview kjører simulert (mock-Spond, KI og database i minnet) med mindre en egen database settes opp.
+- Nøkler: legges inn av Kjetil i Vercel. Aldri i git eller chat.
 
 ## Arbeidsflyt
 - Feature-brancher med PR til `main`; bare Kjetil merger. Brancher stables når en PR ikke er merget ennå.

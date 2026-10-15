@@ -9,7 +9,7 @@ Uttrykket kommer fra appens egen topplinje: mørk ramme (`chrome`), klubbgul pri
 - Dato som «Tor 15. okt», klokkeslett med kolon og tankestrek: «17:30–18:45». Tall skrives som sifre: «14 påmeldt av 18».
 - Spillernavn vises som fornavn + initial («Emil B.»). Skjermen sees av andre på banen.
 - Statusordene er faste: «Kommer», «Ikke svart», «Kommer ikke». Svartall skrives «Kommer: 14 · Ikke svart: 3 · Kommer ikke: 1». Lag heter «Lag 1 · Oransje» osv.
-- Ingen emoji. Ingen utropstegn i systemtekst.
+- Emoji er lov der de hjelper (f.eks. 👍/👌/👎 i evalueringen). Ingen utropstegn i systemtekst.
 - KI-genererte treningsopplegg (kommer senere) merkes alltid som forslag treneren kan redigere.
 
 ## Farger
@@ -104,4 +104,4 @@ theme: { extend: {
 }}
 ```
 
-Last fontene med `next/font/google` (`Barlow` 400/500/700 og `Barlow_Condensed` 700/800). Komponentnavnene i systemet (`LoginForm`, `GroupPicker`, `GroupSwitcher`, `EventList`, `ParticipantList`, `TeamBoard`, `SavedProposals`, `PlayerChip`, `StatusBadge`) er navnene som skal brukes i koden.
+Last fontene med `next/font/local` fra `app/fonts/` (`Barlow` 400/500/600/700 og `Barlow Condensed` 700/800, samme filer som i den gamle appen; ingen nettkall ved bygging). Komponentnavnene i systemet (`LoginForm`, `GroupPicker`, `GroupSwitcher`, `EventList`, `ParticipantList`, `TeamBoard`, `SavedProposals`, `PlayerChip`, `StatusBadge`) er navnene som skal brukes i koden.

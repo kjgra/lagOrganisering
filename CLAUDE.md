@@ -25,7 +25,7 @@ Web app for football coaches in Nymark: sign in with Spond, fetch participants f
 
 ## Environments
 - Local: `.env.local` (not in git). `.env.example` documents the variables.
-- Preview (Vercel branches) → Supabase test project.
+- Preview (Vercel branches) → simulated by default (`SPOND_MOCK`, `AI_MOCK`, in-memory database). The Supabase test project belongs to the old app.
 - Production (`main`) → Supabase prod project.
 
 ## UI
@@ -44,7 +44,7 @@ The design lives in `design/` (exported from the Nymark design system artifact: 
 
 Rules to follow without exception:
 - Use tokens only (CSS variables via Tailwind) – no hard-coded colors, sizes or radii.
-- Import `design/tokens.css` (or its contents) in `app/globals.css`. Load Barlow (400/500/700) and Barlow Condensed (700/800) with `next/font/google` and point `--font-sans` / `--font-display` at the next/font variables.
+- Import `design/tokens.css` (or its contents) in `app/globals.css`. Load Barlow (400/500/700) and Barlow Condensed (700/800) with `next/font/local` (Barlow files in `app/fonts/`) and point `--font-sans` / `--font-display` at the next/font variables.
 - Light theme is default; dark theme via `data-theme="dark"` or `prefers-color-scheme`.
 - Touch targets ≥ `touch-min` (44 px), borders 2 px, status always icon + word, team colors always with number and colour name.
 - Icons: `lucide-react`, stroke width 2.25.
