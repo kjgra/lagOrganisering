@@ -41,7 +41,7 @@ Uten `DATABASE_URL` i Preview brukes en database i minnet med demodata; den null
 
 ## 3. Kopier data fra test (valgfritt)
 
-Øvelsesbanken, trenertilganger (`app_roles`) og årshjulet kan kopieres fra test-databasen (den gamle appen) etter at migreringene er kjørt mot prod. Bruk «Session pooler» eller direkte tilkobling (port 5432) for begge:
+Øvelsesbanken, trenertilganger (`app_roles` med loggen `app_role_log`), årshjulet og lagets standard (`team_settings`) kan kopieres fra test-databasen (den gamle appen) etter at migreringene er kjørt mot prod. Bruk «Session pooler» eller direkte tilkobling (port 5432) for begge:
 
 ```sh
 export SOURCE_DATABASE_URL='postgresql://...test...'
@@ -50,7 +50,7 @@ pnpm copy:test-to-prod            # prøvekjøring: viser hva som ville blitt en
 pnpm copy:test-to-prod --apply    # skriver til prod
 ```
 
-`--group <spond-gruppe-id>` begrenser øvelser og årshjul til én hovedgruppe. Scriptet kan kjøres flere ganger: det sletter ingenting, og en rad i prod overskrives bare når raden i test er nyere. Alt skjer i én transaksjon.
+`--group <spond-gruppe-id>` begrenser øvelser, årshjul og lagets standard til én hovedgruppe. Scriptet kan kjøres flere ganger: det sletter ingenting, og en rad i prod overskrives bare når raden i test er nyere, og en loggrad legges bare til hvis den ikke finnes fra før. Alt skjer i én transaksjon.
 
 ## 4. Første innlogging
 

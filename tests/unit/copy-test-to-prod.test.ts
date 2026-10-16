@@ -25,19 +25,39 @@ beforeAll(async () => {
     `INSERT INTO season_themes (spond_group_id, year, month, theme, description, updated_by)
      VALUES ('G1', 2026, 4, 'Pasning', 'Korte pasninger', 'P-1'), ('G2', 2026, 4, 'Vending', NULL, 'P-2')`,
   );
+  await src.query(
+    `INSERT INTO app_role_log (spond_profile_id, role, granted, actor, created_at)
+     VALUES ('P-1', 'app', true, 'P-0', '2026-05-01 10:00:00.123456+00'), ('P-1', 'ai', true, 'P-0', '2026-05-02')`,
+  );
+  await src.query(
+    `INSERT INTO team_settings (spond_group_id, age_group, session_minutes, updated_by)
+     VALUES ('G1', 'G12', 90, 'P-1'), ('G2', 'J10', 60, 'P-2')`,
+  );
 });
 afterAll(async () => Promise.all([src.close(), dst.close()]));
 
 describe("copy test to prod", () => {
   it("writes nothing without --apply", async () => {
     const rs = await copyTestToProd(src, dst, { apply: false });
-    expect(counts(rs)).toEqual({ exercises: [3, 0, 0], app_roles: [2, 0, 0], season_themes: [2, 0, 0] });
+    expect(counts(rs)).toEqual({
+      exercises: [3, 0, 0],
+      app_roles: [2, 0, 0],
+      app_role_log: [2, 0, 0],
+      season_themes: [2, 0, 0],
+      team_settings: [2, 0, 0],
+    });
     expect(await dst.query("SELECT 1 FROM exercises")).toHaveLength(0);
   });
 
   it("copies one group, with arrays, drawings and exact timestamps", async () => {
     const rs = await copyTestToProd(src, dst, { apply: true, group: "G1" });
-    expect(counts(rs)).toEqual({ exercises: [2, 0, 0], app_roles: [2, 0, 0], season_themes: [1, 0, 0] });
+    expect(counts(rs)).toEqual({
+      exercises: [2, 0, 0],
+      app_roles: [2, 0, 0],
+      app_role_log: [2, 0, 0],
+      season_themes: [1, 0, 0],
+      team_settings: [1, 0, 0],
+    });
     const [ex] = await dst.query<{ themes: string[]; drawing: string; updated_at: string }>(
       "SELECT themes, drawing::text AS drawing, (updated_at AT TIME ZONE 'UTC')::text AS updated_at FROM exercises WHERE code = 'rondo-4v1'",
     );
@@ -50,10 +70,22 @@ describe("copy test to prod", () => {
     await dst.query("UPDATE app_roles SET can_use_ai = false, updated_at = now() + interval '1 day' WHERE spond_profile_id = 'P-1'");
     await src.query("UPDATE season_themes SET theme = 'Pasning og mottak', updated_at = now() + interval '1 day' WHERE spond_group_id = 'G1'");
     const rs = await copyTestToProd(src, dst, { apply: true });
-    expect(counts(rs)).toEqual({ exercises: [1, 0, 2], app_roles: [0, 0, 2], season_themes: [1, 1, 0] });
+    expect(counts(rs)).toEqual({
+      exercises: [1, 0, 2],
+      app_roles: [0, 0, 2],
+      app_role_log: [0, 0, 2],
+      season_themes: [1, 1, 0],
+      team_settings: [1, 0, 1],
+    });
     const [role] = await dst.query<{ can_use_ai: boolean }>("SELECT can_use_ai FROM app_roles WHERE spond_profile_id = 'P-1'");
     expect(role.can_use_ai).toBe(false);
     const again = await copyTestToProd(src, dst, { apply: true });
-    expect(counts(again)).toEqual({ exercises: [0, 0, 3], app_roles: [0, 0, 2], season_themes: [0, 0, 2] });
+    expect(counts(again)).toEqual({
+      exercises: [0, 0, 3],
+      app_roles: [0, 0, 2],
+      app_role_log: [0, 0, 2],
+      season_themes: [0, 0, 2],
+      team_settings: [0, 0, 2],
+    });
   });
 });

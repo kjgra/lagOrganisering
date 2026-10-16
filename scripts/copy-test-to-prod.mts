@@ -1,5 +1,6 @@
 /**
- * Kopierer øvelsesbanken, trenertilganger og årshjulet fra test-databasen
+ * Kopierer øvelsesbanken, trenertilganger (med logg), årshjulet og lagets
+ * standard fra test-databasen
  * (den gamle appen) til prod-databasen.
  *
  *   SOURCE_DATABASE_URL=<test> TARGET_DATABASE_URL=<prod> pnpm copy:test-to-prod
@@ -11,9 +12,11 @@
  *
  * Kan kjøres flere ganger. En rad som finnes i prod fra før, oppdateres bare
  * når raden i test er nyere (updated_at), så endringer gjort i prod beholdes.
+ * Loggrader legges bare til når en helt lik rad ikke finnes i prod.
  * Ingenting slettes. Bare Spond-ID-er kopieres; tabellene har ingen navn.
  *
- * Tabeller: exercises (alle statuser), app_roles og season_themes.
+ * Tabeller: exercises (alle statuser), app_roles, app_role_log, season_themes
+ * og team_settings.
  * Superadmin står i SUPERADMIN_PROFILE_ID og kopieres ikke.
  */
 import { pathToFileURL } from "node:url";
@@ -37,6 +40,8 @@ interface Table {
   name: string;
   columns: string[];
   key: string[];
+  /** A log without a key: a row is added when no equal row exists, never updated. */
+  log?: boolean;
   /**
    * Columns read as text and cast back on insert. Timestamps go as text so no
    * microseconds are lost (JS Date has milliseconds). The parameter is typed
@@ -67,9 +72,23 @@ const TABLES: Table[] = [
     casts: { updated_at: "timestamptz" },
   },
   {
+    name: "app_role_log",
+    columns: ["spond_profile_id", "role", "granted", "actor", "created_at"],
+    key: ["created_at", "spond_profile_id", "role", "granted", "actor"],
+    log: true,
+    casts: { spond_profile_id: "text", role: "text", granted: "boolean", actor: "text", created_at: "timestamptz" },
+  },
+  {
     name: "season_themes",
     columns: ["spond_group_id", "year", "month", "theme", "description", "updated_by", "updated_at"],
     key: ["spond_group_id", "year", "month"],
+    casts: { updated_at: "timestamptz" },
+    group: "spond_group_id",
+  },
+  {
+    name: "team_settings",
+    columns: ["spond_group_id", "age_group", "session_minutes", "pitch", "equipment", "principles", "updated_by", "updated_at"],
+    key: ["spond_group_id"],
     casts: { updated_at: "timestamptz" },
     group: "spond_group_id",
   },
@@ -84,12 +103,17 @@ async function copyTable(src: CopyDb, dst: CopyDb, t: Table, group?: string): Pr
     `SELECT ${select} FROM ${t.name}${where} ORDER BY ${t.key.join(", ")}`,
     where ? [group] : [],
   );
-  const values = t.columns.map((c, i) => `$${i + 1}${t.casts[c] ? `::text::${t.casts[c]}` : ""}`).join(", ");
+  const param = (c: string, i: number) => `$${i + 1}${t.casts[c] ? `::text::${t.casts[c]}` : ""}`;
+  const values = t.columns.map(param).join(", ");
   const set = t.columns.filter((c) => !t.key.includes(c)).map((c) => `${c} = EXCLUDED.${c}`).join(", ");
-  const upsert = `INSERT INTO ${t.name} (${t.columns.join(", ")}) VALUES (${values})
-    ON CONFLICT (${t.key.join(", ")}) DO UPDATE SET ${set}
-    WHERE ${t.name}.updated_at < EXCLUDED.updated_at
-    RETURNING (xmax = 0) AS inserted`;
+  const upsert = t.log
+    ? `INSERT INTO ${t.name} (${t.columns.join(", ")}) SELECT ${values}
+       WHERE NOT EXISTS (SELECT 1 FROM ${t.name} WHERE ${t.columns.map((c, i) => `${c} = ${param(c, i)}`).join(" AND ")})
+       RETURNING true AS inserted`
+    : `INSERT INTO ${t.name} (${t.columns.join(", ")}) VALUES (${values})
+       ON CONFLICT (${t.key.join(", ")}) DO UPDATE SET ${set}
+       WHERE ${t.name}.updated_at < EXCLUDED.updated_at
+       RETURNING (xmax = 0) AS inserted`;
   const res: TableResult = { table: t.name, read: rows.length, inserted: 0, updated: 0, unchanged: 0 };
   for (const row of rows) {
     const [r] = await dst.query<{ inserted: boolean }>(upsert, t.columns.map((c) => row[c]));
