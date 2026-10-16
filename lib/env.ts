@@ -90,6 +90,19 @@ export function appTitle(): string {
   return label ? `${name} (${label})` : name;
 }
 
+/** The demo superadmin of the simulated Spond (lib/spond/mock.ts). */
+export const DEMO_SUPERADMIN = "P-KJETIL";
+
+/**
+ * The superadmin's Spond profile id. With simulated Spond the demo account
+ * kjetil@demo.no is superadmin, whatever SUPERADMIN_PROFILE_ID says (that id
+ * is a real Spond profile, which does not exist in the demo data).
+ */
+export function superadminId(): string {
+  const e = env();
+  return e.SPOND_MOCK ? DEMO_SUPERADMIN : e.SUPERADMIN_PROFILE_ID.trim();
+}
+
 export function aiMode(): "real" | "mock" | "off" {
   const e = env();
   if (e.ANTHROPIC_API_KEY) return "real";

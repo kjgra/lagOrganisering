@@ -23,6 +23,6 @@ export default defineConfig({
     url: `http://localhost:${PORT}/logg-inn`,
     timeout: 120_000,
     reuseExistingServer: !process.env.CI,
-    env: { SPOND_MOCK: "true", AI_MOCK: "true", SUPERADMIN_PROFILE_ID: "P-KJETIL", PGLITE_DIR: "", NEXT_DIST_DIR: ".next-e2e" },
+    env: { SPOND_MOCK: "true", AI_MOCK: "true", SUPERADMIN_PROFILE_ID: "ekte-spond-id", PGLITE_DIR: "", NEXT_DIST_DIR: ".next-e2e" },
   },
 });

@@ -25,7 +25,7 @@ Settings → Environment Variables:
 |---|---|---|
 | `SESSION_SECRET` | `openssl rand -base64 48` (egen verdi) | egen verdi |
 | `DATABASE_URL` | prod (pooler, 6543) | tom = simulert, eller en testdatabase |
-| `SUPERADMIN_PROFILE_ID` | din Spond-profil-ID | samme |
+| `SUPERADMIN_PROFILE_ID` | din Spond-profil-ID | samme (med `SPOND_MOCK` er demokontoen kjetil@demo.no alltid superadmin) |
 | `ANTHROPIC_API_KEY` | nøkkel fra console.anthropic.com | valgfri |
 | `SPOND_MOCK` | (ikke sett) | `true` for demo |
 | `AI_MOCK` | (ikke sett) | `true` for demo |

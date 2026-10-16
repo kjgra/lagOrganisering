@@ -2,7 +2,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { db } from "@/lib/db";
-import { env } from "@/lib/env";
+import { env, superadminId } from "@/lib/env";
 import { spond, SpondError } from "@/lib/spond";
 import { sessionData } from "@/lib/spond/data";
 import type { Group, SessionData } from "@/lib/spond/types";
@@ -52,7 +52,7 @@ export async function loadSessionData(token: string): Promise<SessionData> {
 
 /** Rights read from the database now (never cached), so a right taken away stops working at once. */
 export async function readRights(profileId: string): Promise<Rights> {
-  const sa = env().SUPERADMIN_PROFILE_ID;
+  const sa = superadminId();
   if (userRights(profileId, null, sa).superadmin) return userRights(profileId, null, sa);
   try {
     return userRights(profileId, await getRole(await db(), profileId), sa);

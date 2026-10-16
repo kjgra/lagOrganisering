@@ -10,7 +10,7 @@ import { Icon } from "@/components/ui/icon";
 import { adminContext, trainers, type AdminContext } from "@/lib/admin";
 import { AI_MODELS, budgetCheck, formatNok } from "@/lib/ai/plan-ai";
 import { db } from "@/lib/db";
-import { env } from "@/lib/env";
+import { superadminId } from "@/lib/env";
 import { decimal, MONTH_NAMES, osloMidnight, osloMonthStart, osloParts, savedAt, shortDate } from "@/lib/format";
 import { MAINTENANCE_RULES } from "@/lib/maintenance";
 import { FEEDBACK_TAGS, meanText, shouldAvoid } from "@/lib/plans/feedback";
@@ -47,7 +47,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
   async trenere({ user, group }) {
     const list = trainers(group);
     const roles = await listRoles(await db(), list.map((t) => t.profileId));
-    const sa = env().SUPERADMIN_PROFILE_ID.trim();
+    const sa = superadminId();
     const rows = list.map((t) => {
       const r = roles.find((x) => x.spond_profile_id === t.profileId);
       return {
