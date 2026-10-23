@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "copy:test-to-prod": "node scripts/copy-test-to-prod.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

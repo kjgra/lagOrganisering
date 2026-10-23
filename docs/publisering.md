@@ -39,7 +39,20 @@ Uten `DATABASE_URL` i Preview brukes en database i minnet med demodata; den null
 
 **KI-modeller**: Haiku 5.5 er standard, Sonnet 5.5 kan velges per opplegg. Grenser per lag og totalt settes under Innstillinger → KI (superadmin). Sonnet-kall bruker serverside-fallback hvis en sikkerhetsklassifisering avviser forespørselen.
 
-## 3. Første innlogging
+## 3. Kopier data fra test (valgfritt)
+
+Øvelsesbanken, trenertilganger (`app_roles` med loggen `app_role_log`), årshjulet og lagets standard (`team_settings`) kan kopieres fra test-databasen (den gamle appen) etter at migreringene er kjørt mot prod. Bruk «Session pooler» eller direkte tilkobling (port 5432) for begge:
+
+```sh
+export SOURCE_DATABASE_URL='postgresql://...test...'
+export TARGET_DATABASE_URL='postgresql://...prod...'
+pnpm copy:test-to-prod            # prøvekjøring: viser hva som ville blitt endret
+pnpm copy:test-to-prod --apply    # skriver til prod
+```
+
+`--group <spond-gruppe-id>` begrenser øvelser, årshjul og lagets standard til én hovedgruppe. Scriptet kan kjøres flere ganger: det sletter ingenting, og en rad i prod overskrives bare når raden i test er nyere, og en loggrad legges bare til hvis den ikke finnes fra før. Alt skjer i én transaksjon.
+
+## 4. Første innlogging
 
 1. Logg inn som superadmin.
 2. Innstillinger → Trenere: gi app-tilgang (og eventuelt KI/admin) til trenerne.
@@ -49,5 +62,6 @@ Uten `DATABASE_URL` i Preview brukes en database i minnet med demodata; den null
 
 - [ ] `supabase db push` mot prod
 - [ ] Data API av
+- [ ] Eventuelt `pnpm copy:test-to-prod --apply`
 - [ ] Miljøvariabler i Vercel (Production og Preview)
 - [ ] Deploy fra `main`, logg inn, sjekk Innstillinger → Generelt (ingen «simulert»)
