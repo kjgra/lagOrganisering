@@ -54,7 +54,7 @@ export default async function KiPage(props: PageProps<"/g/[groupId]/[sub]/arrang
         minutes={team.session_minutes}
         pitches={pitches.map((x) => ({ id: x.id, name: x.name, facts: pitchFacts(x) }))}
         pitchNote={team.pitch}
-        standardHref={ctx.user.rights.admin ? `/innstillinger/standard?lag=${encodeURIComponent(ctx.group.id)}` : null}
+        standardHref={ctx.path("/trening/laget")}
         models={Object.entries(AI_MODELS).map(([id, m]) => ({ id, label: m.label, choice: m.choice }))}
         model={settings.model}
         comments={comments.filter((c) => c.used_in_plan_id === null).map((c) => ({ id: c.id, text: `v${c.version}${c.exercise_no ? `, øvelse ${c.exercise_no}` : ""}: ${c.body}` }))}

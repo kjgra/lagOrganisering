@@ -1,4 +1,4 @@
-import { CalendarRange, ChevronLeft, ChevronRight, ClipboardList, Lightbulb, SlidersHorizontal, Sparkles, Users, Wrench, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, Users, Wrench, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Brand } from "@/components/Brand";
@@ -9,20 +9,12 @@ import { envLabel } from "@/lib/env";
 export const ADMIN_TABS = [
   { key: "trenere", label: "Trenere" },
   { key: "ki", label: "KI" },
-  { key: "arshjul", label: "Årshjul" },
-  { key: "standard", label: "Lagets standard" },
-  { key: "laerdommer", label: "Lærdommer" },
-  { key: "ovelser", label: "Øvelser" },
   { key: "vedlikehold", label: "Vedlikehold", superadmin: true },
 ] as const;
 
 const TAB_ICONS: Record<(typeof ADMIN_TABS)[number]["key"], LucideIcon> = {
   trenere: Users,
   ki: Sparkles,
-  arshjul: CalendarRange,
-  standard: SlidersHorizontal,
-  laerdommer: Lightbulb,
-  ovelser: ClipboardList,
   vedlikehold: Wrench,
 };
 
@@ -30,8 +22,8 @@ export type AdminTab = (typeof ADMIN_TABS)[number]["key"];
 
 /**
  * Settings: the user's own (theme, logout) for everyone, and the admin panel
- * (trainers' rights, KI, season plan, team settings, learnings, exercises,
- * maintenance) for admins, per main group.
+ * for admins: administration of the app itself (trainers' access, KI,
+ * maintenance), per main group. Training content is under «Trening».
  */
 export function SettingsShell({
   user,

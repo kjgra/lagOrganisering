@@ -68,7 +68,7 @@ test("admin: give KI access and save the season plan", async ({ page }) => {
   await expect(ki).toBeChecked({ checked: !was });
   await expect(page.getByLabel("Admin for Kjetil Gramstad")).toBeDisabled();
 
-  await page.goto("/innstillinger/arshjul?lag=G-FOTBALL");
+  await page.goto("/g/G-FOTBALL/alle/trening/arshjul");
   // Months before this one are folded away below the coming ones.
   const january = page.getByRole("group", { name: "Januar" });
   if (!(await january.isVisible())) await page.locator("summary", { hasText: "Tidligere måneder" }).click();
@@ -81,7 +81,7 @@ test("admin: save the team's pitches, and choose among them for a session", asyn
   await loginToEvents(page);
   await openNextTraining(page);
   const eventUrl = page.url().split("?")[0];
-  await page.goto("/innstillinger/standard?lag=G-FOTBALL");
+  await page.goto("/g/G-FOTBALL/alle/trening/laget");
   await expect(page.getByLabel("Fødselsår")).toHaveValue("2016");
   await expect(page.getByText(/^G\d+ \(født 2016\) · NFF-bånd/)).toBeVisible();
   // The group is folded unless the team already has one of its pitches (mobile runs first).
@@ -90,7 +90,7 @@ test("admin: save the team's pitches, and choose among them for a session", asyn
   await box.check();
   await expect(page.getByText(/Valgt: .*Nymark Kunstgress 03 7er A/)).toBeVisible();
   await page.getByRole("button", { name: "Lagre" }).click();
-  await expect(page.locator(".nm-toast")).toContainText(/Lagets standard er lagret/);
+  await expect(page.locator(".nm-toast")).toContainText(/Laget er lagret/);
 
   await page.goto(`${eventUrl}/opplegg/ki`);
   const pitches = page.getByRole("group", { name: "Baner for økta" });

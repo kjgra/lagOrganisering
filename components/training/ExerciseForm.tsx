@@ -3,11 +3,11 @@
 import { Save, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { deleteExerciseAction, saveExerciseAction } from "@/app/actions/admin";
+import { deleteExerciseAction, saveExerciseAction } from "@/app/actions/training";
 import { DrawingSvg } from "@/components/plans/DrawingSvg";
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
-import { NffTagger } from "@/components/settings/admin/NffTagger";
+import { NffTagger } from "@/components/training/NffTagger";
 import type { BandKey } from "@/lib/nff/fagplan";
 import { checkDrawing, DrawingError, EXAMPLE_DRAWING, fixDrawing, prettyDrawing, validateDrawing, type Drawing } from "@/lib/plans/drawing";
 
@@ -45,7 +45,7 @@ function preview(json: string): { drawing: Drawing | null; error: string; warnin
   }
 }
 
-/** Create or change an exercise in the bank (admins), with the drawing as JSON and a live preview. */
+/** Create or change an exercise in the bank (any trainer; only admins delete), with the drawing as JSON and a live preview. */
 export function ExerciseForm(p: {
   groupId: string;
   id: number | null;
@@ -53,6 +53,8 @@ export function ExerciseForm(p: {
   categories: Record<string, string>;
   statuses: Record<string, string>;
   listHref: string;
+  /** Admins may delete an exercise, after «Er du sikker?». */
+  canDelete: boolean;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -197,9 +199,12 @@ export function ExerciseForm(p: {
           <Icon icon={Save} />
           Lagre øvelsen
         </button>
-        {p.id ? (
+        {p.id && p.canDelete ? (
           confirm ? (
             <>
+              <span role="alert" style={{ alignSelf: "center" }}>
+                Er du sikker? Øvelsen slettes for godt fra banken.
+              </span>
               <button type="button" className="nm-btn nm-btn--danger" disabled={pending} onClick={remove}>
                 Ja, slett
               </button>

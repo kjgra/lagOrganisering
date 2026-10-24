@@ -1,4 +1,4 @@
-import { Bookmark, CalendarDays, ChevronLeft, Settings, Users } from "lucide-react";
+import { Bookmark, CalendarDays, ChevronLeft, ClipboardList, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Brand } from "@/components/Brand";
@@ -11,11 +11,12 @@ import { getPreferences } from "@/lib/store/preferences";
 import { pendingProposals } from "@/lib/store/proposals";
 import { ContextCard, GroupSwitcherProvider, SideGroupSelect } from "./GroupSwitcher";
 
-export type Section = "events" | "proposals" | "members";
+export type Section = "events" | "proposals" | "training" | "members";
 
 const NAV: { key: Section; label: string; icon: typeof CalendarDays; path: string }[] = [
   { key: "events", label: "Arrangementer", icon: CalendarDays, path: "/arrangementer" },
   { key: "proposals", label: "Lagforslag", icon: Bookmark, path: "/lagforslag" },
+  { key: "training", label: "Trening", icon: ClipboardList, path: "/trening" },
   { key: "members", label: "Medlemmer", icon: Users, path: "/medlemmer" },
 ];
 

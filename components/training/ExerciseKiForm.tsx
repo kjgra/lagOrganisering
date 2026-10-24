@@ -3,7 +3,7 @@
 import { Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { exerciseKiEstimateAction, exerciseKiRunAction } from "@/app/actions/admin";
+import { exerciseKiEstimateAction, exerciseKiRunAction } from "@/app/actions/training";
 import { ModelFields, PitchFields } from "@/components/plans/KiFields";
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";

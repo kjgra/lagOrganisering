@@ -64,7 +64,7 @@ Kjør prøvekjøringen først og se gjennom tabellen før du kjører med `--appl
 
 1. Logg inn som superadmin.
 2. Innstillinger → Trenere: gi app-tilgang (og eventuelt KI/admin) til trenerne.
-3. Innstillinger → Årshjul, Lagets standard og Øvelser: fyll inn for laget.
+3. Trening → Øvelser, Årshjul, Slik trener vi og Laget: fyll inn for laget (alle trenere med app-tilgang kan gjøre det).
 
 ## Sjekkliste
 

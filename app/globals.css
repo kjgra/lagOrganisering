@@ -338,6 +338,7 @@ details > summary { list-style-position: inside; }
 .nm-tabs { display: flex; gap: var(--space-4); overflow-x: auto; scrollbar-width: none; margin: calc(var(--space-4) * -1) calc(var(--space-4) * -1) var(--space-4); padding: 0 var(--space-4); border-bottom: var(--border-1) solid var(--line); background: var(--surface-raised); }
 .nm-tabs a { flex: none; display: inline-flex; align-items: center; min-height: var(--touch-min); font-weight: 700; color: var(--ink-muted); text-decoration: none; border-bottom: 3px solid transparent; }
 .nm-tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--primary); }
+.nm-tabs--inline { margin: 0 0 var(--space-4); padding: 0; background: none; }
 .nm-h2 { margin: 0 0 var(--space-3); font-size: 20px; line-height: 26px; font-weight: 700; }
 .nm-section { margin-bottom: var(--space-6); }
 

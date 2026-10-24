@@ -1,33 +1,29 @@
-import { Pencil, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { AiSettingsForm, LearningForm, SeasonForm, TeamSettingsForm, type PitchGroup } from "@/components/settings/admin/forms";
+import { notFound, redirect } from "next/navigation";
+import { AiSettingsForm } from "@/components/settings/admin/forms";
 import { GroupSelect } from "@/components/settings/admin/GroupSelect";
 import { MaintenancePanel } from "@/components/settings/admin/MaintenancePanel";
 import { RoleTable } from "@/components/settings/admin/RoleTable";
 import { ADMIN_TABS, SettingsShell, type AdminTab } from "@/components/settings/SettingsShell";
-import { Icon } from "@/components/ui/icon";
 import { adminContext, trainers, type AdminContext } from "@/lib/admin";
 import { AI_MODELS, budgetCheck, formatNok } from "@/lib/ai/plan-ai";
 import { db } from "@/lib/db";
 import { superadminId } from "@/lib/env";
 import { decimal, MONTH_NAMES, osloMidnight, osloMonthStart, osloParts, savedAt, shortDate } from "@/lib/format";
 import { MAINTENANCE_RULES } from "@/lib/maintenance";
-import { nffSummary } from "@/lib/nff/fagplan";
-import { feedbackSummary, shouldAvoid } from "@/lib/plans/feedback";
-import { CATEGORIES, EXERCISE_STATUSES, pitchFacts, pitchTree, type Pitch } from "@/lib/plans/plan";
+import { movedPath } from "@/lib/settings-nav";
 import { profileName } from "@/lib/proposal-view";
 import { aiSpend, aiUsagePeriod, getAiSettings } from "@/lib/store/ai";
 import { archiveKey, archiveLog, archivePending } from "@/lib/store/archive";
 import { listRoles } from "@/lib/store/roles";
-import { getTeamSettings, learningState, listExercises, listPitches, listSeason } from "@/lib/store/training";
 
 /** The admin panel: one tab per page, per main group (?lag=). */
 export default async function AdminTabPage(props: PageProps<"/innstillinger/[tab]">) {
   const { tab } = await props.params;
+  const sp = await props.searchParams;
+  if (tab in MOVED) redirect(movedPath(sp, MOVED[tab]));
   const t = ADMIN_TABS.find((x) => x.key === tab);
   if (!t) notFound();
-  const sp = await props.searchParams;
   const ctx = await adminContext(sp);
   if ("superadmin" in t && !ctx.user.rights.superadmin) notFound();
   const body = await TABS[t.key](ctx, sp);
@@ -42,18 +38,10 @@ export default async function AdminTabPage(props: PageProps<"/innstillinger/[tab
 }
 
 type Sp = Record<string, string | string[] | undefined>;
-const str = (x: unknown) => (typeof x === "string" ? x : "");
 
-/** Main pitches with their sub-pitches; retired pitches only when the team has them. */
-function pitchGroups(pitches: Pitch[], chosen: number[]): PitchGroup[] {
-  const groups: PitchGroup[] = [];
-  for (const { pitch: p, depth } of pitchTree(pitches)) {
-    if (depth === 0) groups.push({ title: p.name, pitches: [] });
-    if (p.retired && !chosen.includes(p.id)) continue;
-    groups.at(-1)?.pitches.push({ id: p.id, depth, name: p.name, facts: pitchFacts(p) });
-  }
-  return groups.filter((g) => g.pitches.length);
-}
+/** Tabs that moved to «Trening», for old links and bookmarks. */
+const MOVED: Record<string, string> = { arshjul: "/trening/arshjul", standard: "/trening/laget", laerdommer: "/trening/prinsipper", ovelser: "/trening/ovelser" };
+const str = (x: unknown) => (typeof x === "string" ? x : "");
 
 const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactNode>> = {
   async trenere({ user, group }) {
@@ -207,137 +195,6 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
             }}
           />
         </section>
-      </>
-    );
-  },
-
-  async arshjul({ user, group, q }, sp) {
-    const now = osloParts(new Date());
-    const year = Number(str(sp.ar)) || now.year;
-    const rows = await listSeason(await db(), user.access, group.id, year);
-    const themes = Array.from({ length: 12 }, (_, i) => rows.find((r) => r.month === i + 1)?.theme ?? "");
-    const descriptions = Array.from({ length: 12 }, (_, i) => rows.find((r) => r.month === i + 1)?.description ?? "");
-    return (
-      <>
-        <p style={{ marginTop: 0 }}>Månedens tema foreslås når trenerne lager opplegg, og KI bruker det.</p>
-        <div className="nm-versions" style={{ marginBottom: "var(--space-4)" }}>
-          {[now.year - 1, now.year, now.year + 1].map((y) => (
-            <Link key={y} href={`/innstillinger/arshjul${q({ ar: y })}`} aria-current={y === year}>
-              {y}
-            </Link>
-          ))}
-        </div>
-        <SeasonForm key={year} groupId={group.id} year={year} months={MONTH_NAMES} themes={themes} descriptions={descriptions} current={year === now.year ? now.month : undefined} />
-      </>
-    );
-  },
-
-  async standard({ user, group }) {
-    const d = await db();
-    const [s, pitches] = await Promise.all([getTeamSettings(d, user.access, group.id), listPitches(d)]);
-    return (
-      <>
-        <p style={{ marginTop: 0 }}>Det som gjelder for laget hver gang. Brukes som utgangspunkt i opplegg og av KI.</p>
-        <TeamSettingsForm
-          groupId={group.id}
-          initial={{
-            age_group: s.age_group,
-            birth_year: s.birth_year ? String(s.birth_year) : "",
-            gender: s.gender ?? "",
-            session_minutes: s.session_minutes ? String(s.session_minutes) : "",
-            pitch: s.pitch,
-            equipment: s.equipment,
-            principles: s.principles,
-          }}
-          initialPitches={s.pitch_ids}
-          pitchGroups={pitchGroups(pitches, s.pitch_ids)}
-          year={osloParts(new Date()).year}
-        />
-        {s.updated_by && s.updated_at ? (
-          <p className="nm-hint">
-            Sist endret av {profileName(group, s.updated_by)} {savedAt(s.updated_at)}.
-          </p>
-        ) : null}
-      </>
-    );
-  },
-
-  async laerdommer({ user, group }) {
-    const st = await learningState(await db(), user.access, group.id, 6);
-    const current = st.versions[0];
-    return (
-      <>
-        <LearningForm key={current?.id ?? 0} groupId={group.id} initial={current?.body ?? ""} canKi={user.rights.ai} nNew={st.nNew} />
-        {st.versions.length ? (
-          <section className="nm-section" style={{ marginTop: "var(--space-5)" }}>
-            <h3 className="nm-h3" style={{ marginBottom: "var(--space-2)" }}>
-              Historikk
-            </h3>
-            {st.versions.map((v) => (
-              <details key={v.id} className="nm-exercise">
-                <summary style={{ cursor: "pointer", minHeight: 32 }}>
-                  {savedAt(v.created_at)} · {v.source === "ai" ? "med KI" : "manuelt"} av {profileName(group, v.created_by)}
-                </summary>
-                <p style={{ whiteSpace: "pre-wrap" }}>{v.body}</p>
-              </details>
-            ))}
-          </section>
-        ) : null}
-      </>
-    );
-  },
-
-  async ovelser({ user, group, q }) {
-    const bank = await listExercises(await db(), user.access, group.id);
-    const cats = Object.keys(CATEGORIES).filter((c) => bank.some((b) => b.category === c));
-    const status = (s: string) => (s === "active" ? "nm-badge--kommer" : s === "candidate" ? "nm-badge--ikke-svart" : "nm-badge--neutral");
-    return (
-      <>
-        <p style={{ marginTop: 0 }}>
-          Lagets øvelsesbank. Nye øvelser fra godkjente opplegg kommer inn som <em>kandidater</em>, og blir aktive når en trener gir 👍 og «Bruke igjen: Ja». Trykk på en øvelse for å evaluere den, også uten at den er brukt på en trening, eller på blyanten for å endre den.
-        </p>
-        <div className="nm-row" style={{ gap: "var(--space-2)", marginBottom: "var(--space-4)" }}>
-          <Link href={`/innstillinger/ovelse/ny${q()}`} className="nm-btn nm-btn--primary">
-            <Icon icon={Plus} />
-            Ny øvelse
-          </Link>
-          {user.rights.ai ? (
-            <Link href={`/innstillinger/ovelse/ki${q()}`} className="nm-btn nm-btn--secondary">
-              <Icon icon={Sparkles} />
-              Ny øvelse med KI
-            </Link>
-          ) : null}
-        </div>
-        {cats.map((c) => (
-          <section key={c} className="nm-section">
-            <h3 className="nm-section-label">{CATEGORIES[c]}</h3>
-            <ul className="nm-list" style={{ listStyle: "none", margin: 0, padding: 0 }}>
-              {bank
-                .filter((b) => b.category === c)
-                .map((b) => (
-                  <li key={b.id} className="nm-pick">
-                    <div>
-                      <Link href={`/innstillinger/ovelse/${b.id}/evaluering${q()}`} style={{ fontWeight: 700, textDecoration: "underline" }}>
-                        {b.name}
-                      </Link>
-                      <div className="nm-hint">
-                        {feedbackSummary(b)}
-                        {b.fb_last ? ` · sist ${shortDate(b.fb_last)}` : ""}
-                        {b.based_on ? ` · variant av ${bank.find((x) => x.code === b.based_on)?.name ?? b.based_on}` : ""}
-                      </div>
-                      {nffSummary(b) ? <div className="nm-hint">NFF: {nffSummary(b)}</div> : null}
-                    </div>
-                    {shouldAvoid(b) ? <span className="nm-badge nm-badge--kommer-ikke">Unngås av KI</span> : null}
-                    <span className={`nm-badge ${status(b.status)}`}>{EXERCISE_STATUSES[b.status]}</span>
-                    <Link href={`/innstillinger/ovelse/${b.id}${q()}`} className="nm-btn nm-btn--ghost" aria-label={`Endre ${b.name}`} title="Endre øvelsen">
-                      <Icon icon={Pencil} />
-                    </Link>
-                  </li>
-                ))}
-            </ul>
-          </section>
-        ))}
-        {!bank.length ? <p className="nm-muted">Banken er tom.</p> : null}
       </>
     );
   },
