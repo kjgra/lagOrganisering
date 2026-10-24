@@ -23,7 +23,7 @@ const bankRow = (code: string, extra: Partial<BankExercise> = {}): BankExercise 
   id: 1, code, name: "Rondo", category: "pasning_mottak", themes: ["Samhandling"], min_players: 4, max_players: 8, duration_minutes: 12,
   area: "", organisation: "4 mot 1 i rute", execution: "Hold ballen", learning_points: "Se opp\nVær spillbar", questions: "", easier: "", harder: "", nff_url: "",
   drawing: null, source: "manual", based_on: "", status: "active", updated_at: new Date(),
-  fb_n: 0, fb_sessions: 0, fb_good: 0, fb_ok: 0, fb_bad: 0, fb_yes: 0, fb_changes: 0, fb_no: 0, fb_mean: null, fb_minutes: null, fb_last: null, fb_tags: {}, ...extra,
+  fb_n: 0, fb_sessions: 0, fb_bank: 0, fb_good: 0, fb_ok: 0, fb_bad: 0, fb_yes: 0, fb_changes: 0, fb_no: 0, fb_mean: null, fb_minutes: null, fb_last: null, fb_tags: {}, ...extra,
 });
 
 describe("KI order", () => {

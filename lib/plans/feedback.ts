@@ -4,7 +4,8 @@ import { txt, type BankExercise, type Plan } from "./plan";
 /**
  * Evaluation after a training: each exercise gets a rating, fixed keywords,
  * actual time, free text and «Bruke igjen?»; the session gets a rating, how
- * many came and free text. Free text is checked for sensitive words and
+ * many came and free text. An exercise can also be evaluated from the bank,
+ * with the same fields. Free text is checked for sensitive words and
  * member names (it may be summed up by KI later).
  */
 
@@ -50,43 +51,48 @@ function intIn(x: unknown, what: string, lo: number, hi: number): number | null 
   return v;
 }
 
+/** Check one row; null when nothing is filled in. */
+function checkRow(r: RawFeedback, what: string, session: boolean, names: string[]) {
+  const rating = intIn(r.rating, `${what}: vurderingen`, 1, 3);
+  const tags = session ? [] : [...new Set((r.tags ?? []).filter(Boolean))];
+  if (tags.some((t) => !(t in FEEDBACK_TAGS))) throw new FeedbackError(`${what}: ukjent stikkord.`);
+  const body = txt(r.body);
+  if (body.length > FEEDBACK_BODY_MAX) throw new FeedbackError(`${what}: teksten kan ha maks ${FEEDBACK_BODY_MAX} tegn.`);
+  if (isSensitive(body)) throw new FeedbackError(`${what}: teksten skal ikke inneholde helseopplysninger eller andre sensitive opplysninger.`);
+  const np = namesProblem(body, names, "Skriv uten navn, evalueringene kan oppsummeres av KI");
+  if (np) throw new FeedbackError(`${what}: ${np}`);
+  const useAgain = session ? "" : txt(r.use_again);
+  if (useAgain && !(useAgain in USE_AGAIN)) throw new FeedbackError(`${what}: ugyldig svar på «Bruke igjen?».`);
+  const minutes = session ? null : intIn(r.actual_minutes, `${what}: faktisk tid`, 0, 240);
+  const players = session ? intIn(r.actual_players, "Antall spillere", 0, 200) : null;
+  const filled = rating !== null || tags.length || body || useAgain || (session && players !== null);
+  if (!filled) return null;
+  if (rating === null && !session) throw new FeedbackError(`${what}: velg Bra, OK eller Dårlig.`);
+  return { rating, tags, actual_minutes: minutes, actual_players: players, body, use_again: useAgain };
+}
+
 /** Check one trainer's evaluation; rows with nothing filled in are left out. */
 export function validateFeedback(rows: RawFeedback[], plan: Plan, names: string[]) {
   const n = plan.ovelser.length;
   const out = rows.flatMap((r) => {
     const session = r.exercise_no === null;
     if (!session && (!Number.isInteger(r.exercise_no) || r.exercise_no! < 1 || r.exercise_no! > n)) throw new FeedbackError("Ukjent øvelse.");
-    const what = session ? "Hele økta" : `Øvelse ${r.exercise_no}`;
-    const rating = intIn(r.rating, `${what}: vurderingen`, 1, 3);
-    const tags = session ? [] : [...new Set((r.tags ?? []).filter(Boolean))];
-    if (tags.some((t) => !(t in FEEDBACK_TAGS))) throw new FeedbackError(`${what}: ukjent stikkord.`);
-    const body = txt(r.body);
-    if (body.length > FEEDBACK_BODY_MAX) throw new FeedbackError(`${what}: teksten kan ha maks ${FEEDBACK_BODY_MAX} tegn.`);
-    if (isSensitive(body)) throw new FeedbackError(`${what}: teksten skal ikke inneholde helseopplysninger eller andre sensitive opplysninger.`);
-    const np = namesProblem(body, names, "Skriv uten navn, evalueringene kan oppsummeres av KI");
-    if (np) throw new FeedbackError(`${what}: ${np}`);
-    const useAgain = session ? "" : txt(r.use_again);
-    if (useAgain && !(useAgain in USE_AGAIN)) throw new FeedbackError(`${what}: ugyldig svar på «Bruke igjen?».`);
-    const minutes = session ? null : intIn(r.actual_minutes, `${what}: faktisk tid`, 0, 240);
-    const players = session ? intIn(r.actual_players, "Antall spillere", 0, 200) : null;
-    const filled = rating !== null || tags.length || body || useAgain || (session && players !== null);
-    if (!filled) return [];
-    if (rating === null && !session) throw new FeedbackError(`${what}: velg Bra, OK eller Dårlig.`);
-    return [
-      {
-        exercise_no: session ? null : r.exercise_no,
-        exercise_code: session ? "" : plan.ovelser[r.exercise_no! - 1].kode,
-        rating,
-        tags,
-        actual_minutes: minutes,
-        actual_players: players,
-        body,
-        use_again: useAgain,
-      },
-    ];
+    const v = checkRow(r, session ? "Hele økta" : `Øvelse ${r.exercise_no}`, session, names);
+    if (!v) return [];
+    return [{ exercise_no: session ? null : r.exercise_no, exercise_code: session ? "" : plan.ovelser[r.exercise_no! - 1].kode, ...v }];
   });
   if (!out.length) throw new FeedbackError("Vurder minst én øvelse eller hele økta.");
   return out;
+}
+
+/**
+ * Check a trainer's evaluation of an exercise from the bank (no training): the
+ * same fields as for an exercise after a training. Null when it is left empty,
+ * which removes the trainer's evaluation.
+ */
+export function validateBankFeedback(r: RawFeedback, exerciseCode: string, names: string[]) {
+  const v = checkRow(r, "Øvelsen", false, names);
+  return v ? { exercise_no: null, exercise_code: exerciseCode, ...v } : null;
 }
 
 /** «👍 2 · 👌 1» from counts per rating. */
@@ -102,3 +108,21 @@ export function shouldAvoid(b: BankExercise): boolean {
 }
 
 export const meanText = (x: number) => x.toFixed(1).replace(".", ",");
+
+/** «2 økter · 1 fra banken · snitt 2,5 av 3 · 14 min · gøy, høy intensitet», or «Ikke evaluert». */
+export function feedbackSummary(b: BankExercise): string {
+  if (!b.fb_n) return "Ikke evaluert";
+  const tags = Object.entries(b.fb_tags)
+    .sort((x, y) => y[1] - x[1])
+    .slice(0, 2)
+    .map(([k]) => FEEDBACK_TAGS[k] ?? k);
+  return [
+    b.fb_sessions ? `${b.fb_sessions} ${b.fb_sessions === 1 ? "økt" : "økter"}` : "",
+    b.fb_bank ? `${b.fb_bank} fra banken` : "",
+    `snitt ${meanText(b.fb_mean ?? 0)} av 3`,
+    b.fb_minutes ? `${Math.round(b.fb_minutes)} min` : "",
+    tags.join(", "),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}

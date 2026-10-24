@@ -1,21 +1,38 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { FeedbackForm, type FeedbackDraft } from "@/components/plans/FeedbackForm";
 import { ExerciseForm, type ExerciseValues } from "@/components/settings/admin/ExerciseForm";
 import { SettingsShell } from "@/components/settings/SettingsShell";
 import { adminContext } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { prettyDrawing } from "@/lib/plans/drawing";
+import { FEEDBACK_TAGS, feedbackSummary, RATINGS, USE_AGAIN } from "@/lib/plans/feedback";
 import { CATEGORIES, EXERCISE_STATUSES } from "@/lib/plans/plan";
-import { getExercise } from "@/lib/store/training";
+import { getExercise, myBankFeedback } from "@/lib/store/training";
 
-/** A new exercise (/ny), or one from the bank. */
+/** A new exercise (/ny), or one from the bank: evaluate it, or change it. */
 export default async function ExercisePage(props: PageProps<"/innstillinger/ovelse/[id]">) {
   const { id } = await props.params;
   const ctx = await adminContext(await props.searchParams);
   const exId = id === "ny" ? null : Number(id);
   if (exId !== null && (!Number.isInteger(exId) || exId <= 0)) notFound();
-  const b = exId ? await getExercise(await db(), ctx.user.access, ctx.group.id, exId).catch(() => null) : null;
+  const d = await db();
+  const b = exId ? await getExercise(d, ctx.user.access, ctx.group.id, exId).catch(() => null) : null;
   if (exId && !b) notFound();
+  const mine = b ? await myBankFeedback(d, ctx.user.access, ctx.group.id, b.code) : null;
+  const draft: FeedbackDraft | null = b
+    ? {
+        exercise_no: null,
+        title: "Din vurdering",
+        planned: b.duration_minutes,
+        rating: mine?.rating ?? null,
+        tags: mine?.tags ?? [],
+        actual_minutes: mine?.actual_minutes?.toString() ?? "",
+        actual_players: "",
+        body: mine?.body ?? "",
+        use_again: mine?.use_again ?? "",
+      }
+    : null;
   const n = (x: number | null) => (x === null ? "" : String(x));
   const initial: ExerciseValues = b
     ? {
@@ -53,6 +70,18 @@ export default async function ExercisePage(props: PageProps<"/innstillinger/ovel
           {b.source === "ai" ? " · laget med KI" : ""}
         </p>
       ) : null}
+      {b && draft ? (
+        <section id="evaluering" aria-labelledby="evaluering-h" style={{ marginBottom: "var(--space-6)" }}>
+          <h3 id="evaluering-h" className="nm-section-label">
+            Evaluering
+          </h3>
+          <p className="nm-hint" style={{ marginTop: 0 }}>
+            Alle trenere: {feedbackSummary(b)}
+          </p>
+          <FeedbackForm target={{ groupId: ctx.group.id, exerciseId: b.id }} rows={[draft]} ratings={RATINGS} tags={FEEDBACK_TAGS} useAgain={USE_AGAIN} />
+        </section>
+      ) : null}
+      {b ? <h3 className="nm-section-label">Endre øvelsen</h3> : null}
       <ExerciseForm groupId={ctx.group.id} id={b?.id ?? null} initial={initial} categories={CATEGORIES} statuses={EXERCISE_STATUSES} listHref={listHref} />
     </SettingsShell>
   );

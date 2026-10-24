@@ -9,16 +9,19 @@ import { archivePending, buildArchive, confirmArchive } from "@/lib/store/archiv
 import {
   addPlanComment,
   approvePlan,
+  feedbackSince,
   getPlan,
   getTeamSettings,
   listExercises,
   listPitches,
-  teamPitches,
+  myBankFeedback,
   planVersions,
+  saveBankFeedback,
   saveFeedback,
   savePlan,
   savePlanExercise,
   saveTeamSettings,
+  teamPitches,
 } from "@/lib/store/training";
 import { testDb } from "../helpers/db";
 
@@ -62,6 +65,37 @@ describe("training plans", () => {
     );
     expect(activated).toEqual([plan.ovelser[0].kode]);
     expect((await listExercises(d, me, "G1"))[0].fb_n).toBe(1);
+  });
+
+  it("evaluates an exercise from the bank, in the same data as after a training", async () => {
+    const other: Access = { profileId: "P-3", groupIds: new Set(["G1"]) };
+    const [ex] = await listExercises(d, me, "G1");
+    const row = { exercise_no: null, exercise_code: ex.code, rating: 2, tags: ["ko"], actual_minutes: 20, actual_players: null, body: "Bra variant", use_again: "changes" };
+    expect(await saveBankFeedback(d, other, "G1", ex.id, row)).toBe(false);
+    // Saving again replaces the trainer's evaluation.
+    await saveBankFeedback(d, other, "G1", ex.id, { ...row, rating: 1 });
+    expect((await myBankFeedback(d, other, "G1", ex.code))?.rating).toBe(1);
+    expect(await myBankFeedback(d, me, "G1", ex.code)).toBeNull();
+
+    const b = (await listExercises(d, me, "G1"))[0];
+    expect([b.fb_n, b.fb_sessions, b.fb_bank, b.fb_good, b.fb_bad, b.fb_tags]).toEqual([2, 1, 1, 1, 1, { goy: 1, ko: 1 }]);
+    const since = await feedbackSince(d, me, "G1", new Date(0));
+    expect(since.find((r) => r.spond_event_id === "")).toMatchObject({ exercise_name: ex.name, rating: 1, body: "Bra variant" });
+
+    await saveBankFeedback(d, other, "G1", ex.id, null);
+    expect(await myBankFeedback(d, other, "G1", ex.code)).toBeNull();
+    expect((await listExercises(d, me, "G1"))[0].fb_bank).toBe(0);
+    await expect(saveBankFeedback(d, { profileId: "P-2", groupIds: new Set(["G2"]) }, "G1", ex.id, row)).rejects.toThrow(/tilgang/);
+    await expect(saveBankFeedback(d, other, "G1", 99999, row)).rejects.toThrow(/Fant ikke/);
+  });
+
+  it("a 👍 with «Bruke igjen: Ja» from the bank makes a candidate active", async () => {
+    await savePlanExercise(d, me, "G1", plan.ovelser[1], [plan.tema], "ai");
+    const cand = (await listExercises(d, me, "G1")).find((b) => b.code === plan.ovelser[1].kode)!;
+    expect(cand.status).toBe("candidate");
+    const row = { exercise_no: null, exercise_code: cand.code, rating: 3, tags: [], actual_minutes: null, actual_players: null, body: "", use_again: "yes" };
+    expect(await saveBankFeedback(d, me, "G1", cand.id, row)).toBe(true);
+    expect((await listExercises(d, me, "G1")).find((b) => b.id === cand.id)!.status).toBe("active");
   });
 
   it("refuses other groups", async () => {
