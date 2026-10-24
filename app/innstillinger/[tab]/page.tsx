@@ -1,7 +1,7 @@
 import { Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AiSettingsForm, LearningForm, SeasonForm, TeamSettingsForm } from "@/components/settings/admin/forms";
+import { AiSettingsForm, LearningForm, SeasonForm, TeamSettingsForm, type PitchGroup } from "@/components/settings/admin/forms";
 import { GroupSelect } from "@/components/settings/admin/GroupSelect";
 import { MaintenancePanel } from "@/components/settings/admin/MaintenancePanel";
 import { RoleTable } from "@/components/settings/admin/RoleTable";
@@ -14,12 +14,12 @@ import { superadminId } from "@/lib/env";
 import { decimal, MONTH_NAMES, osloMidnight, osloMonthStart, osloParts, savedAt, shortDate } from "@/lib/format";
 import { MAINTENANCE_RULES } from "@/lib/maintenance";
 import { feedbackSummary, shouldAvoid } from "@/lib/plans/feedback";
-import { CATEGORIES, EXERCISE_STATUSES } from "@/lib/plans/plan";
+import { CATEGORIES, EXERCISE_STATUSES, pitchFacts, pitchTree, type Pitch } from "@/lib/plans/plan";
 import { profileName } from "@/lib/proposal-view";
 import { aiSpend, aiUsagePeriod, getAiSettings } from "@/lib/store/ai";
 import { archiveKey, archiveLog, archivePending } from "@/lib/store/archive";
 import { listRoles } from "@/lib/store/roles";
-import { getTeamSettings, learningState, listExercises, listSeason } from "@/lib/store/training";
+import { getTeamSettings, learningState, listExercises, listPitches, listSeason } from "@/lib/store/training";
 
 /** The admin panel: one tab per page, per main group (?lag=). */
 export default async function AdminTabPage(props: PageProps<"/innstillinger/[tab]">) {
@@ -42,6 +42,17 @@ export default async function AdminTabPage(props: PageProps<"/innstillinger/[tab
 
 type Sp = Record<string, string | string[] | undefined>;
 const str = (x: unknown) => (typeof x === "string" ? x : "");
+
+/** Main pitches with their sub-pitches; retired pitches only when the team has them. */
+function pitchGroups(pitches: Pitch[], chosen: number[]): PitchGroup[] {
+  const groups: PitchGroup[] = [];
+  for (const { pitch: p, depth } of pitchTree(pitches)) {
+    if (depth === 0) groups.push({ title: p.name, pitches: [] });
+    if (p.retired && !chosen.includes(p.id)) continue;
+    groups.at(-1)?.pitches.push({ id: p.id, depth, name: p.name, facts: pitchFacts(p) });
+  }
+  return groups.filter((g) => g.pitches.length);
+}
 
 const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactNode>> = {
   async trenere({ user, group }) {
@@ -221,13 +232,22 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
   },
 
   async standard({ user, group }) {
-    const s = await getTeamSettings(await db(), user.access, group.id);
+    const d = await db();
+    const [s, pitches] = await Promise.all([getTeamSettings(d, user.access, group.id), listPitches(d)]);
     return (
       <>
         <p style={{ marginTop: 0 }}>Det som gjelder for laget hver gang. Brukes som utgangspunkt i opplegg og av KI.</p>
         <TeamSettingsForm
           groupId={group.id}
-          initial={{ age_group: s.age_group, session_minutes: s.session_minutes ? String(s.session_minutes) : "", pitch: s.pitch, equipment: s.equipment, principles: s.principles }}
+          initial={{
+            age_group: s.age_group,
+            session_minutes: s.session_minutes ? String(s.session_minutes) : "",
+            pitch: s.pitch,
+            equipment: s.equipment,
+            principles: s.principles,
+          }}
+          initialPitches={s.pitch_ids}
+          pitchGroups={pitchGroups(pitches, s.pitch_ids)}
         />
         {s.updated_by && s.updated_at ? (
           <p className="nm-hint">

@@ -384,7 +384,7 @@ export function orderText(c: OrderContext): string {
     line("Månedens tema", c.theme),
     line("Om temaet", c.themeDescription),
     line("Alder", c.team.age_group),
-    line("Bane", c.team.pitch),
+    line("Baner for økta", c.team.pitch),
     line("Utstyr", c.team.equipment),
     line("Lagets prinsipper", c.team.principles),
     line("Påmeldte spillere", c.nPlayers || null),

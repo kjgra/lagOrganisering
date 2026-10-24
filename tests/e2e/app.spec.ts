@@ -46,6 +46,7 @@ test("training plan: from the bank, approve, adjust with KI, PDF", async ({ page
 
   await page.getByRole("link", { name: "Juster med KI" }).click();
   await page.getByLabel("Hva skal endres?").fill("Mer konkurranse");
+  await page.getByRole("checkbox", { name: /Nymark Kunstgress 04 9er A/ }).check();
   await page.getByRole("button", { name: "Juster med KI" }).click();
   await expect(page).toHaveURL(/opplegg=/, { timeout: 30_000 });
   await expect(page.locator(".nm-toast")).toContainText(/laget med KI/);
@@ -70,6 +71,30 @@ test("admin: give KI access and save the season plan", async ({ page }) => {
   await page.getByLabel("Januar").fill("Pasning");
   await page.getByRole("button", { name: "Lagre årshjulet" }).click();
   await expect(page.locator(".nm-toast")).toContainText(/Årshjulet for \d{4} er lagret/);
+});
+
+test("admin: save the team's pitches, and choose among them for a session", async ({ page }) => {
+  await loginToEvents(page);
+  await openNextTraining(page);
+  const eventUrl = page.url().split("?")[0];
+  await page.goto("/innstillinger/standard?lag=G-FOTBALL");
+  // The group is folded unless the team already has one of its pitches (mobile runs first).
+  const box = page.getByRole("checkbox", { name: /^Nymark Kunstgress 03 7er A/ });
+  if (!(await box.isVisible())) await page.locator("summary", { hasText: /^Nymark Kunstgress 03/ }).click();
+  await box.check();
+  await expect(page.getByText(/Valgt: .*Nymark Kunstgress 03 7er A/)).toBeVisible();
+  await page.getByRole("button", { name: "Lagre" }).click();
+  await expect(page.locator(".nm-toast")).toContainText(/Lagets standard er lagret/);
+
+  await page.goto(`${eventUrl}/opplegg/ki`);
+  const pitches = page.getByRole("group", { name: "Baner for økta" });
+  await expect(pitches.getByRole("checkbox")).toHaveCount(3);
+  await expect(pitches.getByText("7er · Kunstgress m/innfyll som ikke er av plast · 60 × 50 m · lys 150 lux")).toBeVisible();
+  await page.getByRole("button", { name: "Lag opplegg med KI" }).click();
+  await expect(page.locator(".nm-alert")).toContainText("Velg minst én bane for økta.");
+  await pitches.getByRole("checkbox", { name: /Nymark Kunstgress 03 7er A/ }).check();
+  await page.getByRole("button", { name: "Lag opplegg med KI" }).click();
+  await expect(page).toHaveURL(/opplegg=/, { timeout: 30_000 });
 });
 
 test("a starred group stays starred", async ({ page }) => {

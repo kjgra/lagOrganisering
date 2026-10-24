@@ -32,6 +32,10 @@ describe("KI order", () => {
     expect(t).toContain("Påmeldte spillere: 14");
     expect(t).toContain("3 (5, 5, 4 spillere)");
     expect(t).toContain("torsdag 15. oktober 2026 kl. 17:30");
+    expect(t).not.toContain("Baner for økta:");
+    expect(orderText({ ...order, team: { ...order.team, pitch: "Nymark Kunstgress 04 7er A (7er · 48 × 30 m · lys 150 lux)" } })).toContain(
+      "- Baner for økta: Nymark Kunstgress 04 7er A (7er · 48 × 30 m · lys 150 lux)",
+    );
     expect(() => orderText({ ...order, wish: "Emil må stå i mål" })).toThrow(/Emil/);
     expect(() => orderText({ ...order, wish: "Noen har astma" })).toThrow(/helse/);
   });

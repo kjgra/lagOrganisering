@@ -56,11 +56,13 @@ export async function saveSeasonAction(groupId: string, year: number, themes: st
   });
 }
 
-export async function saveTeamSettingsAction(groupId: string, input: Record<string, string>): Promise<ActionResult> {
+export async function saveTeamSettingsAction(groupId: string, input: Record<string, string>, pitchIds: number[]): Promise<ActionResult> {
   return runAction("Lagring av lagets standard", async () => {
-    const v = z.object({ groupId: sid, input: z.record(z.string().max(40), short) }).parse({ groupId, input });
+    const v = z
+      .object({ groupId: sid, input: z.record(z.string().max(40), short), pitchIds: z.array(z.number().int().positive()).max(50) })
+      .parse({ groupId, input, pitchIds });
     const { user, d } = await admin(v.groupId);
-    await saveTeamSettings(d, user.access, user.rights, v.groupId, v.input);
+    await saveTeamSettings(d, user.access, user.rights, v.groupId, { ...v.input, pitch_ids: v.pitchIds });
     refresh();
     return { data: undefined, message: "Lagets standard er lagret." };
   });

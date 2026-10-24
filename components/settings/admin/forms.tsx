@@ -132,17 +132,34 @@ export function SeasonForm({ groupId, year, months, themes, descriptions }: { gr
 
 // Team settings -----------------------------------------------------------------------------
 
-export function TeamSettingsForm({ groupId, initial }: { groupId: string; initial: Record<string, string> }) {
+export interface PitchOption {
+  id: number;
+  /** Below the main pitch: 0 for the main pitch itself. */
+  depth: number;
+  name: string;
+  /** «7er · Kunstgress … · 48 × 30 m · lys 150 lux» */
+  facts: string;
+}
+
+/** A main pitch with its sub-pitches, as one foldable group. */
+export interface PitchGroup {
+  title: string;
+  pitches: PitchOption[];
+}
+
+export function TeamSettingsForm({ groupId, initial, pitchGroups, initialPitches }: { groupId: string; initial: Record<string, string>; pitchGroups: PitchGroup[]; initialPitches: number[] }) {
   const [v, setV] = useState(initial);
+  const [chosen, setChosen] = useState(initialPitches);
   const { pending, run, errorBox } = useSave();
   const set = (k: string) => (e: { target: { value: string } }) => setV((x) => ({ ...x, [k]: e.target.value }));
+  const all = pitchGroups.flatMap((g) => g.pitches);
   return (
     <form
       className="nm-form"
       style={{ maxWidth: 640 }}
       onSubmit={(e) => {
         e.preventDefault();
-        run(() => saveTeamSettingsAction(groupId, v));
+        run(() => saveTeamSettingsAction(groupId, v, chosen));
       }}
     >
       <div className="nm-form-row">
@@ -153,7 +170,43 @@ export function TeamSettingsForm({ groupId, initial }: { groupId: string; initia
           <input className="nm-input" inputMode="numeric" value={v.session_minutes} onChange={set("session_minutes")} />
         </Field>
       </div>
-      <Field label="Bane">
+      <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+        <legend className="nm-field__label" style={{ marginBottom: "var(--space-1)" }}>
+          Baner
+        </legend>
+        <p className="nm-hint" style={{ margin: "0 0 var(--space-2)" }}>
+          {chosen.length
+            ? `Valgt: ${all
+                .filter((p) => chosen.includes(p.id))
+                .map((p) => p.name)
+                .join(", ")}. For hver trening velger dere blant disse når KI lager opplegget.`
+            : "Velg banene laget bruker. For hver trening velger dere blant disse når KI lager opplegget."}
+        </p>
+        {pitchGroups.map((g) => (
+          <details key={g.title} className="nm-exercise" open={g.pitches.some((p) => initialPitches.includes(p.id))}>
+            <summary style={{ cursor: "pointer", minHeight: "var(--touch-min)", display: "flex", alignItems: "center", fontWeight: 700 }}>
+              {g.title}
+              {g.pitches.some((p) => chosen.includes(p.id)) ? ` (${g.pitches.filter((p) => chosen.includes(p.id)).length} valgt)` : ""}
+            </summary>
+            {g.pitches.map((p) => (
+              <label key={p.id} className="nm-check" style={{ paddingLeft: `calc(var(--space-4) * ${p.depth})` }}>
+                <input
+                  type="checkbox"
+                  checked={chosen.includes(p.id)}
+                  onChange={(e) => setChosen((x) => (e.target.checked ? [...x, p.id] : x.filter((y) => y !== p.id)))}
+                />
+                <span>
+                  {p.name}
+                  <span className="nm-hint" style={{ display: "block" }}>
+                    {p.facts}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </details>
+        ))}
+      </fieldset>
+      <Field label="Merknad om baner" hint="F.eks. «deler banen med G12 på tirsdager».">
         <input className="nm-input" value={v.pitch} maxLength={200} onChange={set("pitch")} />
       </Field>
       <Field label="Utstyr">
