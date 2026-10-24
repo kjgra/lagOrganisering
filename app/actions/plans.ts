@@ -119,7 +119,7 @@ export async function approvePlanAction(input: z.input<typeof approveInput>): Pr
       if (choice === "skip") continue;
       const e = pl.plan.ovelser[c.index - 1];
       const ex = choice === "variant" && c.match ? { ...e, basert_pa: c.match.code } : e;
-      if (await savePlanExercise(d, user.access, pl.groupId, ex, [pl.plan.tema], pl.source)) saved++;
+      if ((await savePlanExercise(d, user.access, pl.groupId, ex, [pl.plan.tema], pl.source)) !== null) saved++;
     }
     refresh();
     const bankText = saved ? ` ${saved} ${saved === 1 ? "øvelse er lagt" : "øvelser er lagt"} i øvelsesbanken som kandidat.` : "";

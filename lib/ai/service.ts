@@ -15,6 +15,7 @@ import {
   markCommentsUsed,
   saveLearning,
   savePlan,
+  savePlanExercise,
   teamExperience,
 } from "@/lib/store/training";
 import type { Group } from "@/lib/spond/types";
@@ -27,6 +28,9 @@ import {
   budgetCheck,
   catalogue,
   checkLearning,
+  EXERCISE_SCHEMA,
+  exerciseFromAnswer,
+  exerciseOrderText,
   experienceText,
   formatNok,
   orderText,
@@ -35,21 +39,38 @@ import {
   revisionText,
   systemText,
   type AiSettings,
+  type ExerciseOrderContext,
   type OrderContext,
 } from "./plan-ai";
 
 const MAX_TOKENS = 32000;
+const EXERCISE_MAX_TOKENS = 8000;
 const LEARNING_MODEL = "claude-haiku-5-5";
 
 export interface KiPrep {
   groupId: string;
-  kind: "draft" | "revision";
+  kind: "draft" | "revision" | "exercise";
   model: string;
   settings: AiSettings;
   budget: ReturnType<typeof budgetCheck>;
   call: CallInput;
   answerCtx: { theme: string; minutes: number | null; maxNew: number; linkUrls: string[]; base: Plan | null };
   bank: Awaited<ReturnType<typeof listExercises>>;
+}
+
+/** Rights, budget, the bank and the team's experience: what every KI call for exercises needs. */
+async function kiBasis(d: Db, user: CurrentUser, rights: Rights, group: Group, wanted: string | undefined, now: Date, theme: string) {
+  if (!rights.ai) throw new AiError("Du har ikke tilgang til KI. Spør en administrator.");
+  const settings = await getAiSettings(d);
+  const model = wanted && wanted in AI_MODELS ? wanted : settings.model;
+  const budget = budgetCheck(await aiSpend(d, user.access, group.id, osloMonthStart(now)), settings);
+  if (!budget.ok) throw new AiError(budget.message);
+  const bank = await listExercises(d, user.access, group.id);
+  const exp = await teamExperience(d, user.access, group.id, new Date(now.getTime() - 365 * 86_400_000));
+  const experience = experienceText(exp, bank, await latestLearning(d, user.access, group.id));
+  let cat = catalogue(bank, theme);
+  if (experience) cat = `${cat}\n\n${experience}`;
+  return { settings, model, budget, bank, system: [systemText(), cat] };
 }
 
 /**
@@ -64,20 +85,10 @@ export async function prepareKi(
   order: OrderContext,
   opts: { base?: Plan | null; model?: string; now?: Date } = {},
 ): Promise<KiPrep> {
-  if (!rights.ai) throw new AiError("Du har ikke tilgang til KI. Spør en administrator.");
-  const settings = await getAiSettings(d);
-  const model = opts.model && opts.model in AI_MODELS ? opts.model : settings.model;
-  const now = opts.now ?? new Date();
-  const budget = budgetCheck(await aiSpend(d, user.access, group.id, osloMonthStart(now)), settings);
-  if (!budget.ok) throw new AiError(budget.message);
-  const bank = await listExercises(d, user.access, group.id);
-  const exp = await teamExperience(d, user.access, group.id, new Date(now.getTime() - 365 * 86_400_000));
-  const experience = experienceText(exp, bank, await latestLearning(d, user.access, group.id));
+  const { settings, model, budget, bank, system } = await kiBasis(d, user, rights, group, opts.model, opts.now ?? new Date(), order.theme);
   const ctx: OrderContext = { ...order, maxNew: settings.max_new_exercises };
   const base = opts.base ?? null;
   const userText = base ? revisionText(base, ctx) : orderText(ctx);
-  let cat = catalogue(bank, order.theme);
-  if (experience) cat = `${cat}\n\n${experience}`;
   return {
     groupId: group.id,
     kind: base ? "revision" : "draft",
@@ -85,16 +96,16 @@ export async function prepareKi(
     settings,
     budget,
     bank,
-    call: { model, system: [systemText(), cat], user: userText, schema: PLAN_SCHEMA, maxTokens: MAX_TOKENS, kind: base ? "revision" : "draft" },
+    call: { model, system, user: userText, schema: PLAN_SCHEMA, maxTokens: MAX_TOKENS, kind: base ? "revision" : "draft" },
     answerCtx: { theme: base?.tema ?? order.theme, minutes: order.minutes, maxNew: settings.max_new_exercises, linkUrls: order.links.map((l) => l.url), base },
   };
 }
 
-/** Price estimate per model: input counted by the API (free), output from earlier calls (or 6 000). */
-export async function estimateKi(d: Db, prep: KiPrep): Promise<Record<string, string> | null> {
+/** Price estimate per model: input counted by the API (free), output from earlier calls (or a typical length). */
+export async function estimateKi(d: Db, prep: Pick<KiPrep, "call" | "kind" | "model" | "settings">): Promise<Record<string, string> | null> {
   const nIn = await countTokens(prep.call);
   if (nIn === null) return null;
-  const nOut = (await typicalOutput(d, prep.kind, prep.model)) ?? 6000;
+  const nOut = (await typicalOutput(d, prep.kind, prep.model)) ?? (prep.kind === "exercise" ? 2000 : 6000);
   return Object.fromEntries(
     Object.keys(AI_MODELS).map((m) => [m, formatNok(aiCost({ input_tokens: nIn, output_tokens: nOut, cache_read_tokens: 0, cache_write_tokens: 0 }, m), prep.settings.usd_nok)]),
   );
@@ -130,6 +141,56 @@ export async function runKi(d: Db, user: CurrentUser, prep: KiPrep, eventId: str
   await d.query("UPDATE ai_usage SET plan_id = $2 WHERE id = $1", [usageId, saved.id]);
   if (commentIds.length) await markCommentsUsed(d, user.access, prep.groupId, commentIds, saved.id);
   return { ...saved, warnings: result.warnings, costText: formatNok(cost, prep.settings.usd_nok) };
+}
+
+// «Ny øvelse med KI»: one exercise for the bank, with the same instructions, bank and experience.
+
+export interface ExerciseKiPrep extends Omit<KiPrep, "answerCtx"> {
+  theme: string;
+  linkUrls: string[];
+}
+
+export async function prepareExerciseKi(d: Db, user: CurrentUser, rights: Rights, group: Group, order: ExerciseOrderContext, opts: { model?: string; now?: Date } = {}): Promise<ExerciseKiPrep> {
+  const { settings, model, budget, bank, system } = await kiBasis(d, user, rights, group, opts.model, opts.now ?? new Date(), order.theme);
+  return {
+    groupId: group.id,
+    kind: "exercise",
+    model,
+    settings,
+    budget,
+    bank,
+    call: { model, system, user: exerciseOrderText(order), schema: EXERCISE_SCHEMA, maxTokens: EXERCISE_MAX_TOKENS, kind: "exercise" },
+    theme: order.theme,
+    linkUrls: order.links.map((l) => l.url),
+  };
+}
+
+/** Call the model, log the call, and save the exercise in the bank as a candidate made with KI. */
+export async function runExerciseKi(d: Db, user: CurrentUser, prep: ExerciseKiPrep) {
+  const r = await callClaude(prep.call);
+  let result: ReturnType<typeof exerciseFromAnswer> | null = null;
+  let errorCode = r.errorCode;
+  let message = r.message;
+  if (r.ok) {
+    try {
+      result = exerciseFromAnswer(r.text, prep.bank, { linkUrls: prep.linkUrls });
+    } catch (err) {
+      errorCode = "ugyldig_svar";
+      message = `KI-svaret kunne ikke brukes: ${(err as Error).message}`;
+    }
+  }
+  const cost = aiCost(r.usage, prep.model);
+  await logAiUsage(
+    d,
+    user.access,
+    prep.groupId,
+    { kind: "exercise", model: prep.model, ...r.usage, cost_usd: cost, duration_ms: r.durationMs, status: result ? "ok" : "error", error_code: errorCode },
+    null,
+  );
+  if (!result) throw new AiError(message || "Noe gikk galt med KI. Prøv igjen om litt.");
+  const id = await savePlanExercise(d, user.access, prep.groupId, result.exercise, [prep.theme], "ai", result.extra);
+  if (id === null) throw new AiError("Øvelsen fantes allerede i banken. Prøv igjen.");
+  return { id, name: result.exercise.navn, warnings: result.warnings, costText: formatNok(cost, prep.settings.usd_nok) };
 }
 
 // Learnings with KI: the old text and the evaluations since the last KI version give a new version.

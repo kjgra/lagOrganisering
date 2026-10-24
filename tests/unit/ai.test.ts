@@ -1,6 +1,20 @@
 import { describe, expect, it } from "vitest";
 import ref from "@/lib/plans/reference-plan.json";
-import { answerFromPlan, catalogue, orderText, planFromAnswer, revisionText, PLAN_SCHEMA, aiCost, formatNok, budgetCheck, DEFAULT_AI_SETTINGS } from "@/lib/ai/plan-ai";
+import {
+  answerFromPlan,
+  catalogue,
+  exerciseFromAnswer,
+  exerciseOrderText,
+  orderText,
+  planFromAnswer,
+  revisionText,
+  EXERCISE_SCHEMA,
+  PLAN_SCHEMA,
+  aiCost,
+  formatNok,
+  budgetCheck,
+  DEFAULT_AI_SETTINGS,
+} from "@/lib/ai/plan-ai";
 import { extractText, parseLinks } from "@/lib/ai/links";
 import { validatePlan, type BankExercise } from "@/lib/plans/plan";
 
@@ -72,6 +86,44 @@ describe("KI answer", () => {
   });
   it("has a schema where every property is required", () => {
     expect(PLAN_SCHEMA.required).toContain("ovelser");
+  });
+});
+
+describe("KI for one exercise", () => {
+  const ex = {
+    theme: "Samhandling",
+    themeDescription: "",
+    team: { age_group: "G10", pitch: "Nymark Kunstgress 04 7er A (7er · 48 × 30 m · lys 150 lux)", equipment: "", principles: "" },
+    players: 8,
+    minutes: 15,
+    category: "smaaspill",
+    wish: "",
+    links: [],
+    names: ["Emil Haugen", "Emil"],
+  };
+  it("orders one exercise with the team settings, never names", () => {
+    const t = exerciseOrderText(ex);
+    expect(t).toContain("én øvelse til banken");
+    expect(t).toContain("- Baner: Nymark Kunstgress 04 7er A");
+    expect(t).toContain("- Antall spillere: 8");
+    expect(t).toContain("- Kategori: smaaspill (Småspill)");
+    expect(t.trim().endsWith("Lag øvelsen.")).toBe(true);
+    expect(() => exerciseOrderText({ ...ex, wish: "Emil skal stå i mål" })).toThrow(/Emil/);
+    expect(() => exerciseOrderText({ ...ex, theme: "", wish: "" })).toThrow(/tema eller et ønske/);
+  });
+  it("turns the answer into a new exercise with players, minutes and area", () => {
+    const e = answerFromPlan(plan).ovelser[0];
+    const a = { ...e, kilde: "ny", kode: "rondo", naermeste_kode: "rondo", min_spillere: 10, maks_spillere: 6, minutter: 200, omrade: "20 × 15 m" };
+    const r = exerciseFromAnswer(JSON.stringify(a), [bankRow("rondo")], { linkUrls: ["https://www.tiim.no/x"] });
+    expect(r.exercise.kode).not.toBe("rondo");
+    expect(r.exercise.naermeste_kode).toBe("rondo");
+    expect(r.exercise.navn).toBe(e.navn);
+    expect(r.extra).toEqual({ min_players: 6, max_players: 10, duration_minutes: 120, area: "20 × 15 m" });
+    expect(r.warnings.join(" ")).toMatch(/bygger ikke på/);
+    expect(() => exerciseFromAnswer(JSON.stringify({ ...a, navn: "" }), [], { linkUrls: [] })).toThrow(/ingen øvelse/);
+  });
+  it("has a schema for one exercise where every property is required", () => {
+    expect(EXERCISE_SCHEMA.required).toEqual(expect.arrayContaining(["navn", "tegning_json", "min_spillere", "omrade"]));
   });
 });
 

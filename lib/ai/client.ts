@@ -23,7 +23,7 @@ export interface CallInput {
   /** A JSON schema for structured output, or none for plain text. */
   schema?: Record<string, unknown>;
   maxTokens: number;
-  kind: "draft" | "revision" | "learning";
+  kind: "draft" | "revision" | "learning" | "exercise";
 }
 
 export interface CallResult {
@@ -132,7 +132,19 @@ async function mockCall(c: CallInput, t0: number): Promise<CallResult> {
     const theme = /Månedens tema: (.+)/.exec(c.user)?.[1]?.trim();
     const wish = /# (?:Endringsønske|Ønsker fra treneren)\n\n?([\s\S]*?)(\n\n#|\n\nJuster|$)/.exec(c.user)?.[1]?.trim() || /- Ønsker fra treneren: (.+)/.exec(c.user)?.[1];
     const current = /# Gjeldende opplegg\n\n(.+)\n/.exec(c.user)?.[1];
-    if (c.kind === "revision" && current) {
+    if (c.kind === "exercise") {
+      const e = ref.ovelser[1];
+      text = JSON.stringify({
+        ...e,
+        kilde: "ny",
+        hvorfor_ny: `Eksempeløvelse fra simulert KI${wish ? `: ${wish}` : ""}.`.slice(0, 300),
+        min_spillere: 6,
+        maks_spillere: 10,
+        minutter: 15,
+        omrade: "20 × 15 m",
+      });
+      usage.output_tokens = 1800;
+    } else if (c.kind === "revision" && current) {
       const base = JSON.parse(current) as ReturnType<typeof answerFromPlan>;
       text = JSON.stringify({
         ...base,

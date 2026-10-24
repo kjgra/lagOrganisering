@@ -28,3 +28,20 @@ test("admin: evaluate an exercise from the bank", async ({ page }) => {
   await expect(page.getByLabel("Navn")).toBeVisible();
   await expect(page.getByRole("button", { name: "Lagre evalueringen" })).toHaveCount(0);
 });
+
+test("admin: make a new exercise with KI from the bank", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/innstillinger/ovelser?lag=G-FOTBALL");
+  await page.getByRole("link", { name: "Ny øvelse med KI" }).click();
+  await expect(page).toHaveURL(/\/innstillinger\/ovelse\/ki\?/);
+  await page.getByLabel("Tema").fill("Samhandling");
+  await page.getByLabel("Kategori (valgfritt)").selectOption("smaaspill");
+  await page.getByLabel("Antall spillere").fill("8");
+  await page.getByRole("button", { name: "Lag øvelse med KI" }).click();
+  await expect(page.locator(".nm-toast")).toContainText(/laget med KI .* som kandidat/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/innstillinger\/ovelse\/\d+\?/);
+  await expect(page.getByText(/laget med KI/).first()).toBeVisible();
+  await expect(page.getByLabel("Status")).toHaveValue("candidate");
+  await expect(page.getByLabel("Min. spillere")).toHaveValue("6");
+});

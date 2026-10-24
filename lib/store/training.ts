@@ -285,9 +285,9 @@ export async function deleteExercise(d: Db, access: Access, rights: Rights, grou
 }
 
 /**
- * Put one exercise from an approved plan into the bank, as a candidate. If
- * the bank has the code already, nothing changes. A variant of a variant
- * points to the base exercise, so families stay flat.
+ * Put one exercise from an approved plan (or «Ny øvelse med KI») into the
+ * bank, as a candidate. If the bank has the code already, nothing changes
+ * (null). A variant of a variant points to the base exercise, so families stay flat.
  */
 export async function savePlanExercise(
   d: Db,
@@ -296,23 +296,26 @@ export async function savePlanExercise(
   e: PlanExercise,
   themes: string[],
   source: "manual" | "ai",
-): Promise<boolean> {
+  extra: { min_players?: number | null; max_players?: number | null; duration_minutes?: number | null; area?: string } = {},
+): Promise<number | null> {
   assertGroup(access, groupId);
   const known = await d.query<{ code: string; based_on: string | null }>(
     "SELECT code, based_on FROM exercises WHERE spond_group_id = $1 AND code IN ($2, $3)",
     [groupId, e.kode, e.basert_pa],
   );
-  if (known.some((k) => k.code === e.kode)) return false;
+  if (known.some((k) => k.code === e.kode)) return null;
   const base = known.find((k) => k.code === e.basert_pa);
   const basedOn = !e.basert_pa || !base ? null : base.based_on || e.basert_pa;
   const taken = (await d.query<{ code: string }>("SELECT code FROM exercises WHERE spond_group_id = $1", [groupId])).map((r) => r.code);
   const code = CODE_RE.test(e.kode) && e.kode.length <= 60 ? e.kode : exerciseCode(e.navn, taken);
   const join = (x: string[]) => x.join("\n");
-  await d.query(
+  const [{ id }] = await d.query<{ id: number }>(
     `INSERT INTO exercises (spond_group_id, code, name, category, themes, organisation, execution, learning_points, questions,
-                            easier, harder, nff_url, drawing, source, created_by, updated_by, based_on, status)
+                            easier, harder, nff_url, drawing, source, created_by, updated_by, based_on, status,
+                            min_players, max_players, duration_minutes, area)
      VALUES ($1, $2, $3, $4, $5::text[], NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, ''), NULLIF($9, ''), NULLIF($10, ''),
-             NULLIF($11, ''), NULLIF($12, ''), $13::jsonb, $14, $15, $15, $16, 'candidate')`,
+             NULLIF($11, ''), NULLIF($12, ''), $13::jsonb, $14, $15, $15, $16, 'candidate', $17, $18, $19, NULLIF($20, ''))
+     RETURNING id`,
     [
       groupId,
       code,
@@ -330,9 +333,13 @@ export async function savePlanExercise(
       source,
       access.profileId,
       basedOn,
+      extra.min_players ?? null,
+      extra.max_players ?? null,
+      extra.duration_minutes ?? null,
+      (extra.area ?? "").slice(0, 60),
     ],
   );
-  return true;
+  return id;
 }
 
 // Training plans ----------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AiSettingsForm, LearningForm, SeasonForm, TeamSettingsForm, type PitchGroup } from "@/components/settings/admin/forms";
@@ -114,7 +114,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
       }
       return [...out.entries()].sort((a, b) => b[1].usd - a[1].usd);
     };
-    const KIND: Record<string, string> = { draft: "Nytt opplegg", revision: "Justering", visual: "Tegning", learning: "Lærdommer" };
+    const KIND: Record<string, string> = { draft: "Nytt opplegg", revision: "Justering", visual: "Tegning", learning: "Lærdommer", exercise: "Ny øvelse" };
     const table = (title: string, rows: [string, { n: number; usd: number; err: number }][]) =>
       rows.length ? (
         <div className="nm-scroll-x" style={{ marginBottom: "var(--space-4)" }}>
@@ -292,10 +292,18 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
         <p style={{ marginTop: 0 }}>
           Lagets øvelsesbank. Nye øvelser fra godkjente opplegg kommer inn som <em>kandidater</em>, og blir aktive når en trener gir 👍 og «Bruke igjen: Ja». Trykk på en øvelse for å evaluere den, også uten at den er brukt på en trening, eller på blyanten for å endre den.
         </p>
-        <Link href={`/innstillinger/ovelse/ny${q()}`} className="nm-btn nm-btn--primary" style={{ marginBottom: "var(--space-4)" }}>
-          <Icon icon={Plus} />
-          Ny øvelse
-        </Link>
+        <div className="nm-row" style={{ gap: "var(--space-2)", marginBottom: "var(--space-4)" }}>
+          <Link href={`/innstillinger/ovelse/ny${q()}`} className="nm-btn nm-btn--primary">
+            <Icon icon={Plus} />
+            Ny øvelse
+          </Link>
+          {user.rights.ai ? (
+            <Link href={`/innstillinger/ovelse/ki${q()}`} className="nm-btn nm-btn--secondary">
+              <Icon icon={Sparkles} />
+              Ny øvelse med KI
+            </Link>
+          ) : null}
+        </div>
         {cats.map((c) => (
           <section key={c} className="nm-section">
             <h3 className="nm-section-label">{CATEGORIES[c]}</h3>
