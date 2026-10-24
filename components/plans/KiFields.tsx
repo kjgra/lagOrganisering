@@ -29,7 +29,7 @@ export function PitchFields(p: {
         </label>
       ))}
       <p className="nm-hint" style={{ margin: 0 }}>
-        {p.pitches.length ? (p.pitchNote ? `Merknad: ${p.pitchNote}` : p.hint) : "Laget har ingen baner i Lagets standard ennå. "}
+        {p.pitches.length ? (p.pitchNote ? `Merknad: ${p.pitchNote}` : p.hint) : "Laget har ingen baner under Trening › Laget ennå. "}
         {!p.pitches.length && p.standardHref ? (
           <Link href={p.standardHref} style={{ textDecoration: "underline" }}>
             Legg til baner

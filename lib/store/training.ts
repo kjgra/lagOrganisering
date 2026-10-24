@@ -57,9 +57,8 @@ export async function listSeason(d: Db, access: Access, groupId: string, year: n
   );
 }
 
-export async function saveSeason(d: Db, access: Access, rights: Rights, groupId: string, year: number, themes: string[], descriptions: string[]): Promise<void> {
+export async function saveSeason(d: Db, access: Access, groupId: string, year: number, themes: string[], descriptions: string[]): Promise<void> {
   assertGroup(access, groupId);
-  assertAdmin(rights);
   const rows = wrap(() => validateSeason(year, themes, descriptions));
   await d.tx(async (t) => {
     await t.query("DELETE FROM season_themes WHERE spond_group_id = $1 AND year = $2 AND NOT (month = ANY($3::int[]))", [groupId, year, rows.map((r) => r.month)]);
@@ -105,9 +104,9 @@ export async function getTeamSettings(d: Db, access: Access, groupId: string): P
   return rows[0] ? { ...rows[0], pitch_ids } : { age_group: "", birth_year: null, gender: null, session_minutes: null, pitch_ids, pitch: "", equipment: "", principles: "", updated_by: null, updated_at: null };
 }
 
-export async function saveTeamSettings(d: Db, access: Access, rights: Rights, groupId: string, input: Record<string, unknown>): Promise<void> {
+/** «Laget»: age, session length, pitches and equipment. The principles are saved on their own (savePrinciples). */
+export async function saveTeamSettings(d: Db, access: Access, groupId: string, input: Record<string, unknown>): Promise<void> {
   assertGroup(access, groupId);
-  assertAdmin(rights);
   const s = wrap(() => validateTeamSettings(input));
   const known = await d.query<{ id: number }>("SELECT id FROM pitches WHERE id = ANY($1::int[])", [s.pitch_ids]);
   if (known.length !== s.pitch_ids.length) throw new UserError("Ukjent bane.");
@@ -117,8 +116,8 @@ export async function saveTeamSettings(d: Db, access: Access, rights: Rights, gr
        VALUES ($1, NULLIF($2, ''), $8, $9, $3, NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), $7)
        ON CONFLICT (spond_group_id) DO UPDATE
          SET age_group = EXCLUDED.age_group, birth_year = EXCLUDED.birth_year, gender = EXCLUDED.gender, session_minutes = EXCLUDED.session_minutes, pitch = EXCLUDED.pitch,
-             equipment = EXCLUDED.equipment, principles = EXCLUDED.principles, updated_by = EXCLUDED.updated_by, updated_at = now()`,
-      [groupId, s.age_group, s.session_minutes, s.pitch, s.equipment, s.principles, access.profileId, s.birth_year, s.gender],
+             equipment = EXCLUDED.equipment, updated_by = EXCLUDED.updated_by, updated_at = now()`,
+      [groupId, s.age_group, s.session_minutes, s.pitch, s.equipment, null, access.profileId, s.birth_year, s.gender],
     );
     await t.query("DELETE FROM team_pitches WHERE spond_group_id = $1 AND NOT (pitch_id = ANY($2::int[]))", [groupId, s.pitch_ids]);
     await t.query(
@@ -126,6 +125,17 @@ export async function saveTeamSettings(d: Db, access: Access, rights: Rights, gr
       [groupId, s.pitch_ids],
     );
   });
+}
+
+/** «Slik trener vi»: the team's principles, kept in team_settings. */
+export async function savePrinciples(d: Db, access: Access, groupId: string, text: string): Promise<void> {
+  assertGroup(access, groupId);
+  const s = wrap(() => validateTeamSettings({ principles: text }));
+  await d.query(
+    `INSERT INTO team_settings (spond_group_id, principles, updated_by) VALUES ($1, NULLIF($2, ''), $3)
+     ON CONFLICT (spond_group_id) DO UPDATE SET principles = EXCLUDED.principles, updated_by = EXCLUDED.updated_by, updated_at = now()`,
+    [groupId, s.principles, access.profileId],
+  );
 }
 
 // Pitches (shared by all groups) ------------------------------------------------------------
@@ -249,10 +259,9 @@ export async function getExercise(d: Db, access: Access, groupId: string, id: nu
   return toBank(rows[0]);
 }
 
-/** Create or update an exercise (admins). The code is made from the name once and never changes. */
-export async function saveExercise(d: Db, access: Access, rights: Rights, groupId: string, input: Partial<ExerciseInput>, id: number | null): Promise<number> {
+/** Create or update an exercise (any trainer on the team). The code is made from the name once and never changes. */
+export async function saveExercise(d: Db, access: Access, groupId: string, input: Partial<ExerciseInput>, id: number | null): Promise<number> {
   assertGroup(access, groupId);
-  assertAdmin(rights);
   const v = wrap(() => validateExercise(input));
   const drawing = v.drawing ? JSON.stringify(compactDrawing(v.drawing)) : null;
   const fields = [v.name, v.category, v.themes, v.min_players, v.max_players, v.duration_minutes, v.area, v.organisation, v.execution, v.learning_points, v.questions, v.easier, v.harder, v.nff_url, access.profileId, drawing, v.status, v.bands, v.nff_activity, v.nff_tags];
@@ -742,9 +751,8 @@ export async function latestLearning(d: Db, access: Access, groupId: string): Pr
   return r[0]?.body ?? "";
 }
 
-export async function saveLearning(d: Db, access: Access, rights: Rights, groupId: string, body: string, source: "manual" | "ai"): Promise<void> {
+export async function saveLearning(d: Db, access: Access, groupId: string, body: string, source: "manual" | "ai"): Promise<void> {
   assertGroup(access, groupId);
-  assertAdmin(rights);
   const b = body.trim();
   if (!b || b.length > LEARNING_MAX) throw new UserError(`Lærdommene må ha mellom 1 og ${LEARNING_MAX} tegn.`);
   if (isSensitive(b)) throw new UserError("Lærdommene skal ikke inneholde helseopplysninger eller andre sensitive opplysninger.");

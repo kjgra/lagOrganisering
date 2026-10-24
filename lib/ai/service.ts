@@ -225,9 +225,8 @@ function learningOrder(rows: Awaited<ReturnType<typeof feedbackSince>>, old: str
   return `# Lærdommer nå\n\n${old || "Ingen ennå."}\n\n# Nye evalueringer (${rows.length} fra ${sessions} økter${sessions < events.length ? " og øvelsesbanken" : ""})\n\n${blocks.join("\n\n")}\n\nSkriv de oppdaterte lærdommene.`;
 }
 
-/** «Oppdater med KI» for the team's learnings (admins with KI). Saves a new version. */
+/** «Oppdater med KI» for the team's learnings (trainers with KI). Saves a new version. */
 export async function updateLearningsWithKi(d: Db, user: CurrentUser, rights: Rights, group: Group, baseText: string | null, now = new Date()) {
-  if (!rights.admin) throw new AiError("Bare administratorer kan oppdatere lærdommene.");
   if (!rights.ai) throw new AiError("Du har ikke tilgang til KI. Spør en administrator.");
   const settings = await getAiSettings(d);
   const budget = budgetCheck(await aiSpend(d, user.access, group.id, osloMonthStart(now)), settings);
@@ -253,7 +252,7 @@ export async function updateLearningsWithKi(d: Db, user: CurrentUser, rights: Ri
   await logAiUsage(d, user.access, group.id, { kind: "learning", model: LEARNING_MODEL, ...r.usage, cost_usd: cost, duration_ms: r.durationMs, status: text ? "ok" : "error", error_code: errorCode }, null);
   if (!text) throw new AiError(message);
   try {
-    await saveLearning(d, user.access, rights, group.id, text, "ai");
+    await saveLearning(d, user.access, group.id, text, "ai");
   } catch (err) {
     if (err instanceof UserError) throw new AiError(err.message);
     throw err;

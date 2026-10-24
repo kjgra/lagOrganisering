@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { login } from "./helpers";
 
-test("admin: evaluate an exercise from the bank", async ({ page }) => {
+test("evaluate an exercise from the bank", async ({ page }) => {
   await login(page);
   await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
-  await page.goto("/innstillinger/ovelser?lag=G-FOTBALL");
+  await page.goto("/g/G-FOTBALL/alle/trening/ovelser");
   await page.locator(".nm-pick a").first().click();
-  await expect(page).toHaveURL(/\/innstillinger\/ovelse\/\d+\/evaluering/);
+  await expect(page).toHaveURL(/\/trening\/ovelser\/\d+\/evaluering/);
   await expect(page.getByLabel("Navn")).toHaveCount(0);
 
   const ok = page.getByRole("button", { name: "👌 OK" });
@@ -24,32 +24,32 @@ test("admin: evaluate an exercise from the bank", async ({ page }) => {
 
   // Changing the exercise is a page of its own.
   await page.getByRole("link", { name: "Endre øvelsen" }).click();
-  await expect(page).toHaveURL(/\/innstillinger\/ovelse\/\d+\?/);
+  await expect(page).toHaveURL(/\/trening\/ovelser\/\d+$/);
   await expect(page.getByLabel("Navn")).toBeVisible();
   await expect(page.getByRole("button", { name: "Lagre evalueringen" })).toHaveCount(0);
 });
 
-test("admin: make a new exercise with KI from the bank", async ({ page }) => {
+test("make a new exercise with KI from the bank", async ({ page }) => {
   await login(page);
   await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
-  await page.goto("/innstillinger/ovelser?lag=G-FOTBALL");
+  await page.goto("/g/G-FOTBALL/alle/trening/ovelser");
   await page.getByRole("link", { name: "Ny øvelse med KI" }).click();
-  await expect(page).toHaveURL(/\/innstillinger\/ovelse\/ki\?/);
+  await expect(page).toHaveURL(/\/trening\/ovelser\/ki$/);
   await page.getByLabel("Tema").fill("Samhandling");
   await page.getByLabel("Kategori (valgfritt)").selectOption("smaaspill");
   await page.getByLabel("Antall spillere").fill("8");
   await page.getByRole("button", { name: "Lag øvelse med KI" }).click();
   await expect(page.locator(".nm-toast")).toContainText(/laget med KI .* som kandidat/, { timeout: 30_000 });
-  await expect(page).toHaveURL(/\/innstillinger\/ovelse\/\d+\?/);
+  await expect(page).toHaveURL(/\/trening\/ovelser\/\d+$/);
   await expect(page.getByText(/laget med KI/).first()).toBeVisible();
   await expect(page.getByLabel("Status")).toHaveValue("candidate");
   await expect(page.getByLabel("Min. spillere")).toHaveValue("6");
 });
 
-test("admin: tag an exercise with NFF's fagplan", async ({ page }) => {
+test("tag an exercise with NFF's fagplan", async ({ page }) => {
   await login(page);
   await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
-  await page.goto("/innstillinger/ovelse/ny?lag=G-FOTBALL");
+  await page.goto("/g/G-FOTBALL/alle/trening/ovelser/ny");
   // A new exercise starts with the team's band (G2016 in the demo).
   await expect(page.getByRole("checkbox", { name: "10–12 år", exact: true })).toBeChecked();
   await page.getByLabel("Navn").fill(`NFF-test ${Date.now()}`);
@@ -60,6 +60,48 @@ test("admin: tag an exercise with NFF's fagplan", async ({ page }) => {
   await page.locator("summary", { hasText: /^Vinne ball, hindre motstander å spille forbi oss · 10–12 år/ }).click();
   await page.getByRole("checkbox", { name: /^Jo tettere press, jo kortere avstander\./ }).check();
   await page.getByRole("button", { name: "Lagre øvelsen" }).click();
-  await expect(page).toHaveURL(/\/innstillinger\/ovelser/);
+  await expect(page).toHaveURL(/\/trening\/ovelser$/);
   await expect(page.getByText("NFF: 10–12 år · Spill / smålagsspill · Vinne ball, hindre motstander å spille forbi oss").first()).toBeVisible();
+});
+
+test("a trainer without admin edits «Trening», but cannot delete exercises or open the admin panel", async ({ page }) => {
+  await login(page, "ann@demo.no");
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/g/G-FOTBALL/S-G2016/arrangementer");
+  await page.getByRole("navigation", { name: "Hovedmeny" }).getByRole("link", { name: "Trening" }).first().click();
+  await expect(page).toHaveURL(/\/g\/G-FOTBALL\/S-G2016\/trening\/ovelser$/);
+  await expect(page.getByText("Gjelder hele Nymark IL – Fotball")).toBeVisible();
+
+  await page.getByRole("navigation", { name: "Trening" }).getByRole("link", { name: "Slik trener vi" }).click();
+  await page.getByLabel("Prinsipper").fill(`Alle har ball ${Date.now()}`);
+  await page.getByRole("button", { name: "Lagre prinsippene" }).click();
+  await expect(page.locator(".nm-toast")).toContainText("Prinsippene er lagret");
+
+  await page.getByRole("navigation", { name: "Trening" }).getByRole("link", { name: "Øvelser" }).click();
+  await page.locator(".nm-pick").first().getByRole("link", { name: /^Endre / }).click();
+  await expect(page.getByLabel("Navn")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Slett" })).toHaveCount(0);
+
+  // Old admin links lead to «Trening»; the admin panel is still closed.
+  await page.goto("/innstillinger/arshjul?lag=G-FOTBALL");
+  await expect(page).toHaveURL(/\/g\/G-FOTBALL\/alle\/trening\/arshjul$/);
+  await page.goto("/innstillinger/trenere?lag=G-FOTBALL");
+  await expect(page).not.toHaveURL(/innstillinger\/trenere/);
+});
+
+test("an admin deletes an exercise only after «Er du sikker?»", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/g/G-FOTBALL/alle/trening/ovelser/ny");
+  const name = `Slettes ${Date.now()}`;
+  await page.getByLabel("Navn").fill(name);
+  await page.locator(".nm-field", { has: page.locator(".nm-field__label", { hasText: /^Kategori$/ }) }).locator("select").selectOption("annet");
+  await page.getByRole("button", { name: "Lagre øvelsen" }).click();
+  await expect(page).toHaveURL(/\/trening\/ovelser$/);
+  await page.getByRole("link", { name: `Endre ${name}` }).click();
+  await page.getByRole("button", { name: "Slett" }).click();
+  await expect(page.getByText("Er du sikker? Øvelsen slettes for godt fra banken.")).toBeVisible();
+  await page.getByRole("button", { name: "Ja, slett" }).click();
+  await expect(page.locator(".nm-toast")).toContainText("Øvelsen er slettet");
+  await expect(page.getByRole("link", { name: `Endre ${name}` })).toHaveCount(0);
 });

@@ -16,11 +16,11 @@ export interface KiFormProps {
   theme: string;
   themeNote: string;
   minutes: number | null;
-  /** The team's pitches from «Lagets standard»; one or more are chosen per session. */
+  /** The team's pitches from «Trening › Laget»; one or more are chosen per session. */
   pitches: { id: number; name: string; facts: string }[];
   /** The team's note about the pitches. */
   pitchNote: string;
-  /** Href to «Lagets standard», or null when the trainer is not admin. */
+  /** Href to «Trening › Laget». */
   standardHref: string | null;
   models: { id: string; label: string; choice: string }[];
   model: string;

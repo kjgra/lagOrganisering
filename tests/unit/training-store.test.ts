@@ -10,11 +10,14 @@ import { archivePending, buildArchive, confirmArchive } from "@/lib/store/archiv
 import {
   addPlanComment,
   approvePlan,
+  deleteExercise,
   feedbackSince,
   getPlan,
   getTeamSettings,
+  latestLearning,
   listExercises,
   listPitches,
+  listSeason,
   myBankFeedback,
   planVersions,
   saveBankFeedback,
@@ -22,6 +25,9 @@ import {
   savePlan,
   savePlanExercise,
   saveExercise,
+  saveLearning,
+  savePrinciples,
+  saveSeason,
   saveTeamSettings,
   teamPitches,
 } from "@/lib/store/training";
@@ -110,7 +116,7 @@ describe("training plans", () => {
   it("tags exercises with NFF's fagplan, and gives KI exercises the team's band", async () => {
     const other: Access = { profileId: "P-1", groupIds: new Set(["G8"]) };
     const base = { name: "Rondo NFF", category: "pasning_mottak", themes: [], status: "active" };
-    const id = await saveExercise(d, other, sa, "G8", {
+    const id = await saveExercise(d, other, "G8", {
       ...base,
       bands: ["10-12", "8-9"],
       nff_activity: "med-og-mot",
@@ -118,10 +124,10 @@ describe("training plans", () => {
     }, null);
     let [b] = await listExercises(d, other, "G8");
     expect(b).toMatchObject({ id, bands: ["8-9", "10-12"], nff_activity: "med-og-mot", nff_tags: ["tema.spille-framover", "delf.pasning", "lm.8-9.pasning.1"] });
-    await expect(saveExercise(d, other, sa, "G8", { ...base, bands: ["13-16"] }, id)).rejects.toThrow(/aldersbånd/);
-    await expect(saveExercise(d, other, sa, "G8", { ...base, nff_activity: "x" }, id)).rejects.toThrow(/aktivitetskategori/);
+    await expect(saveExercise(d, other, "G8", { ...base, bands: ["13-16"] }, id)).rejects.toThrow(/aldersbånd/);
+    await expect(saveExercise(d, other, "G8", { ...base, nff_activity: "x" }, id)).rejects.toThrow(/aktivitetskategori/);
 
-    await saveTeamSettings(d, other, sa, "G8", { birth_year: String(osloParts(new Date()).year - 9) });
+    await saveTeamSettings(d, other, "G8", { birth_year: String(osloParts(new Date()).year - 9) });
     const ex = { ...plan.ovelser[1], kode: "ki-nff", aktivitet: "spill", nff_tags: ["tema.vinne-ball"] };
     await savePlanExercise(d, other, "G8", ex, [], "ai");
     b = (await listExercises(d, other, "G8")).find((x) => x.code === "ki-nff")!;
@@ -149,7 +155,7 @@ describe("pitches and team settings", () => {
   });
 
   it("saves the team's pitches with a note, and refuses unknown pitches", async () => {
-    await saveTeamSettings(d, me, sa, "G1", { age_group: "G10", pitch_ids: [18049, 686, 18049], pitch: "Deler med G11" });
+    await saveTeamSettings(d, me, "G1", { age_group: "G10", pitch_ids: [18049, 686, 18049], pitch: "Deler med G11" });
     const s = await getTeamSettings(d, me, "G1");
     expect([s.pitch_ids, s.pitch]).toEqual([[686, 18049], "Deler med G11"]);
     const mine = await teamPitches(d, me, "G1");
@@ -158,17 +164,42 @@ describe("pitches and team settings", () => {
       "Nymark idrettsanlegg, Nymark Kunstgress 04 7er A (7er · Kunstgress m/plastholdig innfyll · 48 × 30 m · lys 150 lux). Deler med G11",
     );
     expect(pitchText(mine, "")).toContain("lys 150 lux); Nymark idrettsanlegg, Nymark gress 01 (11er · Naturgress · 100 × 60 m · uten lys)");
-    await saveTeamSettings(d, me, sa, "G1", { birth_year: "2016", gender: "gutter" });
+    await saveTeamSettings(d, me, "G1", { birth_year: "2016", gender: "gutter" });
     expect(await getTeamSettings(d, me, "G1")).toMatchObject({ age_group: "", birth_year: 2016, gender: "gutter" });
-    await expect(saveTeamSettings(d, me, sa, "G1", { birth_year: "1990" })).rejects.toThrow(/Fødselsår/);
-    await expect(saveTeamSettings(d, me, sa, "G1", { gender: "x" })).rejects.toThrow(/kjønn/);
-    await expect(saveTeamSettings(d, me, sa, "G1", { pitch_ids: [999] })).rejects.toThrow(/Ukjent bane/);
-    await expect(saveTeamSettings(d, me, sa, "G1", { pitch_ids: "x" })).rejects.toThrow(/Ukjent bane/);
+    await expect(saveTeamSettings(d, me, "G1", { birth_year: "1990" })).rejects.toThrow(/Fødselsår/);
+    await expect(saveTeamSettings(d, me, "G1", { gender: "x" })).rejects.toThrow(/kjønn/);
+    await expect(saveTeamSettings(d, me, "G1", { pitch_ids: [999] })).rejects.toThrow(/Ukjent bane/);
+    await expect(saveTeamSettings(d, me, "G1", { pitch_ids: "x" })).rejects.toThrow(/Ukjent bane/);
     await expect(teamPitches(d, me, "G2")).rejects.toThrow();
-    await saveTeamSettings(d, me, sa, "G1", { pitch_ids: [686] });
+    await saveTeamSettings(d, me, "G1", { pitch_ids: [686] });
     expect((await getTeamSettings(d, me, "G1")).pitch_ids).toEqual([686]);
-    await saveTeamSettings(d, me, sa, "G1", { pitch_ids: [] });
+    await saveTeamSettings(d, me, "G1", { pitch_ids: [] });
     expect(await teamPitches(d, me, "G1")).toEqual([]);
+  });
+});
+
+describe("«Trening» for every trainer", () => {
+  it("lets a trainer without admin change the season plan, the team, principles, learnings and exercises; only admins delete", async () => {
+    const t: Access = { profileId: "P-2", groupIds: new Set(["G7"]) };
+    const months = Array.from({ length: 12 }, (_, i) => (i === 0 ? "Pasning" : ""));
+    await saveSeason(d, t, "G7", 2026, months, Array(12).fill(""));
+    expect((await listSeason(d, t, "G7", 2026)).map((r) => r.theme)).toEqual(["Pasning"]);
+
+    // The principles are saved on their own, and saving the team leaves them alone.
+    await savePrinciples(d, t, "G7", "Alle har ball");
+    await saveTeamSettings(d, t, "G7", { session_minutes: "60" });
+    expect(await getTeamSettings(d, t, "G7")).toMatchObject({ principles: "Alle har ball", session_minutes: 60 });
+    await savePrinciples(d, t, "G7", "");
+    expect((await getTeamSettings(d, t, "G7")).principles).toBe("");
+
+    await saveLearning(d, t, "G7", "Korte køer fungerer", "manual");
+    expect(await latestLearning(d, t, "G7")).toBe("Korte køer fungerer");
+
+    const id = await saveExercise(d, t, "G7", { name: "Trenerøvelse", category: "annet", themes: [], status: "active" }, null);
+    await expect(deleteExercise(d, t, NO_RIGHTS, "G7", id)).rejects.toThrow(/administratorer/);
+    await deleteExercise(d, t, sa, "G7", id);
+    expect(await listExercises(d, t, "G7")).toEqual([]);
+    await expect(saveSeason(d, t, "G1", 2026, months, Array(12).fill(""))).rejects.toThrow();
   });
 });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, CalendarDays, ChevronLeft, Users } from "lucide-react";
+import { Bookmark, CalendarDays, ChevronLeft, ClipboardList, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Brand } from "@/components/Brand";
@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/icon";
 const NAV = [
   { key: "arrangementer", label: "Arrangementer", icon: CalendarDays },
   { key: "lagforslag", label: "Lagforslag", icon: Bookmark },
+  { key: "trening", label: "Trening", icon: ClipboardList },
   { key: "medlemmer", label: "Medlemmer", icon: Users },
 ] as const;
 
@@ -17,7 +18,8 @@ function titleOf(parts: string[]): string {
   const last = parts.at(-1) ?? "";
   if (parts[0] === "innstillinger") return "Innstillinger";
   if (last === "lag" || parts.at(-2) === "lag") return "Lag";
-  if (last === "ki") return "KI-opplegg";
+  if (last === "ki") return parts.includes("trening") ? "Ny øvelse med KI" : "KI-opplegg";
+  if (parts.at(-2) === "ovelser") return last === "ny" ? "Ny øvelse" : "Øvelse";
   if (last === "endre") return "Opplegg";
   if (last === "evaluering") return "Evaluering";
   if (last === "dagens-okt") return "Dagens økt";
