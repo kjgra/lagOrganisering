@@ -1,4 +1,4 @@
-import { CalendarDays, Clock, MapPin, Pencil, Send, Users } from "lucide-react";
+import { CalendarDays, Clock, MapPin, Pencil, Plus, Send, Users } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ParticipantList, type ParticipantRow } from "@/components/events/ParticipantList";
@@ -64,10 +64,18 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
       back={ctx.path("/arrangementer")}
       actions={
         !past && !event.cancelled ? (
-          <Link href={`${eventPath}/lag`} className="nm-btn nm-btn--primary nm-btn--lg">
-            <Icon icon={Users} />
-            {event.notSent ? `Lag lag av ${nPlaceable} inviterte` : `Lag lag av ${nPlaceable} spillere`}
-          </Link>
+          // One yellow button per screen: once a proposal exists, its card carries the next step.
+          views.length ? (
+            <Link href={`${eventPath}/lag`} className="nm-btn nm-btn--secondary nm-btn--lg">
+              <Icon icon={Plus} />
+              Nytt lagforslag
+            </Link>
+          ) : (
+            <Link href={`${eventPath}/lag`} className="nm-btn nm-btn--primary nm-btn--lg">
+              <Icon icon={Users} />
+              {event.notSent ? `Lag lag av ${nPlaceable} inviterte` : `Lag lag av ${nPlaceable} spillere`}
+            </Link>
+          )
         ) : undefined
       }
     >

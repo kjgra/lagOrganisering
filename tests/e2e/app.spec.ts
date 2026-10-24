@@ -18,11 +18,12 @@ test("wrong password gives a message", async ({ page }) => {
 test("make teams with tap-to-move and save the proposal", async ({ page }) => {
   await loginToEvents(page);
   await openNextTraining(page);
-  await page.getByRole("link", { name: /Lag lag av/ }).click();
+  await page.getByRole("link", { name: /Lag lag av|Nytt lagforslag/ }).click();
   await expect(page).toHaveURL(/\/lag$/);
   const lag1 = page.locator('section[aria-label^="Lag 1"]');
   const lag2 = page.locator('section[aria-label^="Lag 2"]');
   const first = lag1.locator(".nm-chip").first();
+  await expect(first).toBeVisible();
   const before = await lag2.locator(".nm-chip").count();
   await first.click();
   await lag2.locator(".nm-team__drop").click();
