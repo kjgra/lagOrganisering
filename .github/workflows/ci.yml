@@ -48,7 +48,8 @@ jobs:
 
   e2e:
     name: E2E (mobil og desktop)
-    runs-on: ubuntu-latest
+    # Playwright 1.56 støtter ikke ubuntu-latest (26.04) ennå.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
