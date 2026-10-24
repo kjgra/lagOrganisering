@@ -7,6 +7,7 @@ import { learningKiAction, saveAiSettingsAction, saveLearningAction, saveSeasonA
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
 import type { ActionResult } from "@/lib/actions";
+import { GENDERS, teamAgeText, type Gender } from "@/lib/nff/bands";
 
 /** Run an action with an error line and a toast. */
 function useSave() {
@@ -147,12 +148,32 @@ export interface PitchGroup {
   pitches: PitchOption[];
 }
 
-export function TeamSettingsForm({ groupId, initial, pitchGroups, initialPitches }: { groupId: string; initial: Record<string, string>; pitchGroups: PitchGroup[]; initialPitches: number[] }) {
+export function TeamSettingsForm({
+  groupId,
+  initial,
+  pitchGroups,
+  initialPitches,
+  year,
+}: {
+  groupId: string;
+  initial: Record<string, string>;
+  pitchGroups: PitchGroup[];
+  initialPitches: number[];
+  /** The season year (Oslo), for the team's age. */
+  year: number;
+}) {
   const [v, setV] = useState(initial);
   const [chosen, setChosen] = useState(initialPitches);
   const { pending, run, errorBox } = useSave();
   const set = (k: string) => (e: { target: { value: string } }) => setV((x) => ({ ...x, [k]: e.target.value }));
   const all = pitchGroups.flatMap((g) => g.pitches);
+  const by = /^\d{4}$/.test(v.birth_year.trim()) ? Number(v.birth_year) : null;
+  const ageHint =
+    by !== null
+      ? `${teamAgeText(by, (v.gender || null) as Gender | null, year)} i ${year}.`
+      : v.age_group
+        ? `Tidligere: «${v.age_group}». Fyll inn fødselsåret, så følger alder og NFF-bånd med hvert år.`
+        : "Alder og NFF-bånd regnes ut hvert år.";
   return (
     <form
       className="nm-form"
@@ -163,8 +184,18 @@ export function TeamSettingsForm({ groupId, initial, pitchGroups, initialPitches
       }}
     >
       <div className="nm-form-row">
-        <Field label="Aldersgruppe" hint="F.eks. G10">
-          <input className="nm-input" value={v.age_group} maxLength={40} onChange={set("age_group")} />
+        <Field label="Fødselsår" hint={ageHint}>
+          <input className="nm-input" inputMode="numeric" maxLength={4} value={v.birth_year} onChange={set("birth_year")} />
+        </Field>
+        <Field label="Kjønn">
+          <select className="nm-input" value={v.gender} onChange={set("gender")}>
+            <option value="">Ikke valgt</option>
+            {Object.entries(GENDERS).map(([k, label]) => (
+              <option key={k} value={k}>
+                {label}
+              </option>
+            ))}
+          </select>
         </Field>
         <Field label="Øktlengde (min)">
           <input className="nm-input" inputMode="numeric" value={v.session_minutes} onChange={set("session_minutes")} />

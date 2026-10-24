@@ -4,6 +4,7 @@ import type { Db } from "@/lib/db";
 import { fetchLinks, parseLinks } from "@/lib/ai/links";
 import { AiError, WISH_MAX, type ExerciseOrderContext, type OrderContext } from "@/lib/ai/plan-ai";
 import { osloParts } from "@/lib/format";
+import { teamAgeText } from "@/lib/nff/bands";
 import { CATEGORIES, pitchText } from "@/lib/plans/plan";
 import { teamTitle } from "@/lib/proposal-view";
 import { memberNames, namesProblem, isSensitive } from "@/lib/sensitive";
@@ -89,7 +90,7 @@ export async function orderContext(d: Db, user: CurrentUser, group: Group, event
       minutes: input.minutes ?? team.session_minutes,
       theme,
       themeDescription: season && season.theme.toLowerCase() === theme.toLowerCase() ? season.description : "",
-      team: { age_group: team.age_group, pitch: pitchText(chosenPitches, team.pitch), equipment: team.equipment, principles: team.principles },
+      team: { age_group: teamAgeText(team.birth_year, team.gender, osloParts(event.start ?? new Date()).year, team.age_group), pitch: pitchText(chosenPitches, team.pitch), equipment: team.equipment, principles: team.principles },
       nPlayers,
       groupSizes: groups.map((g) => g.players.length),
       wish,
@@ -134,7 +135,7 @@ export async function exerciseOrderContext(d: Db, user: CurrentUser, group: Grou
   return {
     theme,
     themeDescription: season && theme && season.theme.toLowerCase() === theme.toLowerCase() ? season.description : "",
-    team: { age_group: team.age_group, pitch: pitchText(chosen, team.pitch), equipment: team.equipment, principles: team.principles },
+    team: { age_group: teamAgeText(team.birth_year, team.gender, year, team.age_group), pitch: pitchText(chosen, team.pitch), equipment: team.equipment, principles: team.principles },
     players: input.players,
     minutes: input.minutes,
     category: input.category,

@@ -1,5 +1,6 @@
 import { isSensitive } from "@/lib/sensitive";
 import { compactDrawing, DrawingError, validateDrawing, type Drawing } from "./drawing";
+import { BIRTH_YEAR_MAX, BIRTH_YEAR_MIN, GENDERS, type Gender } from "@/lib/nff/bands";
 
 /**
  * Training plans (treningsopplegg), ported from the old app (fct_plan.R and
@@ -493,7 +494,10 @@ export function validateSeason(year: number, themes: string[], descriptions: str
 }
 
 export interface TeamSettings {
+  /** Old free text («G10»), kept only where the migration could not read it. */
   age_group: string;
+  birth_year: number | null;
+  gender: Gender | null;
   session_minutes: number | null;
   /** The pitches the team uses (`pitches.id`, the fiksId on fotball.no). */
   pitch_ids: number[];
@@ -511,9 +515,18 @@ export function pitchIds(x: unknown): number[] {
   return ids.map(Number);
 }
 
+function genderOrNull(x: unknown): Gender | null {
+  const g = txt(x);
+  if (!g) return null;
+  if (!(g in GENDERS)) throw new PlanError("Ukjent kjønn.");
+  return g as Gender;
+}
+
 export function validateTeamSettings(s: Record<string, unknown>): TeamSettings {
   const out: TeamSettings = {
     age_group: txt(s.age_group),
+    birth_year: intOrNull(s.birth_year, "Fødselsår", BIRTH_YEAR_MIN, BIRTH_YEAR_MAX),
+    gender: genderOrNull(s.gender),
     session_minutes: intOrNull(s.session_minutes, "Øktlengde", 15, 240),
     pitch_ids: pitchIds(s.pitch_ids),
     pitch: txt(s.pitch),
