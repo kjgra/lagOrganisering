@@ -13,7 +13,7 @@ import { eventParticipants, placeable } from "@/lib/spond/events";
 import type { Group, SpondEvent } from "@/lib/spond/types";
 import { approvedForEvent } from "@/lib/store/proposals";
 import { getAiSettings } from "@/lib/store/ai";
-import { getTeamSettings, listPlanComments, seasonTheme, teamPitches } from "@/lib/store/training";
+import { getTeamSettings, latestPrinciples, listPlanComments, seasonTheme, teamPitches } from "@/lib/store/training";
 
 /**
  * The groups of the approved team proposal for an event, with names. Used
@@ -36,11 +36,19 @@ export async function planGroups(d: Db, user: CurrentUser, group: Group, eventId
     .filter((g) => g.players.length);
 }
 
+/**
+ * Whose «Trening» an event uses: the subgroup it was sent to in Spond, or the
+ * main group when it was sent to the whole group or to several subgroups.
+ */
+export function eventSub(event: SpondEvent): string {
+  return event.subgroupIds.length === 1 ? event.subgroupIds[0] : "";
+}
+
 /** The month's theme for an event (Oslo time), if the season plan has one. */
 export async function themeForEvent(d: Db, user: CurrentUser, group: Group, event: SpondEvent) {
   const when = event.start ? new Date(event.start) : new Date();
   const { year, month } = osloParts(when);
-  return seasonTheme(d, user.access, group.id, year, month);
+  return seasonTheme(d, user.access, group.id, eventSub(event), year, month);
 }
 
 export interface KiInput {
@@ -67,9 +75,11 @@ export async function orderContext(d: Db, user: CurrentUser, group: Group, event
   checkWish(wish, names);
   const settings = await getAiSettings(d);
   const urls = parseLinks(input.links, settings.link_domains);
-  const [team, pitches, season, groups, comments, links] = await Promise.all([
-    getTeamSettings(d, user.access, group.id),
-    teamPitches(d, user.access, group.id),
+  const sub = eventSub(event);
+  const [team, principles, pitches, season, groups, comments, links] = await Promise.all([
+    getTeamSettings(d, user.access, group.id, sub),
+    latestPrinciples(d, user.access, group.id, sub),
+    teamPitches(d, user.access, group.id, sub),
     themeForEvent(d, user, group, event),
     planGroups(d, user, group, event.id),
     listPlanComments(d, user.access, group.id, event.id),
@@ -86,11 +96,12 @@ export async function orderContext(d: Db, user: CurrentUser, group: Group, event
   return {
     commentIds: chosen.map((c) => c.id),
     order: {
+      sub,
       start: event.start,
       minutes: input.minutes ?? team.session_minutes,
       theme,
       themeDescription: season && season.theme.toLowerCase() === theme.toLowerCase() ? season.description : "",
-      team: { age_group: teamAgeText(team.birth_year, team.gender, osloParts(event.start ?? new Date()).year, team.age_group), pitch: pitchText(chosenPitches, team.pitch), equipment: team.equipment, principles: team.principles },
+      team: { age_group: teamAgeText(team.birth_year, team.gender, osloParts(event.start ?? new Date()).year, team.age_group), pitch: pitchText(chosenPitches, team.pitch), equipment: team.equipment, principles },
       fagplan: fagplanText(teamBand(team.birth_year, osloParts(event.start ?? new Date()).year), theme),
       nPlayers,
       groupSizes: groups.map((g) => g.players.length),
@@ -104,6 +115,8 @@ export async function orderContext(d: Db, user: CurrentUser, group: Group, event
 }
 
 export interface ExerciseKiInput {
+  /** The subgroup whose «Trening» is used, or '' for the main group. */
+  sub: string;
   theme: string;
   players: number | null;
   minutes: number | null;
@@ -125,18 +138,21 @@ export async function exerciseOrderContext(d: Db, user: CurrentUser, group: Grou
   const urls = parseLinks(input.link, settings.link_domains);
   if (urls.length > 1) throw new AiError("Maks én lenke per øvelse.");
   const { year, month } = osloParts(now);
-  const [team, pitches, season, links] = await Promise.all([
-    getTeamSettings(d, user.access, group.id),
-    teamPitches(d, user.access, group.id),
-    seasonTheme(d, user.access, group.id, year, month),
+  const sub = input.sub;
+  const [team, principles, pitches, season, links] = await Promise.all([
+    getTeamSettings(d, user.access, group.id, sub),
+    latestPrinciples(d, user.access, group.id, sub),
+    teamPitches(d, user.access, group.id, sub),
+    seasonTheme(d, user.access, group.id, sub, year, month),
     urls.length ? fetchLinks(urls, settings.link_domains) : Promise.resolve([]),
   ]);
   const chosen = pitches.filter((p) => input.pitchIds.includes(p.id));
   if (chosen.length !== new Set(input.pitchIds).size) throw new AiError("Banene må være blant lagets baner.");
   return {
+    sub,
     theme,
     themeDescription: season && theme && season.theme.toLowerCase() === theme.toLowerCase() ? season.description : "",
-    team: { age_group: teamAgeText(team.birth_year, team.gender, year, team.age_group), pitch: pitchText(chosen, team.pitch), equipment: team.equipment, principles: team.principles },
+    team: { age_group: teamAgeText(team.birth_year, team.gender, year, team.age_group), pitch: pitchText(chosen, team.pitch), equipment: team.equipment, principles },
     fagplan: fagplanText(teamBand(team.birth_year, year), theme || season?.theme || ""),
     players: input.players,
     minutes: input.minutes,

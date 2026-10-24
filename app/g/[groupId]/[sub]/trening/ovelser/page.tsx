@@ -36,6 +36,11 @@ export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]
   return (
     <AppShell ctx={ctx} title="Trening" section="training">
       <TrainingTabs ctx={ctx} current="ovelser" />
+      {ctx.subgroup ? (
+        <p className="nm-hint" style={{ margin: "0 0 var(--space-2)" }}>
+          Øvelsesbanken er felles for hele {ctx.group.name}.
+        </p>
+      ) : null}
       {bank.length ? (
         <>
           <p style={{ marginTop: 0 }}>

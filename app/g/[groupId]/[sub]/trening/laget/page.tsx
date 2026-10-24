@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/shell/AppShell";
-import { TeamSettingsForm, type PitchGroup } from "@/components/training/forms";
+import { ScopeNote, TeamSettingsForm, type PitchGroup } from "@/components/training/forms";
 import { TrainingTabs } from "@/components/training/TrainingTabs";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
@@ -23,13 +23,17 @@ function pitchGroups(pitches: Pitch[], chosen: number[]): PitchGroup[] {
 export default async function TeamPage(props: PageProps<"/g/[groupId]/[sub]/trening/laget">) {
   const ctx = await contextFromParams(props.params);
   const d = await db();
-  const [s, pitches] = await Promise.all([getTeamSettings(d, ctx.user.access, ctx.group.id), listPitches(d)]);
+  const sub = ctx.subgroup?.id ?? "";
+  const [s, pitches] = await Promise.all([getTeamSettings(d, ctx.user.access, ctx.group.id, sub), listPitches(d)]);
   return (
     <AppShell ctx={ctx} title="Trening" section="training">
       <TrainingTabs ctx={ctx} current="laget" />
       <p style={{ marginTop: 0 }}>Det som gjelder for laget hver gang. Brukes som utgangspunkt i opplegg og av KI.</p>
+      <ScopeNote groupId={ctx.group.id} sub={sub} subName={ctx.label} mainName={ctx.group.name} inherited={s.inherited} part="team" />
       <TeamSettingsForm
+        key={String(s.inherited)}
         groupId={ctx.group.id}
+        sub={sub}
         initial={{
           age_group: s.age_group,
           birth_year: s.birth_year ? String(s.birth_year) : "",

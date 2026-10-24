@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/shell/AppShell";
-import { SeasonForm } from "@/components/training/forms";
+import { ScopeNote, SeasonForm } from "@/components/training/forms";
 import { TrainingTabs } from "@/components/training/TrainingTabs";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
@@ -13,7 +13,8 @@ export default async function SeasonPage(props: PageProps<"/g/[groupId]/[sub]/tr
   const sp = await props.searchParams;
   const now = osloParts(new Date());
   const year = Number(typeof sp.ar === "string" ? sp.ar : "") || now.year;
-  const rows = await listSeason(await db(), ctx.user.access, ctx.group.id, year);
+  const sub = ctx.subgroup?.id ?? "";
+  const { rows, inherited } = await listSeason(await db(), ctx.user.access, ctx.group.id, sub, year);
   const themes = Array.from({ length: 12 }, (_, i) => rows.find((r) => r.month === i + 1)?.theme ?? "");
   const descriptions = Array.from({ length: 12 }, (_, i) => rows.find((r) => r.month === i + 1)?.description ?? "");
   return (
@@ -27,7 +28,8 @@ export default async function SeasonPage(props: PageProps<"/g/[groupId]/[sub]/tr
           </Link>
         ))}
       </div>
-      <SeasonForm key={year} groupId={ctx.group.id} year={year} months={MONTH_NAMES} themes={themes} descriptions={descriptions} current={year === now.year ? now.month : undefined} />
+      <ScopeNote groupId={ctx.group.id} sub={sub} subName={ctx.label} mainName={ctx.group.name} inherited={inherited} part="season" year={year} />
+      <SeasonForm key={`${year}-${inherited}`} groupId={ctx.group.id} sub={sub} year={year} months={MONTH_NAMES} themes={themes} descriptions={descriptions} current={year === now.year ? now.month : undefined} />
     </AppShell>
   );
 }

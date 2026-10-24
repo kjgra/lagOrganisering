@@ -11,15 +11,19 @@ import {
   addPlanComment,
   approvePlan,
   deleteExercise,
+  followMainGroup,
   feedbackSince,
   getPlan,
   getTeamSettings,
   latestLearning,
+  latestPrinciples,
+  learningState,
   listExercises,
   listPitches,
   listSeason,
   myBankFeedback,
   planVersions,
+  principlesState,
   saveBankFeedback,
   saveFeedback,
   savePlan,
@@ -29,6 +33,7 @@ import {
   savePrinciples,
   saveSeason,
   saveTeamSettings,
+  seasonTheme,
   teamPitches,
 } from "@/lib/store/training";
 import { testDb } from "../helpers/db";
@@ -87,7 +92,7 @@ describe("training plans", () => {
 
     const b = (await listExercises(d, me, "G1"))[0];
     expect([b.fb_n, b.fb_sessions, b.fb_bank, b.fb_good, b.fb_bad, b.fb_tags]).toEqual([2, 1, 1, 1, 1, { goy: 1, ko: 1 }]);
-    const since = await feedbackSince(d, me, "G1", new Date(0));
+    const since = await feedbackSince(d, me, "G1", "", new Date(0));
     expect(since.find((r) => r.spond_event_id === "")).toMatchObject({ exercise_name: ex.name, rating: 1, body: "Bra variant" });
 
     await saveBankFeedback(d, other, "G1", ex.id, null);
@@ -127,7 +132,7 @@ describe("training plans", () => {
     await expect(saveExercise(d, other, "G8", { ...base, bands: ["13-16"] }, id)).rejects.toThrow(/aldersbånd/);
     await expect(saveExercise(d, other, "G8", { ...base, nff_activity: "x" }, id)).rejects.toThrow(/aktivitetskategori/);
 
-    await saveTeamSettings(d, other, "G8", { birth_year: String(osloParts(new Date()).year - 9) });
+    await saveTeamSettings(d, other, "G8", "", { birth_year: String(osloParts(new Date()).year - 9) });
     const ex = { ...plan.ovelser[1], kode: "ki-nff", aktivitet: "spill", nff_tags: ["tema.vinne-ball"] };
     await savePlanExercise(d, other, "G8", ex, [], "ai");
     b = (await listExercises(d, other, "G8")).find((x) => x.code === "ki-nff")!;
@@ -155,51 +160,102 @@ describe("pitches and team settings", () => {
   });
 
   it("saves the team's pitches with a note, and refuses unknown pitches", async () => {
-    await saveTeamSettings(d, me, "G1", { age_group: "G10", pitch_ids: [18049, 686, 18049], pitch: "Deler med G11" });
-    const s = await getTeamSettings(d, me, "G1");
+    await saveTeamSettings(d, me, "G1", "", { age_group: "G10", pitch_ids: [18049, 686, 18049], pitch: "Deler med G11" });
+    const s = await getTeamSettings(d, me, "G1", "");
     expect([s.pitch_ids, s.pitch]).toEqual([[686, 18049], "Deler med G11"]);
-    const mine = await teamPitches(d, me, "G1");
+    const mine = await teamPitches(d, me, "G1", "");
     expect(mine.map((p) => p.id)).toEqual([18049, 686]);
     expect(pitchText(mine.slice(0, 1), s.pitch)).toBe(
       "Nymark idrettsanlegg, Nymark Kunstgress 04 7er A (7er · Kunstgress m/plastholdig innfyll · 48 × 30 m · lys 150 lux). Deler med G11",
     );
     expect(pitchText(mine, "")).toContain("lys 150 lux); Nymark idrettsanlegg, Nymark gress 01 (11er · Naturgress · 100 × 60 m · uten lys)");
-    await saveTeamSettings(d, me, "G1", { birth_year: "2016", gender: "gutter" });
-    expect(await getTeamSettings(d, me, "G1")).toMatchObject({ age_group: "", birth_year: 2016, gender: "gutter" });
-    await expect(saveTeamSettings(d, me, "G1", { birth_year: "1990" })).rejects.toThrow(/Fødselsår/);
-    await expect(saveTeamSettings(d, me, "G1", { gender: "x" })).rejects.toThrow(/kjønn/);
-    await expect(saveTeamSettings(d, me, "G1", { pitch_ids: [999] })).rejects.toThrow(/Ukjent bane/);
-    await expect(saveTeamSettings(d, me, "G1", { pitch_ids: "x" })).rejects.toThrow(/Ukjent bane/);
-    await expect(teamPitches(d, me, "G2")).rejects.toThrow();
-    await saveTeamSettings(d, me, "G1", { pitch_ids: [686] });
-    expect((await getTeamSettings(d, me, "G1")).pitch_ids).toEqual([686]);
-    await saveTeamSettings(d, me, "G1", { pitch_ids: [] });
-    expect(await teamPitches(d, me, "G1")).toEqual([]);
+    await saveTeamSettings(d, me, "G1", "", { birth_year: "2016", gender: "gutter" });
+    expect(await getTeamSettings(d, me, "G1", "")).toMatchObject({ age_group: "", birth_year: 2016, gender: "gutter" });
+    await expect(saveTeamSettings(d, me, "G1", "", { birth_year: "1990" })).rejects.toThrow(/Fødselsår/);
+    await expect(saveTeamSettings(d, me, "G1", "", { gender: "x" })).rejects.toThrow(/kjønn/);
+    await expect(saveTeamSettings(d, me, "G1", "", { pitch_ids: [999] })).rejects.toThrow(/Ukjent bane/);
+    await expect(saveTeamSettings(d, me, "G1", "", { pitch_ids: "x" })).rejects.toThrow(/Ukjent bane/);
+    await expect(teamPitches(d, me, "G2", "")).rejects.toThrow();
+    await saveTeamSettings(d, me, "G1", "", { pitch_ids: [686] });
+    expect((await getTeamSettings(d, me, "G1", "")).pitch_ids).toEqual([686]);
+    await saveTeamSettings(d, me, "G1", "", { pitch_ids: [] });
+    expect(await teamPitches(d, me, "G1", "")).toEqual([]);
   });
 });
 
-describe("«Trening» for every trainer", () => {
+describe("«Trening» for every trainer, per subgroup", () => {
   it("lets a trainer without admin change the season plan, the team, principles, learnings and exercises; only admins delete", async () => {
     const t: Access = { profileId: "P-2", groupIds: new Set(["G7"]) };
     const months = Array.from({ length: 12 }, (_, i) => (i === 0 ? "Pasning" : ""));
-    await saveSeason(d, t, "G7", 2026, months, Array(12).fill(""));
-    expect((await listSeason(d, t, "G7", 2026)).map((r) => r.theme)).toEqual(["Pasning"]);
+    await saveSeason(d, t, "G7", "", 2026, months, Array(12).fill(""));
+    expect((await listSeason(d, t, "G7", "", 2026)).rows.map((r) => r.theme)).toEqual(["Pasning"]);
 
-    // The principles are saved on their own, and saving the team leaves them alone.
-    await savePrinciples(d, t, "G7", "Alle har ball");
-    await saveTeamSettings(d, t, "G7", { session_minutes: "60" });
-    expect(await getTeamSettings(d, t, "G7")).toMatchObject({ principles: "Alle har ball", session_minutes: 60 });
-    await savePrinciples(d, t, "G7", "");
-    expect((await getTeamSettings(d, t, "G7")).principles).toBe("");
+    await savePrinciples(d, t, "G7", "", "Alle har ball");
+    await savePrinciples(d, t, "G7", "", "Alle har ball");
+    await savePrinciples(d, t, "G7", "", "");
+    const pr = await principlesState(d, t, "G7", "");
+    expect(pr.versions.map((v) => v.body)).toEqual(["", "Alle har ball"]);
 
-    await saveLearning(d, t, "G7", "Korte køer fungerer", "manual");
-    expect(await latestLearning(d, t, "G7")).toBe("Korte køer fungerer");
+    await saveLearning(d, t, "G7", "", "Korte køer fungerer", "manual");
+    expect(await latestLearning(d, t, "G7", "")).toBe("Korte køer fungerer");
 
     const id = await saveExercise(d, t, "G7", { name: "Trenerøvelse", category: "annet", themes: [], status: "active" }, null);
     await expect(deleteExercise(d, t, NO_RIGHTS, "G7", id)).rejects.toThrow(/administratorer/);
     await deleteExercise(d, t, sa, "G7", id);
     expect(await listExercises(d, t, "G7")).toEqual([]);
-    await expect(saveSeason(d, t, "G1", 2026, months, Array(12).fill(""))).rejects.toThrow();
+    await expect(saveSeason(d, t, "G1", "", 2026, months, Array(12).fill(""))).rejects.toThrow();
+  });
+
+  it("gives a subgroup the main group's until it saves its own, and back again", async () => {
+    const t: Access = { profileId: "P-3", groupIds: new Set(["G6"]) };
+    const months = (theme: string) => Array.from({ length: 12 }, (_, i) => (i === 0 ? theme : ""));
+    const none = Array(12).fill("");
+    await saveSeason(d, t, "G6", "", 2026, months("Pasning"), none);
+    await saveTeamSettings(d, t, "G6", "", { session_minutes: "60", pitch_ids: [686] });
+    await savePrinciples(d, t, "G6", "", "Hele gruppa");
+    await saveLearning(d, t, "G6", "", "Lærdom for alle", "manual");
+
+    // Jenter follows the main group.
+    expect(await listSeason(d, t, "G6", "J", 2026)).toMatchObject({ inherited: true, rows: [{ theme: "Pasning" }] });
+    expect(await getTeamSettings(d, t, "G6", "J")).toMatchObject({ inherited: true, session_minutes: 60, pitch_ids: [686] });
+    expect((await teamPitches(d, t, "G6", "J")).map((p) => p.id)).toEqual([686]);
+    expect(await principlesState(d, t, "G6", "J")).toMatchObject({ inherited: true, versions: [{ body: "Hele gruppa" }] });
+    expect(await latestLearning(d, t, "G6", "J")).toBe("Lærdom for alle");
+
+    // Its own, and the main group's stays as it was.
+    await saveSeason(d, t, "G6", "J", 2026, months("Vending"), none);
+    await saveTeamSettings(d, t, "G6", "J", { session_minutes: "90", pitch_ids: [18049] });
+    await savePrinciples(d, t, "G6", "J", "Jentene");
+    await saveLearning(d, t, "G6", "J", "Lærdom for jentene", "manual");
+    expect(await seasonTheme(d, t, "G6", "J", 2026, 1)).toMatchObject({ theme: "Vending" });
+    expect(await seasonTheme(d, t, "G6", "", 2026, 1)).toMatchObject({ theme: "Pasning" });
+    expect(await seasonTheme(d, t, "G6", "G", 2026, 1)).toMatchObject({ theme: "Pasning" });
+    expect(await getTeamSettings(d, t, "G6", "J")).toMatchObject({ inherited: false, session_minutes: 90, pitch_ids: [18049] });
+    expect((await teamPitches(d, t, "G6", "J")).map((p) => p.id)).toEqual([18049]);
+    expect((await teamPitches(d, t, "G6", "")).map((p) => p.id)).toEqual([686]);
+    expect(await latestPrinciples(d, t, "G6", "J")).toBe("Jentene");
+    expect(await latestPrinciples(d, t, "G6", "")).toBe("Hele gruppa");
+    expect(await latestLearning(d, t, "G6", "J")).toBe("Lærdom for jentene");
+
+    for (const part of ["season", "team", "principles", "learnings"] as const) await followMainGroup(d, t, "G6", "J", part, 2026);
+    expect((await listSeason(d, t, "G6", "J", 2026)).inherited).toBe(true);
+    expect(await getTeamSettings(d, t, "G6", "J")).toMatchObject({ inherited: true, session_minutes: 60 });
+    expect(await latestPrinciples(d, t, "G6", "J")).toBe("Hele gruppa");
+    expect(await latestLearning(d, t, "G6", "J")).toBe("Lærdom for alle");
+    await expect(followMainGroup(d, t, "G6", "", "team")).rejects.toThrow(/Hovedgruppa/);
+  });
+
+  it("counts a subgroup's own evaluations and those for the whole group, not another subgroup's", async () => {
+    const t: Access = { profileId: "P-4", groupIds: new Set(["G5"]) };
+    const row = { exercise_no: null, exercise_code: "", rating: 3, tags: [], actual_minutes: null, actual_players: null, body: "", use_again: "" };
+    for (const [ev, subs] of [["EJ", ["J"]], ["EG", ["G"]], ["EA", []]] as const) {
+      const p = await savePlan(d, t, "G5", ev, plan);
+      await saveFeedback(d, t, p.id, [row], null, [...subs]);
+    }
+    const events = async (sub: string) => (await feedbackSince(d, t, "G5", sub, new Date(0))).map((r) => r.spond_event_id).sort();
+    expect(await events("J")).toEqual(["EA", "EJ"]);
+    expect(await events("")).toEqual(["EA", "EG", "EJ"]);
+    expect((await learningState(d, t, "G5", "G")).nNew).toBe(2);
   });
 });
 

@@ -24,13 +24,14 @@ export default async function ExerciseKiPage(props: PageProps<"/g/[groupId]/[sub
     );
   }
   const d = await db();
+  const sub = ctx.subgroup?.id ?? "";
   const now = new Date();
   const { year, month } = osloParts(now);
   const [settings, team, pitches, season, spend] = await Promise.all([
     getAiSettings(d),
-    getTeamSettings(d, ctx.user.access, ctx.group.id),
-    teamPitches(d, ctx.user.access, ctx.group.id),
-    seasonTheme(d, ctx.user.access, ctx.group.id, year, month),
+    getTeamSettings(d, ctx.user.access, ctx.group.id, sub),
+    teamPitches(d, ctx.user.access, ctx.group.id, sub),
+    seasonTheme(d, ctx.user.access, ctx.group.id, sub, year, month),
     aiSpend(d, ctx.user.access, ctx.group.id, osloMonthStart(now)),
   ]);
   const budget = budgetCheck(spend, settings);
@@ -39,6 +40,7 @@ export default async function ExerciseKiPage(props: PageProps<"/g/[groupId]/[sub
     <AppShell ctx={ctx} title="Ny øvelse med KI" section="training" back={listHref}>
       <ExerciseKiForm
         groupId={ctx.group.id}
+        sub={sub}
         theme={season?.theme ?? ""}
         themeNote={season?.theme ? `Månedens tema i årshjulet${season.description ? `: ${season.description}` : ""}` : ""}
         categories={CATEGORIES}

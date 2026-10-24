@@ -239,7 +239,9 @@ export async function feedbackAction(input: z.input<typeof feedbackInput>): Prom
     const pl = await getPlan(d, user.access, v.planId);
     const group = findGroup(user, pl.groupId);
     const rows = validateFeedback(v.rows, pl.plan, memberNames(group.members));
-    const activated = await saveFeedback(d, user.access, pl.id, rows, v.registered);
+    // Which subgroups the session was for, so each team's learnings build on its own evaluations.
+    const event = await findEvent(user, group.id, pl.eventId);
+    const activated = await saveFeedback(d, user.access, pl.id, rows, v.registered, event?.subgroupIds ?? []);
     refresh();
     const act = activated.length ? ` ${activated.length === 1 ? "Én øvelse" : `${activated.length} øvelser`} er nå aktive i banken.` : "";
     return { data: undefined, message: `Evalueringen er lagret.${act}` };

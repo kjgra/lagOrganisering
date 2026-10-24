@@ -1,9 +1,9 @@
 "use client";
 
-import { Save, Sparkles } from "lucide-react";
+import { Undo2, Save, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { learningKiAction, savePrinciplesAction, saveLearningAction, saveSeasonAction, saveTeamSettingsAction } from "@/app/actions/training";
+import { followMainGroupAction, learningKiAction, savePrinciplesAction, saveLearningAction, saveSeasonAction, saveTeamSettingsAction } from "@/app/actions/training";
 import { Field, SaveButton, useSave } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
 import { GENDERS, teamAgeText, type Gender } from "@/lib/nff/bands";
@@ -12,6 +12,7 @@ import { GENDERS, teamAgeText, type Gender } from "@/lib/nff/bands";
 
 export function SeasonForm({
   groupId,
+  sub,
   year,
   months,
   themes,
@@ -19,6 +20,7 @@ export function SeasonForm({
   current,
 }: {
   groupId: string;
+  sub: string;
   year: number;
   months: string[];
   themes: string[];
@@ -51,7 +53,7 @@ export function SeasonForm({
       style={{ maxWidth: 720 }}
       onSubmit={(e) => {
         e.preventDefault();
-        run(() => saveSeasonAction(groupId, year, t, dsc));
+        run(() => saveSeasonAction(groupId, sub, year, t, dsc));
       }}
     >
       {idx.slice(first).map(card)}
@@ -88,12 +90,14 @@ export interface PitchGroup {
 
 export function TeamSettingsForm({
   groupId,
+  sub,
   initial,
   pitchGroups,
   initialPitches,
   year,
 }: {
   groupId: string;
+  sub: string;
   initial: Record<string, string>;
   pitchGroups: PitchGroup[];
   initialPitches: number[];
@@ -118,7 +122,7 @@ export function TeamSettingsForm({
       style={{ maxWidth: 640 }}
       onSubmit={(e) => {
         e.preventDefault();
-        run(() => saveTeamSettingsAction(groupId, v, chosen));
+        run(() => saveTeamSettingsAction(groupId, sub, v, chosen));
       }}
     >
       <div className="nm-form-row">
@@ -189,7 +193,7 @@ export function TeamSettingsForm({
 
 // Principles ------------------------------------------------------------------------------
 
-export function PrinciplesForm({ groupId, initial }: { groupId: string; initial: string }) {
+export function PrinciplesForm({ groupId, sub, initial }: { groupId: string; sub: string; initial: string }) {
   const [text, setText] = useState(initial);
   const { pending, run, errorBox } = useSave();
   return (
@@ -198,7 +202,7 @@ export function PrinciplesForm({ groupId, initial }: { groupId: string; initial:
       style={{ maxWidth: 720 }}
       onSubmit={(e) => {
         e.preventDefault();
-        run(() => savePrinciplesAction(groupId, text));
+        run(() => savePrinciplesAction(groupId, sub, text));
       }}
     >
       <Field label="Prinsipper" hint="Måter dere vil gjøre ting på, uansett øvelse. Skrives av trenerne, og KI endrer dem aldri.">
@@ -212,7 +216,7 @@ export function PrinciplesForm({ groupId, initial }: { groupId: string; initial:
 
 // Learnings ---------------------------------------------------------------------------------
 
-export function LearningForm({ groupId, initial, canKi, nNew }: { groupId: string; initial: string; canKi: boolean; nNew: number }) {
+export function LearningForm({ groupId, sub, initial, canKi, nNew }: { groupId: string; sub: string; initial: string; canKi: boolean; nNew: number }) {
   const router = useRouter();
   const [text, setText] = useState(initial);
   const { pending, run, errorBox } = useSave();
@@ -222,7 +226,7 @@ export function LearningForm({ groupId, initial, canKi, nNew }: { groupId: strin
       style={{ maxWidth: 720 }}
       onSubmit={(e) => {
         e.preventDefault();
-        run(() => saveLearningAction(groupId, text));
+        run(() => saveLearningAction(groupId, sub, text));
       }}
     >
       <Field label="Lærdommer" hint="Det laget har lært av evalueringene. «Oppdater med KI» skriver dem om ut fra nye evalueringer. Ingen navn.">
@@ -235,7 +239,7 @@ export function LearningForm({ groupId, initial, canKi, nNew }: { groupId: strin
           Lagre lærdommene
         </button>
         {canKi ? (
-          <button type="button" className="nm-btn nm-btn--secondary" disabled={pending || nNew === 0} onClick={() => run(() => learningKiAction(groupId, text), () => router.refresh())}>
+          <button type="button" className="nm-btn nm-btn--secondary" disabled={pending || nNew === 0} onClick={() => run(() => learningKiAction(groupId, sub, text), () => router.refresh())}>
             <Icon icon={Sparkles} />
             Oppdater med KI
           </button>
@@ -247,5 +251,67 @@ export function LearningForm({ groupId, initial, canKi, nNew }: { groupId: strin
         </p>
       ) : null}
     </form>
+  );
+}
+
+// A subgroup's own, or the main group's -------------------------------------------------------
+
+/**
+ * Whose this page is: the main group's (the default for its teams), the
+ * main group's inherited by a subgroup, or the subgroup's own, with a way back
+ * to the main group's after «Er du sikker?».
+ */
+export function ScopeNote({
+  groupId,
+  sub,
+  subName,
+  mainName,
+  inherited,
+  part,
+  year,
+}: {
+  groupId: string;
+  sub: string;
+  subName: string;
+  mainName: string;
+  inherited: boolean;
+  part: "season" | "team" | "principles" | "learnings";
+  year?: number;
+}) {
+  const router = useRouter();
+  const [confirm, setConfirm] = useState(false);
+  const { pending, run, errorBox } = useSave();
+  if (!sub) return <p className="nm-hint" style={{ margin: "0 0 var(--space-3)" }}>Gjelder {mainName}, og er standard for lagene som ikke har sitt eget.</p>;
+  if (inherited) return <p className="nm-hint" style={{ margin: "0 0 var(--space-3)" }}>{subName} følger {mainName}. Lagrer du, får {subName} sitt eget.</p>;
+  return (
+    <div style={{ margin: "0 0 var(--space-3)" }}>
+      <p className="nm-hint" style={{ margin: 0 }}>
+        Eget for {subName}. Endringer i {mainName} gjelder ikke her.
+      </p>
+      {confirm ? (
+        <div className="nm-row" style={{ gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-2)" }}>
+          <span role="alert" style={{ alignSelf: "center" }}>
+            Er du sikker? Det {subName} har skrevet her, slettes.
+          </span>
+          <button
+            type="button"
+            className="nm-btn nm-btn--danger"
+            disabled={pending}
+            onClick={() => run(() => followMainGroupAction(groupId, sub, part, year), () => (setConfirm(false), router.refresh()))}
+          >
+            Ja, følg {mainName}
+          </button>
+          <button type="button" className="nm-btn nm-btn--ghost" onClick={() => setConfirm(false)}>
+            Avbryt
+          </button>
+        </div>
+      ) : (
+        <button type="button" className="nm-btn nm-btn--ghost" style={{ marginTop: "var(--space-1)" }} onClick={() => setConfirm(true)}>
+          <Icon icon={Undo2} />
+          Følg {mainName} igjen
+        </button>
+      )}
+      {errorBox}
+    </div>
   );
 }

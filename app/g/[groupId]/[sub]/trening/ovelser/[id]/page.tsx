@@ -47,7 +47,7 @@ export default async function ExercisePage(props: PageProps<"/g/[groupId]/[sub]/
         ...{ name: "", category: "", themes: "", min_players: "", max_players: "", duration_minutes: "", area: "", organisation: "", execution: "", learning_points: "" },
         ...{ questions: "", easier: "", harder: "", nff_url: "", drawing: "", status: "active", nff_activity: "", nff_tags: [] },
         // A new exercise is for the team's own band to begin with.
-        bands: [teamBand((await getTeamSettings(d, ctx.user.access, ctx.group.id)).birth_year, osloParts(new Date()).year)].filter((x) => x !== null),
+        bands: [teamBand((await getTeamSettings(d, ctx.user.access, ctx.group.id, ctx.subgroup?.id ?? "")).birth_year, osloParts(new Date()).year)].filter((x) => x !== null),
       };
   const listHref = ctx.path("/trening/ovelser");
   return (

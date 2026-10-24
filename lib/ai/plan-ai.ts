@@ -415,6 +415,8 @@ export interface LinkText {
 }
 
 export interface OrderContext {
+  /** The subgroup whose «Trening» (learnings) is used, or '' for the main group; never sent. */
+  sub?: string;
   start: string | null;
   minutes: number | null;
   theme: string;
@@ -471,6 +473,8 @@ export function orderText(c: OrderContext): string {
 }
 
 export interface ExerciseOrderContext {
+  /** The subgroup whose «Trening» (learnings) is used, or '' for the main group; never sent. */
+  sub?: string;
   theme: string;
   themeDescription: string;
   team: OrderContext["team"];
