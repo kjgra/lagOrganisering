@@ -69,7 +69,10 @@ test("admin: give KI access and save the season plan", async ({ page }) => {
   await expect(page.getByLabel("Admin for Kjetil Gramstad")).toBeDisabled();
 
   await page.goto("/innstillinger/arshjul?lag=G-FOTBALL");
-  await page.getByLabel("Januar").fill("Pasning");
+  // Months before this one are folded away below the coming ones.
+  const january = page.getByRole("group", { name: "Januar" });
+  if (!(await january.isVisible())) await page.locator("summary", { hasText: "Tidligere måneder" }).click();
+  await january.getByLabel("Tema").fill("Pasning");
   await page.getByRole("button", { name: "Lagre årshjulet" }).click();
   await expect(page.locator(".nm-toast")).toContainText(/Årshjulet for \d{4} er lagret/);
 });
@@ -134,10 +137,9 @@ test("tag sheet: set a level and a player who plays well with them", async ({ pa
   await expect(levels.getByRole("button", { name: target, exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator(".nm-toast")).toContainText(`har nivå ${target}`);
 
-  const select = sheet.getByLabel("Spiller", { exact: true });
-  await select.selectOption({ index: 1 });
-  const partner = (await select.locator("option:checked").textContent())!;
-  await sheet.getByRole("button", { name: "Legg til" }).first().click();
+  const add = sheet.getByRole("group", { name: "Legg til spiller" }).getByRole("button").first();
+  const partner = ((await add.getAttribute("aria-label")) ?? "").replace(/^Legg til /, "");
+  await add.click();
   await expect(page.locator(".nm-toast")).toContainText("spiller godt sammen");
   const remove = sheet.getByRole("button", { name: `Fjern ${partner}`, exact: true });
   await remove.click();

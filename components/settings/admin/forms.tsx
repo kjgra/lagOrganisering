@@ -102,10 +102,41 @@ export function AiSettingsForm({ initial, models, editable }: { initial: Record<
 
 // Season plan ------------------------------------------------------------------------------
 
-export function SeasonForm({ groupId, year, months, themes, descriptions }: { groupId: string; year: number; months: string[]; themes: string[]; descriptions: string[] }) {
+export function SeasonForm({
+  groupId,
+  year,
+  months,
+  themes,
+  descriptions,
+  current,
+}: {
+  groupId: string;
+  year: number;
+  months: string[];
+  themes: string[];
+  descriptions: string[];
+  /** This month (1–12) when the year shown is this year: it comes first, and the months before it are folded away. */
+  current?: number;
+}) {
   const [t, setT] = useState(themes);
   const [dsc, setD] = useState(descriptions);
   const { pending, run, errorBox } = useSave();
+  const card = (i: number) => (
+    <fieldset key={months[i]} className="nm-card nm-month">
+      <legend className="nm-month__name">
+        {months[i]}
+        {current === i + 1 ? <span className="nm-badge nm-badge--neutral">Denne måneden</span> : null}
+      </legend>
+      <Field label="Tema">
+        <input className="nm-input" value={t[i]} maxLength={80} onChange={(e) => setT((x) => x.map((y, j) => (j === i ? e.target.value : y)))} />
+      </Field>
+      <Field label="Beskrivelse">
+        <textarea className="nm-input" rows={2} value={dsc[i]} maxLength={500} onChange={(e) => setD((x) => x.map((y, j) => (j === i ? e.target.value : y)))} />
+      </Field>
+    </fieldset>
+  );
+  const first = current ? current - 1 : 0;
+  const idx = months.map((_, i) => i);
   return (
     <form
       className="nm-form"
@@ -115,16 +146,15 @@ export function SeasonForm({ groupId, year, months, themes, descriptions }: { gr
         run(() => saveSeasonAction(groupId, year, t, dsc));
       }}
     >
-      {months.map((m, i) => (
-        <div key={m} className="nm-form-row" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 2fr)" }}>
-          <Field label={m}>
-            <input className="nm-input" value={t[i]} maxLength={80} placeholder="Tema" onChange={(e) => setT((x) => x.map((y, j) => (j === i ? e.target.value : y)))} />
-          </Field>
-          <Field label="Beskrivelse">
-            <input className="nm-input" value={dsc[i]} maxLength={500} onChange={(e) => setD((x) => x.map((y, j) => (j === i ? e.target.value : y)))} />
-          </Field>
-        </div>
-      ))}
+      {idx.slice(first).map(card)}
+      {first ? (
+        <details className="nm-month-past">
+          <summary>
+            Tidligere måneder ({months[0].toLowerCase()}–{months[first - 1].toLowerCase()})
+          </summary>
+          <div className="nm-form">{idx.slice(0, first).map(card)}</div>
+        </details>
+      ) : null}
       {errorBox}
       <SaveButton pending={pending}>Lagre årshjulet</SaveButton>
     </form>

@@ -1,4 +1,4 @@
-import { CalendarDays, Clock, MapPin, Pencil, Play, Plus, Send, Users } from "lucide-react";
+import { Ban, CalendarDays, Clock, MapPin, Pencil, Play, Plus, Send, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ParticipantList, type ParticipantRow } from "@/components/events/ParticipantList";
@@ -96,7 +96,21 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
       </nav>
       <div className="nm-stack" style={{ gap: "var(--space-4)" }}>
         <div>
-          <div style={{ fontSize: "var(--fs-heading)", lineHeight: "var(--lh-heading)", fontWeight: 700 }}>{event.heading}</div>
+          <div className="nm-row" style={{ gap: "var(--space-2)" }}>
+            <div style={{ fontSize: "var(--fs-heading)", lineHeight: "var(--lh-heading)", fontWeight: 700 }}>{event.heading}</div>
+            {event.match ? (
+              <span className="nm-badge nm-badge--neutral">
+                <Icon icon={Trophy} size={16} />
+                Kamp
+              </span>
+            ) : null}
+            {event.cancelled ? (
+              <span className="nm-badge nm-badge--kommer-ikke">
+                <Icon icon={Ban} size={16} />
+                Avlyst
+              </span>
+            ) : null}
+          </div>
           <div className="nm-meta">
             {event.start ? (
               <span>
@@ -122,8 +136,6 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
             {eventSentTo(event, ctx.group).map((s) => (
               <Tag key={s}>{s}</Tag>
             ))}
-            {event.match ? <Tag>Kamp</Tag> : null}
-            {event.cancelled ? <Tag>Avlyst</Tag> : null}
             {event.notSent ? (
               <span className="nm-badge nm-badge--neutral">
                 <Icon icon={Send} size={16} />

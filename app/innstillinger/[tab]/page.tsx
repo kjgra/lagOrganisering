@@ -226,7 +226,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
             </Link>
           ))}
         </div>
-        <SeasonForm key={year} groupId={group.id} year={year} months={MONTH_NAMES} themes={themes} descriptions={descriptions} />
+        <SeasonForm key={year} groupId={group.id} year={year} months={MONTH_NAMES} themes={themes} descriptions={descriptions} current={year === now.year ? now.month : undefined} />
       </>
     );
   },

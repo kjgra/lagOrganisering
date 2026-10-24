@@ -1,7 +1,8 @@
-import { Plus } from "lucide-react";
+import { Bookmark, CalendarDays, CircleCheck, Plus, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { ProposalCard } from "@/components/proposals/ProposalCard";
 import { AutoRefresh } from "@/components/ui/AutoRefresh";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { AppShell } from "@/components/shell/AppShell";
 import { Icon } from "@/components/ui/icon";
 import { contextFromParams } from "@/lib/context";
@@ -105,7 +106,16 @@ export default async function ProposalsPage(props: PageProps<"/g/[groupId]/[sub]
             </section>
           ))
         ) : (
-          <p style={{ fontSize: "var(--fs-body-lg)" }}>Ingen lagrede forslag ennå. Lag lag fra et arrangement og trykk «Lagre forslag».</p>
+          <EmptyState icon={Bookmark} text="Ingen lagrede forslag ennå. Lag lag fra et arrangement og trykk «Lagre forslag».">
+            <Link href={ctx.path("/arrangementer")} className="nm-btn nm-btn--primary">
+              <Icon icon={CalendarDays} />
+              Gå til arrangementer
+            </Link>
+            <Link href={ctx.path("/lagforslag/utkast/ny")} className="nm-btn nm-btn--secondary">
+              <Icon icon={Plus} />
+              Nytt gruppeutkast
+            </Link>
+          </EmptyState>
         )
       ) : null}
 
@@ -115,7 +125,11 @@ export default async function ProposalsPage(props: PageProps<"/g/[groupId]/[sub]
           {pending.length ? (
             <div className="nm-stack nm-proposals">{pending.map((p) => card(p, true))}</div>
           ) : (
-            <p style={{ fontSize: "var(--fs-body-lg)" }}>Ingen forslag venter på godkjenning.</p>
+            <EmptyState icon={CircleCheck} text="Ingen forslag venter på godkjenning.">
+              <Link href={ctx.path("/lagforslag")} className="nm-btn nm-btn--secondary">
+                Se alle lagforslag
+              </Link>
+            </EmptyState>
           )}
         </>
       ) : null}
@@ -133,7 +147,7 @@ export default async function ProposalsPage(props: PageProps<"/g/[groupId]/[sub]
           {drafts.length ? (
             <div className="nm-stack nm-proposals">{drafts.map((p) => card(p, false))}</div>
           ) : (
-            <p style={{ fontSize: "var(--fs-body-lg)" }}>Ingen gruppeutkast her ennå.</p>
+            <EmptyState icon={UsersRound} text="Ingen gruppeutkast her ennå. Trykk «Lag gruppeutkast» for å skissere nye undergrupper." />
           )}
         </>
       ) : null}
