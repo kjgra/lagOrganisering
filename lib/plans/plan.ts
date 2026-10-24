@@ -493,19 +493,27 @@ export function validateSeason(year: number, themes: string[], descriptions: str
 export interface TeamSettings {
   age_group: string;
   session_minutes: number | null;
-  /** The chosen pitch (`pitches.id`, the fiksId on fotball.no), or null. */
-  pitch_id: number | null;
-  /** Free-text note about the pitch, e.g. «halve banen». */
+  /** The pitches the team uses (`pitches.id`, the fiksId on fotball.no). */
+  pitch_ids: number[];
+  /** Free-text note about the pitches, e.g. «deler med G12». */
   pitch: string;
   equipment: string;
   principles: string;
+}
+
+/** Pitch ids from a list or «1,2,3»: whole numbers, no duplicates, at most 50. */
+export function pitchIds(x: unknown): number[] {
+  const list = Array.isArray(x) ? x : txt(x).split(",");
+  const ids = [...new Set(list.map(txt).filter(Boolean))];
+  if (ids.length > 50 || ids.some((t) => !/^\d{1,9}$/.test(t))) throw new PlanError("Ukjent bane.");
+  return ids.map(Number);
 }
 
 export function validateTeamSettings(s: Record<string, unknown>): TeamSettings {
   const out: TeamSettings = {
     age_group: txt(s.age_group),
     session_minutes: intOrNull(s.session_minutes, "Øktlengde", 15, 240),
-    pitch_id: intOrNull(s.pitch_id, "Bane", 1, 2_000_000_000),
+    pitch_ids: pitchIds(s.pitch_ids),
     pitch: txt(s.pitch),
     equipment: txt(s.equipment),
     principles: txt(s.principles),
@@ -545,12 +553,14 @@ export function pitchFacts(p: Pitch): string {
   return [p.pitch_type, p.surface, size, light].filter(Boolean).join(" · ");
 }
 
-/** The pitch line in the order: «Nymark idrettsanlegg, Nymark Kunstgress 04 7er A (7er · …). Halve banen». */
-export function pitchText(p: Pitch | null, note: string): string {
-  const n = txt(note);
-  if (!p) return n;
-  const head = `${p.facility}, ${p.name} (${pitchFacts(p)})`;
-  return n ? `${head}. ${n}` : head;
+/** «Nymark idrettsanlegg, Nymark Kunstgress 04 7er A (7er · …)», for the order. */
+export function pitchLabel(p: Pitch): string {
+  return `${p.facility}, ${p.name} (${pitchFacts(p)})`;
+}
+
+/** The pitch line in the order: the chosen pitches, then the team's note. */
+export function pitchText(pitches: Pitch[], note: string): string {
+  return [pitches.map(pitchLabel).join("; "), txt(note)].filter(Boolean).join(". ");
 }
 
 /** Pitches in list order with their depth below the main pitch (0 for a main pitch). */

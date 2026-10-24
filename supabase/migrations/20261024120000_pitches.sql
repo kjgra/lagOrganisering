@@ -1,4 +1,4 @@
--- Baner laget kan velge under «Lagets standard». Felles for alle grupper,
+-- Baner lagene kan velge under «Lagets standard». Felles for alle grupper,
 -- hentet fra baneoversikten på fotball.no. ID-en er banens fiksId der, og
 -- delbaner peker på banen de er en del av. Nye anlegg legges til med en ny
 -- migrasjon.
@@ -19,8 +19,15 @@ CREATE TABLE pitches (
 
 ALTER TABLE pitches ENABLE ROW LEVEL SECURITY;
 
--- Fritekstfeltet «pitch» blir en merknad til valgt bane.
-ALTER TABLE team_settings ADD COLUMN pitch_id integer REFERENCES pitches (id) ON DELETE SET NULL;
+-- Banene laget bruker. For hver trening velger treneren én eller flere av dem
+-- når KI lager opplegget. Fritekstfeltet team_settings.pitch blir en merknad.
+CREATE TABLE team_pitches (
+  spond_group_id text NOT NULL,
+  pitch_id       integer NOT NULL REFERENCES pitches (id) ON DELETE CASCADE,
+  PRIMARY KEY (spond_group_id, pitch_id)
+);
+
+ALTER TABLE team_pitches ENABLE ROW LEVEL SECURITY;
 
 -- Nymark idrettsanlegg, https://www.fotball.no/fotballdata/anlegg/hjem/?fiksId=12101
 -- (hentet 2026-10-24). Lengde og bredde i meter, belysning som oppgitt, NULL

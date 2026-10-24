@@ -10,10 +10,10 @@ import {
   addPlanComment,
   approvePlan,
   getPlan,
-  getPitch,
   getTeamSettings,
   listExercises,
   listPitches,
+  teamPitches,
   planVersions,
   saveFeedback,
   savePlan,
@@ -84,17 +84,23 @@ describe("pitches and team settings", () => {
     expect(pitches.find((p) => p.id === 22419)?.retired).toBe(true);
   });
 
-  it("saves the chosen pitch with a note, and refuses unknown pitches", async () => {
-    await saveTeamSettings(d, me, sa, "G1", { age_group: "G10", pitch_id: "18049", pitch: "Deler med G11" });
+  it("saves the team's pitches with a note, and refuses unknown pitches", async () => {
+    await saveTeamSettings(d, me, sa, "G1", { age_group: "G10", pitch_ids: [18049, 686, 18049], pitch: "Deler med G11" });
     const s = await getTeamSettings(d, me, "G1");
-    expect([s.pitch_id, s.pitch]).toEqual([18049, "Deler med G11"]);
-    expect(pitchText(await getPitch(d, 18049), s.pitch)).toBe(
+    expect([s.pitch_ids, s.pitch]).toEqual([[686, 18049], "Deler med G11"]);
+    const mine = await teamPitches(d, me, "G1");
+    expect(mine.map((p) => p.id)).toEqual([18049, 686]);
+    expect(pitchText(mine.slice(0, 1), s.pitch)).toBe(
       "Nymark idrettsanlegg, Nymark Kunstgress 04 7er A (7er · Kunstgress m/plastholdig innfyll · 48 × 30 m · lys 150 lux). Deler med G11",
     );
-    await expect(saveTeamSettings(d, me, sa, "G1", { pitch_id: "999" })).rejects.toThrow(/Ukjent bane/);
-    await expect(saveTeamSettings(d, me, sa, "G1", { pitch_id: "x" })).rejects.toThrow(/Bane/);
-    await saveTeamSettings(d, me, sa, "G1", { pitch_id: "" });
-    expect((await getTeamSettings(d, me, "G1")).pitch_id).toBeNull();
+    expect(pitchText(mine, "")).toContain("lys 150 lux); Nymark idrettsanlegg, Nymark gress 01 (11er · Naturgress · 100 × 60 m · uten lys)");
+    await expect(saveTeamSettings(d, me, sa, "G1", { pitch_ids: [999] })).rejects.toThrow(/Ukjent bane/);
+    await expect(saveTeamSettings(d, me, sa, "G1", { pitch_ids: "x" })).rejects.toThrow(/Ukjent bane/);
+    await expect(teamPitches(d, me, "G2")).rejects.toThrow();
+    await saveTeamSettings(d, me, sa, "G1", { pitch_ids: [686] });
+    expect((await getTeamSettings(d, me, "G1")).pitch_ids).toEqual([686]);
+    await saveTeamSettings(d, me, sa, "G1", { pitch_ids: [] });
+    expect(await teamPitches(d, me, "G1")).toEqual([]);
   });
 });
 

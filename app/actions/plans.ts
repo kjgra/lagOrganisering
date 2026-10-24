@@ -175,6 +175,7 @@ const kiInput = z.object({
   wish: z.string().max(1000),
   links: z.string().max(1000),
   commentIds: z.array(id).max(50),
+  pitchIds: z.array(id).max(50),
   model: z.string().refine((m) => m in AI_MODELS),
 });
 

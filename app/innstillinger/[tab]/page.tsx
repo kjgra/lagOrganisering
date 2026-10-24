@@ -1,7 +1,7 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AiSettingsForm, LearningForm, SeasonForm, TeamSettingsForm } from "@/components/settings/admin/forms";
+import { AiSettingsForm, LearningForm, SeasonForm, TeamSettingsForm, type PitchGroup } from "@/components/settings/admin/forms";
 import { GroupSelect } from "@/components/settings/admin/GroupSelect";
 import { MaintenancePanel } from "@/components/settings/admin/MaintenancePanel";
 import { RoleTable } from "@/components/settings/admin/RoleTable";
@@ -14,7 +14,7 @@ import { superadminId } from "@/lib/env";
 import { decimal, MONTH_NAMES, osloMidnight, osloMonthStart, osloParts, savedAt, shortDate } from "@/lib/format";
 import { MAINTENANCE_RULES } from "@/lib/maintenance";
 import { FEEDBACK_TAGS, meanText, shouldAvoid } from "@/lib/plans/feedback";
-import { CATEGORIES, EXERCISE_STATUSES, pitchFacts, pitchTree } from "@/lib/plans/plan";
+import { CATEGORIES, EXERCISE_STATUSES, pitchFacts, pitchTree, type Pitch } from "@/lib/plans/plan";
 import { profileName } from "@/lib/proposal-view";
 import { aiSpend, aiUsagePeriod, getAiSettings } from "@/lib/store/ai";
 import { archiveKey, archiveLog, archivePending } from "@/lib/store/archive";
@@ -42,6 +42,17 @@ export default async function AdminTabPage(props: PageProps<"/innstillinger/[tab
 
 type Sp = Record<string, string | string[] | undefined>;
 const str = (x: unknown) => (typeof x === "string" ? x : "");
+
+/** Main pitches with their sub-pitches; retired pitches only when the team has them. */
+function pitchGroups(pitches: Pitch[], chosen: number[]): PitchGroup[] {
+  const groups: PitchGroup[] = [];
+  for (const { pitch: p, depth } of pitchTree(pitches)) {
+    if (depth === 0) groups.push({ title: p.name, pitches: [] });
+    if (p.retired && !chosen.includes(p.id)) continue;
+    groups.at(-1)?.pitches.push({ id: p.id, depth, name: p.name, facts: pitchFacts(p) });
+  }
+  return groups.filter((g) => g.pitches.length);
+}
 
 const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactNode>> = {
   async trenere({ user, group }) {
@@ -231,19 +242,12 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
           initial={{
             age_group: s.age_group,
             session_minutes: s.session_minutes ? String(s.session_minutes) : "",
-            pitch_id: s.pitch_id ? String(s.pitch_id) : "",
             pitch: s.pitch,
             equipment: s.equipment,
             principles: s.principles,
           }}
-          pitches={pitchTree(pitches)
-            .filter(({ pitch: p }) => !p.retired || p.id === s.pitch_id)
-            .map(({ pitch: p, depth }) => ({
-              id: String(p.id),
-              facility: p.facility,
-              label: `${"\u2003".repeat(depth)}${p.name}${p.length_m && p.width_m ? ` (${p.length_m} × ${p.width_m} m)` : ""}`,
-              facts: pitchFacts(p),
-            }))}
+          initialPitches={s.pitch_ids}
+          pitchGroups={pitchGroups(pitches, s.pitch_ids)}
         />
         {s.updated_by && s.updated_at ? (
           <p className="nm-hint">

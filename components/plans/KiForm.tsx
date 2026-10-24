@@ -1,6 +1,7 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { kiEstimateAction, kiRunAction } from "@/app/actions/plans";
@@ -15,8 +16,12 @@ export interface KiFormProps {
   theme: string;
   themeNote: string;
   minutes: number | null;
-  /** The team's pitch from «Lagets standard», as KI gets it; empty if none. */
-  pitch: string;
+  /** The team's pitches from «Lagets standard»; one or more are chosen per session. */
+  pitches: { id: number; name: string; facts: string }[];
+  /** The team's note about the pitches. */
+  pitchNote: string;
+  /** Href to «Lagets standard», or null when the trainer is not admin. */
+  standardHref: string | null;
   models: { id: string; label: string; choice: string }[];
   model: string;
   comments: { id: number; text: string }[];
@@ -37,6 +42,7 @@ export function KiForm(p: KiFormProps) {
   const [links, setLinks] = useState("");
   const [model, setModel] = useState(p.model);
   const [picked, setPicked] = useState<number[]>(p.comments.map((c) => c.id));
+  const [pitchIds, setPitchIds] = useState<number[]>(p.pitches.length === 1 ? [p.pitches[0].id] : []);
   const [prices, setPrices] = useState<Record<string, string> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
@@ -50,6 +56,7 @@ export function KiForm(p: KiFormProps) {
     wish,
     links,
     commentIds: picked,
+    pitchIds,
     model,
   });
   const estimate = () =>
@@ -89,14 +96,35 @@ export function KiForm(p: KiFormProps) {
           ? `KI justerer versjon ${p.baseVersion} etter ønskene dine og lagrer resultatet som en ny versjon.`
           : "KI lager et opplegg ut fra månedens tema, lagets standard, øvelsesbanken og evalueringene. Navn på spillere sendes aldri."}
       </p>
-      <p className="nm-hint" style={{ margin: 0 }}>
-        Bane: {p.pitch || "ikke valgt. Velg bane under Lagets standard."}
-      </p>
       <label className="nm-field">
         <span className="nm-field__label">Tema</span>
         <input className="nm-input" value={theme} maxLength={80} onChange={(e) => setTheme(e.target.value)} />
         {p.themeNote ? <span className="nm-hint">{p.themeNote}</span> : null}
       </label>
+      <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+        <legend className="nm-field__label" style={{ marginBottom: "var(--space-1)" }}>
+          Baner for økta
+        </legend>
+        {p.pitches.map((x) => (
+          <label key={x.id} className="nm-check">
+            <input type="checkbox" checked={pitchIds.includes(x.id)} onChange={(e) => setPitchIds((y) => (e.target.checked ? [...y, x.id] : y.filter((z) => z !== x.id)))} />
+            <span>
+              {x.name}
+              <span className="nm-hint" style={{ display: "block" }}>
+                {x.facts}
+              </span>
+            </span>
+          </label>
+        ))}
+        <p className="nm-hint" style={{ margin: 0 }}>
+          {p.pitches.length ? (p.pitchNote ? `Merknad: ${p.pitchNote}` : "Velg én eller flere. KI får med mål og lys.") : "Laget har ingen baner i Lagets standard ennå. "}
+          {!p.pitches.length && p.standardHref ? (
+            <Link href={p.standardHref} style={{ textDecoration: "underline" }}>
+              Legg til baner
+            </Link>
+          ) : null}
+        </p>
+      </fieldset>
       {!p.baseId ? (
         <label className="nm-field">
           <span className="nm-field__label">Lengde på økta (min)</span>

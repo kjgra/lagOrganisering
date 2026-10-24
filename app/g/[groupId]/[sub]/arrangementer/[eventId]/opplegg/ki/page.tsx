@@ -8,10 +8,10 @@ import { aiMode } from "@/lib/env";
 import { findEvent } from "@/lib/events-data";
 import { dayLabel, decimal, osloMonthStart } from "@/lib/format";
 import { themeForEvent } from "@/lib/plan-data";
-import { pitchText } from "@/lib/plans/plan";
+import { pitchFacts } from "@/lib/plans/plan";
 import { eventIsPast } from "@/lib/spond/events";
 import { aiSpend, getAiSettings } from "@/lib/store/ai";
-import { getPitch, getPlan, getTeamSettings, listPlanComments } from "@/lib/store/training";
+import { getPlan, getTeamSettings, listPlanComments, teamPitches } from "@/lib/store/training";
 
 /** KI may take a minute or two; the Server Action runs within this page's limit. */
 export const maxDuration = 300;
@@ -26,15 +26,15 @@ export default async function KiPage(props: PageProps<"/g/[groupId]/[sub]/arrang
   if (eventIsPast(event) || !ctx.user.rights.ai) redirect(eventPath);
   const d = await db();
   const fromId = Number(typeof sp.fra === "string" ? sp.fra : "") || null;
-  const [settings, team, season, comments, spend, base] = await Promise.all([
+  const [settings, team, pitches, season, comments, spend, base] = await Promise.all([
     getAiSettings(d),
     getTeamSettings(d, ctx.user.access, ctx.group.id),
+    teamPitches(d, ctx.user.access, ctx.group.id),
     themeForEvent(d, ctx.user, ctx.group, event),
     listPlanComments(d, ctx.user.access, ctx.group.id, event.id),
     aiSpend(d, ctx.user.access, ctx.group.id, osloMonthStart(new Date())),
     fromId ? getPlan(d, ctx.user.access, fromId).catch(() => null) : Promise.resolve(null),
   ]);
-  const pitch = team.pitch_id ? await getPitch(d, team.pitch_id) : null;
   if (fromId && (!base || base.eventId !== event.id)) notFound();
   const budget = budgetCheck(spend, settings);
   const budgetText = budget.ok
@@ -52,7 +52,9 @@ export default async function KiPage(props: PageProps<"/g/[groupId]/[sub]/arrang
         theme={theme}
         themeNote={!base && season ? `Månedens tema i årshjulet${season.description ? `: ${season.description}` : ""}` : ""}
         minutes={team.session_minutes}
-        pitch={pitchText(pitch, team.pitch)}
+        pitches={pitches.map((x) => ({ id: x.id, name: x.name, facts: pitchFacts(x) }))}
+        pitchNote={team.pitch}
+        standardHref={ctx.user.rights.admin ? `/innstillinger/standard?lag=${encodeURIComponent(ctx.group.id)}` : null}
         models={Object.entries(AI_MODELS).map(([id, m]) => ({ id, label: m.label, choice: m.choice }))}
         model={settings.model}
         comments={comments.filter((c) => c.used_in_plan_id === null).map((c) => ({ id: c.id, text: `v${c.version}${c.exercise_no ? `, øvelse ${c.exercise_no}` : ""}: ${c.body}` }))}
