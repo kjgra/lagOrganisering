@@ -1,6 +1,8 @@
 "use client";
 
+import { Search } from "lucide-react";
 import { useState } from "react";
+import { Icon } from "@/components/ui/icon";
 import { Avatar, Tag } from "@/components/ui/status";
 import { TagSheet, type PlayerName, type TagTarget } from "./TagSheet";
 
@@ -32,11 +34,22 @@ export const tagText = (r: { level: number | null; tags: string[] }) => [...(r.l
 /** Players with their tags. Tap a player to edit tags, if the user may. */
 export function MemberList({ groupId, rows, players, canTag }: { groupId: string; rows: MemberRow[]; players: PlayerName[]; canTag: boolean }) {
   const [editing, setEditing] = useState<TagTarget | null>(null);
+  const [find, setFind] = useState("");
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? "Tidligere medlem";
+  const query = find.trim().toLowerCase();
+  const shown = rows.filter((r) => !query || r.name.toLowerCase().includes(query) || r.tags.some((t) => t.toLowerCase().includes(query)));
   return (
     <>
-      <ul className="nm-list">
-        {rows.map((r) => {
+      {rows.length > 8 ? (
+        <label className="nm-search" style={{ marginTop: 0, marginBottom: "var(--space-3)" }}>
+          <span className="nm-sr">Søk blant spillerne</span>
+          <Icon icon={Search} />
+          <input className="nm-input" type="search" placeholder="Søk på navn eller tagg" value={find} onChange={(e) => setFind(e.target.value)} />
+        </label>
+      ) : null}
+      {query && !shown.length ? <p className="nm-muted">Ingen spillere passer søket.</p> : null}
+      <ul className="nm-list" hidden={!shown.length}>
+        {shown.map((r) => {
           const body = (
             <>
               <Avatar name={r.name} />

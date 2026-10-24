@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { addTagAction, removeTagAction, setLevelAction, setPairAction } from "@/app/actions/tags";
 import { Icon } from "@/components/ui/icon";
@@ -31,7 +31,7 @@ export function TagSheet({ groupId, target, players, onClose }: { groupId: strin
   const [tags, setTags] = useState(target.tags);
   const [level, setLevel] = useState(target.level);
   const [pairs, setPairs] = useState(target.pairs);
-  const [partner, setPartner] = useState("");
+  const [find, setFind] = useState("");
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -76,10 +76,12 @@ export function TagSheet({ groupId, target, players, onClose }: { groupId: strin
       const r = await setPairAction(groupId, target.memberId, id, paired);
       if (!r.ok) return setError(r.error);
       setPairs((ps) => (paired ? [...ps, id] : ps.filter((x) => x !== id)));
-      setPartner("");
+      setFind("");
       if (paired) toast(`${target.name} og ${nameOf(id)} spiller godt sammen`);
     });
   const candidates = players.filter((p) => p.id !== target.memberId && !pairs.includes(p.id));
+  const query = find.trim().toLowerCase();
+  const found = candidates.filter((p) => !query || p.name.toLowerCase().includes(query));
 
   const suggestions = target.suggestions.filter((s) => !tags.some((t) => t.toLowerCase() === s.toLowerCase()));
   return (
@@ -127,29 +129,24 @@ export function TagSheet({ groupId, target, players, onClose }: { groupId: strin
           </p>
         )}
         {candidates.length ? (
-          <form
-            className="nm-row"
-            style={{ marginTop: "var(--space-3)", flexWrap: "nowrap" }}
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (partner) pair(partner, true);
-            }}
-          >
-            <label className="nm-sr" htmlFor="nm-partner">
-              Spiller
-            </label>
-            <select id="nm-partner" className="nm-input" value={partner} onChange={(e) => setPartner(e.target.value)}>
-              <option value="">Velg spiller</option>
-              {candidates.map((p) => (
-                <option key={p.id} value={p.id}>
+          <>
+            {candidates.length > 8 ? (
+              <label className="nm-search">
+                <span className="nm-sr">Søk etter spiller</span>
+                <Icon icon={Search} />
+                <input className="nm-input" type="search" placeholder="Søk etter spiller" value={find} onChange={(e) => setFind(e.target.value)} />
+              </label>
+            ) : null}
+            <div className="nm-row nm-pairpick" role="group" aria-label="Legg til spiller">
+              {found.map((p) => (
+                <button key={p.id} type="button" className="nm-chip" disabled={pending} onClick={() => pair(p.id, true)} aria-label={`Legg til ${p.name}`}>
+                  <Icon icon={Plus} size={18} />
                   {p.name}
-                </option>
+                </button>
               ))}
-            </select>
-            <button type="submit" className="nm-btn nm-btn--secondary" disabled={pending || !partner}>
-              Legg til
-            </button>
-          </form>
+              {!found.length ? <p className="nm-muted" style={{ margin: 0 }}>Ingen spillere passer søket.</p> : null}
+            </div>
+          </>
         ) : null}
         <h3 className="nm-section-label">Tagger</h3>
         {tags.length ? (

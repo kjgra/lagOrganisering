@@ -61,6 +61,8 @@ interface BoardState extends BoardProps {
   assignments: Assignments;
   selected: string | null;
   setSelected: (id: string | null) => void;
+  /** The players moved last, so their chips can show where they landed. */
+  moved: string[];
   moveTo: (id: string, label: string) => void;
   addTeam: () => void;
   removeTeam: () => void;
@@ -110,6 +112,7 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
   );
   const [selected, setSelected] = useState<string | null>(null);
   const [live, setLive] = useState("");
+  const [moved, setMoved] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [submit, setSubmit] = useState(false);
@@ -189,6 +192,7 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
     change(labels, r.assignments);
     setManual(true);
     setSelected(null);
+    setMoved([id, ...r.followed]);
     const where = label ? `til ${label}` : "tilbake til ikke fordelt";
     setLive(`${nameOf(id)} flyttet ${where}.${r.followed.length ? ` ${r.followed.map(nameOf).join(", ")} fulgte med.` : ""}`);
     if (r.followed.length) toast(`${r.followed.map(nameOf).join(", ")} ble flyttet sammen med ${nameOf(id)}`, { label: "Angre", run: undo });
@@ -220,6 +224,7 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
     assignments,
     selected,
     setSelected,
+    moved,
     moveTo,
     addTeam: () => {
       if (labels.length >= MAX_TEAMS) return;
@@ -315,6 +320,7 @@ function Chip({ p, overlay }: { p: BoardPlayer; overlay?: boolean }) {
       {...(overlay ? {} : attributes)}
       {...(overlay ? {} : listeners)}
       aria-pressed={sel}
+      data-moved={!overlay && b.moved.includes(p.id) ? "" : undefined}
       onClick={(e) => {
         e.stopPropagation();
         b.setSelected(sel ? null : p.id);

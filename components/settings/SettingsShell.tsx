@@ -1,4 +1,4 @@
-import { ChevronLeft } from "lucide-react";
+import { CalendarRange, ChevronLeft, ChevronRight, ClipboardList, Lightbulb, SlidersHorizontal, Sparkles, Users, Wrench, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Brand } from "@/components/Brand";
@@ -15,6 +15,16 @@ export const ADMIN_TABS = [
   { key: "ovelser", label: "Øvelser" },
   { key: "vedlikehold", label: "Vedlikehold", superadmin: true },
 ] as const;
+
+const TAB_ICONS: Record<(typeof ADMIN_TABS)[number]["key"], LucideIcon> = {
+  trenere: Users,
+  ki: Sparkles,
+  arshjul: CalendarRange,
+  standard: SlidersHorizontal,
+  laerdommer: Lightbulb,
+  ovelser: ClipboardList,
+  vedlikehold: Wrench,
+};
 
 export type AdminTab = (typeof ADMIN_TABS)[number]["key"];
 
@@ -63,24 +73,40 @@ export function SettingsShell({
         </div>
       </aside>
       <header className="nm-appbar nm-chrome">
-        <Link href={back} className="nm-iconbtn" aria-label="Tilbake">
-          <Icon icon={ChevronLeft} size={26} />
-        </Link>
+        {tab === "generelt" ? (
+          <Link href={back} className="nm-iconbtn" aria-label="Tilbake">
+            <Icon icon={ChevronLeft} size={26} />
+          </Link>
+        ) : (
+          <>
+            {/* On a phone an admin page goes back to the settings list, on a desktop the side menu is always there. */}
+            <Link href={`/innstillinger${q()}`} className="nm-iconbtn nm-phone-only" aria-label="Tilbake til innstillinger">
+              <Icon icon={ChevronLeft} size={26} />
+            </Link>
+            <Link href={back} className="nm-iconbtn nm-desk-only" aria-label="Tilbake">
+              <Icon icon={ChevronLeft} size={26} />
+            </Link>
+          </>
+        )}
         <h1 className="nm-appbar__title">Innstillinger</h1>
       </header>
       <main className="nm-main">
         <div className="nm-main__inner">
-          {tabs.length ? (
-            <nav className="nm-tabs nm-phone-only" aria-label="Innstillinger">
-              <Link href={`/innstillinger${q()}`} aria-current={tab === "generelt" ? "page" : undefined}>
-                Generelt
-              </Link>
-              {tabs.map((t) => (
-                <Link key={t.key} href={`/innstillinger/${t.key}${q()}`} aria-current={tab === t.key ? "page" : undefined}>
-                  {t.label}
-                </Link>
-              ))}
-            </nav>
+          {tab === "generelt" && tabs.length ? (
+            <section className="nm-section nm-phone-only">
+              <h2 className="nm-h2">Admin</h2>
+              <ul className="nm-list nm-navlist">
+                {tabs.map((t) => (
+                  <li key={t.key}>
+                    <Link href={`/innstillinger/${t.key}${q()}`}>
+                      <Icon icon={TAB_ICONS[t.key]} />
+                      <span className="nm-list__name">{t.label}</span>
+                      <Icon icon={ChevronRight} />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ) : null}
           {children}
         </div>

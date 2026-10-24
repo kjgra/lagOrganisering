@@ -448,3 +448,36 @@ body:has(.nm-actions):has(.nm-bottomnav) .nm-toast { bottom: calc(158px + env(sa
 .nm-bottomnav .nm-navbadge { position: absolute; top: -6px; right: -14px; border: var(--border-2) solid var(--chrome); }
 .nm-side nav .nm-navbadge { margin-left: auto; }
 .nm-side nav a[aria-current="page"] .nm-navbadge { background: var(--chrome); color: var(--on-chrome); }
+
+/* Settings as a list on a phone */
+.nm-navlist > li { padding: 0; }
+.nm-navlist a { flex: 1; display: flex; align-items: center; gap: var(--space-3); min-height: var(--row-min); padding: var(--space-2) var(--space-3); color: inherit; text-decoration: none; }
+.nm-navlist a:hover { background: var(--surface-muted); }
+.nm-navlist .nm-list__name { flex: 1; }
+
+/* Short transitions (≤150 ms; prefers-reduced-motion turns them off) */
+@keyframes nm-fade { from { opacity: 0; } }
+@keyframes nm-rise { from { opacity: 0; transform: translateY(24px); } }
+@keyframes nm-toast-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+.nm-backdrop { animation: nm-fade 150ms ease-out; }
+.nm-sheet { animation: nm-rise 150ms ease-out; }
+.nm-toast { animation: nm-toast-in 150ms ease-out; }
+/* The chip moved last keeps a dashed ring until the next move, so you see where it landed. */
+.nm-chip[data-moved] { outline: var(--border-2) dashed var(--primary); outline-offset: 2px; animation: nm-fade 150ms ease-out; }
+.nm-btn, .nm-chip, .nm-seg a, .nm-seg button, .nm-navlist a, .nm-row-btn { transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out; }
+
+/* Filter tabs wrap onto a new row instead of being cut on a narrow phone */
+.nm-seg { flex-wrap: wrap; overflow: visible; border-radius: var(--radius-lg); }
+
+/* Empty states */
+.nm-empty { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); margin-top: var(--space-3); padding: var(--space-5) var(--space-4); border: var(--border-2) dashed var(--line-strong); border-radius: var(--radius-lg); color: var(--ink-muted); }
+.nm-empty p { margin: 0; color: var(--ink); font-size: var(--fs-body-lg); }
+.nm-empty__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.nm-pairpick { gap: var(--space-2); margin-top: var(--space-3); max-height: 240px; overflow-y: auto; }
+.nm-pairpick .nm-chip { cursor: pointer; }
+
+/* Season plan: one card per month */
+.nm-month { display: grid; gap: var(--space-3); margin: 0; padding: var(--space-3) var(--space-4) var(--space-4); min-width: 0; }
+.nm-month__name { display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-1); font-family: var(--font-display); font-size: var(--fs-heading); font-weight: 800; }
+.nm-month-past > summary { min-height: var(--touch-min); display: flex; align-items: center; font-weight: 700; cursor: pointer; }
+.nm-month-past > .nm-form { margin-top: var(--space-3); }
