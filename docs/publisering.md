@@ -41,7 +41,7 @@ Uten `DATABASE_URL` i Preview brukes en database i minnet med demodata; den null
 
 ## 3. Kopier data fra test (valgfritt)
 
-Øvelsesbanken, trenertilganger (`app_roles` med loggen `app_role_log`), årshjulet og lagets standard (`team_settings`) kan kopieres fra test-databasen (den gamle appen) etter at migreringene er kjørt mot prod. Bruk «Session pooler» eller direkte tilkobling (port 5432) for begge:
+Alt trenerne har lagt inn i test-databasen (den gamle appen) kan kopieres til prod etter at migreringene er kjørt mot prod: øvelser, trenertilganger (med logg), årshjul, lagets standard, tagger på spillere, lagforslag (med lag, spillere, historikk og kommentarer), treningsopplegg (med kommentarer og evaluering), lærdommer, KI-innstillinger og KI-forbruk. Bruk «Session pooler» eller direkte tilkobling (port 5432) for begge:
 
 ```sh
 export SOURCE_DATABASE_URL='postgresql://...test...'
@@ -50,7 +50,15 @@ pnpm copy:test-to-prod            # prøvekjøring: viser hva som ville blitt en
 pnpm copy:test-to-prod --apply    # skriver til prod
 ```
 
-`--group <spond-gruppe-id>` begrenser øvelser, årshjul og lagets standard til én hovedgruppe. Scriptet kan kjøres flere ganger: det sletter ingenting, og en rad i prod overskrives bare når raden i test er nyere, og en loggrad legges bare til hvis den ikke finnes fra før. Alt skjer i én transaksjon.
+`--group <spond-gruppe-id>` begrenser alt som hører til et lag, til én hovedgruppe. Tilganger, brukerinnstillinger, KI-innstillinger og arkivloggen kopieres alltid i sin helhet.
+
+Scriptet kan kjøres flere ganger, og alt skjer i én transaksjon:
+- En rad i prod overskrives bare når raden i test er nyere (`updated_at`). Rader uten `updated_at` (tagger, opplegg, lagene i et forslag) og loggrader legges bare til.
+- Lagforslag og opplegg får nye ID-er i prod. Er et lagforslag nyere i test, erstattes lagene og spillerne i prod med versjonen fra test. Ellers slettes ingenting.
+- Har prod et annet opplegg med samme versjon for et arrangement, eller allerede et godkjent opplegg, hoppes opplegget fra test over sammen med kommentarene og evalueringen. Kolonnen «hoppet over» viser hvor mange.
+- Tabeller som ikke finnes i test, hoppes over, og kolonner som mangler, får standardverdien («merknad»). Redigeringslåser og vedlikeholdsstatus kopieres ikke.
+
+Kjør prøvekjøringen først og se gjennom tabellen før du kjører med `--apply`.
 
 ## 4. Første innlogging
 
