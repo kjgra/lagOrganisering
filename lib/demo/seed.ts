@@ -37,6 +37,16 @@ async function seedAccess(d: Db): Promise<void> {
          ('G-FOTBALL', 'M-S-G2016-12', 'Kaptein', 'P-ANN'),
          ('G-FOTBALL', 'M-S-J2016-1', 'Keeper', 'P-BEATE')`,
     );
+    await t.query(
+      `INSERT INTO member_levels (spond_group_id, spond_member_id, level, updated_by) VALUES
+         ('G-FOTBALL', 'M-S-G2016-1', 3, 'P-KJETIL'), ('G-FOTBALL', 'M-S-G2016-3', 3, 'P-KJETIL'),
+         ('G-FOTBALL', 'M-S-G2016-4', 2, 'P-KJETIL'), ('G-FOTBALL', 'M-S-G2016-6', 1, 'P-KJETIL'),
+         ('G-FOTBALL', 'M-S-G2016-8', 2, 'P-KJETIL'), ('G-FOTBALL', 'M-S-G2016-10', 1, 'P-KJETIL')`,
+    );
+    await t.query(
+      `INSERT INTO member_pairs (spond_group_id, member_a, member_b, created_by) VALUES
+         ('G-FOTBALL', 'M-S-G2016-4', 'M-S-G2016-6', 'P-KJETIL')`,
+    );
   });
 }
 

@@ -7,7 +7,7 @@ import { isPlayerKind, membersInContext } from "@/lib/spond/data";
 import { eventParticipants, placeable, statusLabel } from "@/lib/spond/events";
 import type { SpondEvent } from "@/lib/spond/types";
 import type { Lock, Proposal } from "@/lib/store/proposals";
-import { isKeeper, type TagMap } from "@/lib/store/tags";
+import { isKeeper, type PlayerTags } from "@/lib/store/tags";
 import { profileName } from "@/lib/proposal-view";
 
 /**
@@ -15,13 +15,14 @@ import { profileName } from "@/lib/proposal-view";
  * invitation is sent: everyone invited), plus anyone already placed. For a
  * gruppeutkast: the members of its (sub)group, trainers too, plus anyone placed.
  */
-export function boardMembers(ctx: GroupContext, tags: TagMap, event: SpondEvent | null, proposal: Proposal | null, subgroupId: string | null): BoardPlayer[] {
+export function boardMembers(ctx: GroupContext, info: PlayerTags, event: SpondEvent | null, proposal: Proposal | null, subgroupId: string | null): BoardPlayer[] {
   const placed = new Set(Object.keys(proposal?.assignments ?? {}));
+  const { tags, levels } = info;
   const universe = [...new Set([...tags.values()].flat())];
   const byId = new Map(ctx.group.members.map((m) => [m.id, m]));
   const make = (id: string, name: string, coach: boolean, note: string | null): BoardPlayer => {
     const t = coach ? [] : (tags.get(id) ?? []);
-    return { id, name, coach, keeper: isKeeper(t), tags: t, short: tagAbbrev(t, universe), note };
+    return { id, name, coach, keeper: isKeeper(t), tags: t, short: tagAbbrev(t, universe), level: coach ? null : (levels.get(id) ?? null), note };
   };
   const out: BoardPlayer[] = [];
   const seen = new Set<string>();
@@ -50,7 +51,7 @@ export function boardMembers(ctx: GroupContext, tags: TagMap, event: SpondEvent 
 export function boardProps(
   ctx: GroupContext,
   opts: {
-    tags: TagMap;
+    tags: PlayerTags;
     event: SpondEvent | null;
     proposal: Proposal | null;
     existingNames: string[];
@@ -77,6 +78,7 @@ export function boardProps(
     members: boardMembers(ctx, opts.tags, event, proposal, opts.subgroupId),
     poolLabel: event ? (event.notSent ? "Inviteres, ikke fordelt" : "Kommer, ikke fordelt") : "Ikke fordelt",
     links: event ? [] : ctx.group.parentLinks,
+    pairs: opts.tags.pairs,
     doneHref: opts.doneHref,
     lockedBy: lock ? profileName(ctx.group, lock.editor) : null,
   };

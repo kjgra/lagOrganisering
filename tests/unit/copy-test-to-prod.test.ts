@@ -90,6 +90,19 @@ describe("copy test to prod", () => {
     });
   });
 
+  it("keeps a newer level in prod over an older number tag", async () => {
+    const [x, y] = await Promise.all([testDb(), testDb()]);
+    await x.query("INSERT INTO member_tags (spond_group_id, spond_member_id, tag, created_by, created_at) VALUES ('G1', 'M-1', '1', 'P-1', '2026-05-01'), ('G1', 'M-1', '3', 'P-1', '2026-05-02')");
+    await y.query("INSERT INTO member_levels (spond_group_id, spond_member_id, level, updated_by, updated_at) VALUES ('G1', 'M-1', 5, 'P-2', '2026-06-01')");
+    await x.query("INSERT INTO member_tags (spond_group_id, spond_member_id, tag, created_by, created_at) VALUES ('G1', 'M-2', '1', 'P-1', '2026-05-01'), ('G1', 'M-2', '3', 'P-1', '2026-05-02')");
+    await copyTestToProd(x, y, { apply: true });
+    expect(await y.query("SELECT spond_member_id, level FROM member_levels ORDER BY spond_member_id")).toEqual([
+      { spond_member_id: "M-1", level: 5 },
+      { spond_member_id: "M-2", level: 3 },
+    ]);
+    await Promise.all([x.close(), y.close()]);
+  });
+
   it("leaves out tables and columns the source does not have", async () => {
     const [old, target] = await Promise.all([testDb(), testDb()]);
     await old.query("DROP TABLE user_preferences");
@@ -163,8 +176,9 @@ describe("copy tags, proposals and plans", () => {
 
   it("maps new ids and skips a plan that clashes with prod", async () => {
     const rs = await copyTestToProd(a, b, { apply: true });
-    expect(counts(rs, all)).toEqual({
-      member_tags: [3, 0, 0],
+    expect(counts(rs, [...all, "member_levels (fra tagger)"])).toEqual({
+      member_tags: [1, 0, 0],
+      "member_levels (fra tagger)": [2, 0, 0],
       group_proposals: [1, 0, 0],
       group_proposal_labels: [2, 0, 0],
       group_proposal_members: [2, 0, 0],
@@ -176,6 +190,11 @@ describe("copy tags, proposals and plans", () => {
       team_learnings: [1, 0, 0],
       ai_usage: [1, 0, 0],
     });
+    expect(await b.query("SELECT spond_member_id, level FROM member_levels ORDER BY spond_member_id")).toEqual([
+      { spond_member_id: "M-1", level: 2 },
+      { spond_member_id: "M-9", level: 1 },
+    ]);
+    expect(await b.query("SELECT tag FROM member_tags")).toEqual([{ tag: "Keeper" }]);
     expect(rs.find((r) => r.table === "training_plans")?.skipped).toBe(1);
     expect(rs.find((r) => r.table === "training_plan_comments")?.skipped).toBe(1);
     const members = await b.query<{ name: string; spond_member_id: string; label: string }>(
@@ -206,7 +225,7 @@ describe("copy tags, proposals and plans", () => {
     await a.query("UPDATE group_proposals SET updated_at = now() WHERE id = $1", [p.id]);
     const rs = await copyTestToProd(a, b, { apply: true });
     expect(counts(rs, ["group_proposals", "group_proposal_labels", "group_proposal_members", "proposal_history", "member_tags"])).toEqual({
-      member_tags: [0, 0, 3],
+      member_tags: [0, 0, 1],
       group_proposals: [0, 1, 0],
       group_proposal_labels: [1, 0, 0],
       group_proposal_members: [2, 0, 0],
@@ -215,7 +234,7 @@ describe("copy tags, proposals and plans", () => {
     const labels = await b.query<{ label: string }>("SELECT DISTINCT label FROM group_proposal_members ORDER BY label");
     expect(labels).toEqual([{ label: "Lag 1" }]);
     const again = await copyTestToProd(a, b, { apply: true });
-    for (const r of again.filter((r) => all.includes(r.table))) expect([r.table, r.inserted, r.updated]).toEqual([r.table, 0, 0]);
+    for (const r of again.filter((r) => [...all, "member_levels (fra tagger)"].includes(r.table))) expect([r.table, r.inserted, r.updated]).toEqual([r.table, 0, 0]);
   });
 
   it("copies the tags of one group", async () => {
@@ -224,8 +243,9 @@ describe("copy tags, proposals and plans", () => {
     const [p] = await x.query<{ id: number }>("INSERT INTO group_proposals (spond_group_id, name, created_by) VALUES ('G2', 'Annet lag', 'P-2') RETURNING id");
     await x.query("INSERT INTO group_proposal_labels (proposal_id, label, sort_order) VALUES ($1, 'Lag 1', 0)", [p.id]);
     const rs = await copyTestToProd(x, y, { apply: true, group: "G1" });
-    expect(counts(rs, ["member_tags", "group_proposals", "group_proposal_labels"])).toEqual({
-      member_tags: [1, 0, 0],
+    expect(counts(rs, ["member_tags", "member_levels (fra tagger)", "group_proposals", "group_proposal_labels"])).toEqual({
+      member_tags: [0, 0, 0],
+      "member_levels (fra tagger)": [1, 0, 0],
       group_proposals: [0, 0, 0],
       group_proposal_labels: [0, 0, 0],
     });

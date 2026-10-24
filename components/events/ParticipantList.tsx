@@ -2,9 +2,10 @@
 
 import { Tags } from "lucide-react";
 import { useState } from "react";
-import { TagSheet, type TagTarget } from "@/components/members/TagSheet";
+import { TagLine } from "@/components/members/MemberList";
+import { TagSheet, type PlayerName, type TagTarget } from "@/components/members/TagSheet";
 import { Icon } from "@/components/ui/icon";
-import { Avatar, StatusBadge, Tag } from "@/components/ui/status";
+import { Avatar, StatusBadge } from "@/components/ui/status";
 import type { ResponseStatus } from "@/lib/spond/types";
 
 export interface ParticipantRow {
@@ -15,6 +16,8 @@ export interface ParticipantRow {
   /** Players still in the group can get tags. */
   canTag: boolean;
   suggestions: string[];
+  level: number | null;
+  pairs: string[];
 }
 
 const FILTERS: { key: ResponseStatus; label: string }[] = [
@@ -26,9 +29,10 @@ const FILTERS: { key: ResponseStatus; label: string }[] = [
 ];
 
 /** Players on an event with response, tags and a filter. Tap a player to edit tags. */
-export function ParticipantList({ groupId, rows }: { groupId: string; rows: ParticipantRow[] }) {
+export function ParticipantList({ groupId, rows, players }: { groupId: string; rows: ParticipantRow[]; players: PlayerName[] }) {
   const [filter, setFilter] = useState<ResponseStatus | "all">("all");
   const [editing, setEditing] = useState<TagTarget | null>(null);
+  const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? "Tidligere medlem";
   const count = (s: ResponseStatus) => rows.filter((r) => r.status === s).length;
   const shown = rows.filter((r) => filter === "all" || r.status === filter);
   const filters = FILTERS.filter((f) => f.key === "accepted" || f.key === "unanswered" || f.key === "declined" || count(f.key) > 0);
@@ -54,13 +58,7 @@ export function ParticipantList({ groupId, rows }: { groupId: string; rows: Part
                 <Avatar name={r.name} />
                 <span className="nm-list__main">
                   <span className="nm-list__name">{r.name}</span>
-                  {r.tags.length ? (
-                    <span className="nm-row" style={{ gap: "var(--space-2)" }}>
-                      {r.tags.map((t) => (
-                        <Tag key={t}>{t}</Tag>
-                      ))}
-                    </span>
-                  ) : null}
+                  <TagLine level={r.level} pairs={r.pairs} tags={r.tags} nameOf={nameOf} />
                 </span>
                 <StatusBadge status={r.status} />
               </>
@@ -72,7 +70,7 @@ export function ParticipantList({ groupId, rows }: { groupId: string; rows: Part
                     type="button"
                     className="nm-row-btn"
                     aria-label={`${r.name}. Endre tagger.`}
-                    onClick={() => setEditing({ memberId: r.memberId, name: r.name, tags: r.tags, suggestions: r.suggestions })}
+                    onClick={() => setEditing({ memberId: r.memberId, name: r.name, tags: r.tags, suggestions: r.suggestions, level: r.level, pairs: r.pairs })}
                   >
                     {body}
                   </button>
@@ -86,11 +84,13 @@ export function ParticipantList({ groupId, rows }: { groupId: string; rows: Part
       ) : (
         <p className="nm-muted">Ingen her.</p>
       )}
-      <p className="nm-muted" style={{ fontSize: "var(--fs-caption)", display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
-        <Icon icon={Tags} size={18} />
-        Trykk på en spiller for å legge til eller fjerne tagger.
-      </p>
-      {editing ? <TagSheet groupId={groupId} target={editing} onClose={() => setEditing(null)} /> : null}
+      {rows.some((r) => r.canTag) ? (
+        <p className="nm-muted" style={{ fontSize: "var(--fs-caption)", display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+          <Icon icon={Tags} size={18} />
+          Trykk på en spiller for å endre nivå, par og tagger.
+        </p>
+      ) : null}
+      {editing ? <TagSheet groupId={groupId} target={editing} players={players} onClose={() => setEditing(null)} /> : null}
     </>
   );
 }

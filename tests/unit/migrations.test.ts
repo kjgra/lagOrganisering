@@ -34,3 +34,20 @@ describe("migrations", () => {
     await d.close();
   });
 });
+
+describe("tag types migration", () => {
+  it("turns number tags into levels, the newest winning, and keeps other tags", async () => {
+    const d = await testDb();
+    // Re-run the conversion from the migration on fresh tags.
+    await d.query(
+      `INSERT INTO member_tags (spond_group_id, spond_member_id, tag, created_by, created_at)
+       VALUES ('G1', 'M-1', '1', 'P-1', '2026-05-01'), ('G1', 'M-1', '2', 'P-1', '2026-05-02'),
+              ('G1', 'M-2', 'Keeper', 'P-1', '2026-05-01'), ('G1', 'M-2', '7', 'P-1', '2026-05-01')`,
+    );
+    const sql = (await migrationFiles()).find((m) => m.name.endsWith("_tag_types.sql"))!.sql;
+    await d.query(sql.slice(sql.indexOf("INSERT INTO member_levels")));
+    expect(await d.query("SELECT spond_member_id, level FROM member_levels")).toEqual([{ spond_member_id: "M-1", level: 2 }]);
+    expect(await d.query("SELECT tag FROM member_tags ORDER BY tag")).toEqual([{ tag: "7" }, { tag: "Keeper" }]);
+    await d.close();
+  });
+});

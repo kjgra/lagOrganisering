@@ -3,6 +3,10 @@
 import { useState, useTransition } from "react";
 import { setRoleAction } from "@/app/actions/admin";
 
+type Role = "app" | "ai" | "admin" | "tags";
+
+const ROLE_NAME: Record<Role, string> = { app: "App", ai: "KI", admin: "Admin", tags: "Tagger" };
+
 export interface RoleRowView {
   profileId: string;
   name: string;
@@ -10,6 +14,7 @@ export interface RoleRowView {
   app: boolean;
   ai: boolean;
   admin: boolean;
+  tags: boolean;
   superadmin: boolean;
   self: boolean;
   changed: string;
@@ -20,7 +25,7 @@ export function RoleTable({ groupId, rows, canAdmin }: { groupId: string; rows: 
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const toggle = (r: RoleRowView, role: "app" | "ai" | "admin", granted: boolean) =>
+  const toggle = (r: RoleRowView, role: Role, granted: boolean) =>
     start(async () => {
       setError(null);
       setBusy(`${r.profileId}:${role}`);
@@ -28,9 +33,9 @@ export function RoleTable({ groupId, rows, canAdmin }: { groupId: string; rows: 
       setBusy(null);
       if (!res.ok) setError(`${r.name}: ${res.error}`);
     });
-  const box = (r: RoleRowView, role: "app" | "ai" | "admin") => {
+  const box = (r: RoleRowView, role: Role) => {
     const on = r.superadmin || r[role] || (role === "app" && r.admin);
-    const locked = r.superadmin || (role === "admin" && !canAdmin) || (role === "app" && r.admin) || (r.self && role !== "ai");
+    const locked = r.superadmin || (role === "admin" && !canAdmin) || (role === "app" && r.admin) || (r.self && role !== "ai" && role !== "tags");
     return (
       <input
         type="checkbox"
@@ -38,7 +43,7 @@ export function RoleTable({ groupId, rows, canAdmin }: { groupId: string; rows: 
         checked={on}
         disabled={locked || pending}
         aria-busy={busy === `${r.profileId}:${role}`}
-        aria-label={`${role === "app" ? "App" : role === "ai" ? "KI" : "Admin"} for ${r.name}`}
+        aria-label={`${ROLE_NAME[role]} for ${r.name}`}
         onChange={(e) => toggle(r, role, e.target.checked)}
       />
     );
@@ -57,6 +62,7 @@ export function RoleTable({ groupId, rows, canAdmin }: { groupId: string; rows: 
               <th>Trener</th>
               <th className="num">App</th>
               <th className="num">KI</th>
+              <th className="num">Tagger</th>
               <th className="num">Admin</th>
             </tr>
           </thead>
@@ -73,6 +79,7 @@ export function RoleTable({ groupId, rows, canAdmin }: { groupId: string; rows: 
                 </td>
                 <td className="num">{box(r, "app")}</td>
                 <td className="num">{box(r, "ai")}</td>
+                <td className="num">{box(r, "tags")}</td>
                 <td className="num">{box(r, "admin")}</td>
               </tr>
             ))}

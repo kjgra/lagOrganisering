@@ -23,6 +23,10 @@
  * Har prod et annet opplegg med samme versjon, eller et annet godkjent opplegg
  * for arrangementet, hoppes opplegget over (med kommentarer og evaluering).
  *
+ * Tagger som bare er et tall fra 1 til 5, blir nivå (member_levels), som i
+ * migrasjonen 20261024000000_tag_types. Har en spiller flere, gjelder den
+ * nyeste, og et nivå i prod overskrives bare av en nyere tagg.
+ *
  * Tabeller som ikke finnes i test, hoppes over, og kolonner som mangler i test,
  * får standardverdien i prod. Redigeringslåser og vedlikeholdsstatus kopieres
  * ikke. Superadmin står i SUPERADMIN_PROFILE_ID og kopieres ikke. Bare Spond-ID-er
@@ -53,6 +57,12 @@ export interface TableResult {
 
 interface Table {
   name: string;
+  /** Shown in the result when it is not `name`. */
+  label?: string;
+  /** Read from another source table, through a subquery with the target's columns. */
+  from?: { table: string; sql: string };
+  /** Only source rows matching this condition. */
+  filter?: string;
   columns: string[];
   /** Identifies a row in both databases. For a table with `id`, a natural key. */
   key: string[];
@@ -102,7 +112,7 @@ const TABLES: Table[] = [
   },
   {
     name: "app_roles",
-    columns: ["spond_profile_id", "can_use_ai", "is_admin", "can_use_app", "updated_by", "updated_at"],
+    columns: ["spond_profile_id", "can_use_ai", "is_admin", "can_use_app", "can_see_tags", "updated_by", "updated_at"],
     key: ["spond_profile_id"],
     casts: { updated_at: TS },
   },
@@ -137,6 +147,37 @@ const TABLES: Table[] = [
     name: "member_tags",
     columns: ["spond_group_id", "spond_member_id", "tag", "created_by", "created_at"],
     key: ["spond_group_id", "spond_member_id", "tag"],
+    insertOnly: true,
+    filter: "btrim(tag) !~ '^[1-5]$'",
+    casts: { created_at: TS },
+    group: "spond_group_id",
+  },
+  {
+    name: "member_levels",
+    columns: ["spond_group_id", "spond_member_id", "level", "updated_by", "updated_at"],
+    key: ["spond_group_id", "spond_member_id"],
+    casts: { updated_at: TS },
+    group: "spond_group_id",
+  },
+  {
+    name: "member_levels",
+    label: "member_levels (fra tagger)",
+    from: {
+      table: "member_tags",
+      sql: `(SELECT DISTINCT ON (spond_group_id, spond_member_id) spond_group_id, spond_member_id, btrim(tag)::smallint AS level,
+                    created_by AS updated_by, created_at AS updated_at
+               FROM member_tags WHERE btrim(tag) ~ '^[1-5]$'
+              ORDER BY spond_group_id, spond_member_id, created_at DESC) AS level_tags`,
+    },
+    columns: ["spond_group_id", "spond_member_id", "level", "updated_by", "updated_at"],
+    key: ["spond_group_id", "spond_member_id"],
+    casts: { updated_at: TS },
+    group: "spond_group_id",
+  },
+  {
+    name: "member_pairs",
+    columns: ["spond_group_id", "member_a", "member_b", "created_by", "created_at"],
+    key: ["spond_group_id", "member_a", "member_b"],
     insertOnly: true,
     casts: { created_at: TS },
     group: "spond_group_id",
@@ -297,9 +338,10 @@ async function sourceColumns(src: CopyDb, table: string): Promise<Set<string>> {
 }
 
 async function copyTable(src: CopyDb, dst: CopyDb, t: Table, ids: IdMaps, group?: string): Promise<TableResult> {
-  const res: TableResult = { table: t.name, read: 0, inserted: 0, updated: 0, unchanged: 0, skipped: 0 };
-  const have = await sourceColumns(src, t.name);
-  if (!have.size) return { ...res, missing: true };
+  const res: TableResult = { table: t.label ?? t.name, read: 0, inserted: 0, updated: 0, unchanged: 0, skipped: 0 };
+  const found = await sourceColumns(src, t.from?.table ?? t.name);
+  if (!found.size) return { ...res, missing: true };
+  const have = t.from ? new Set(t.columns) : found;
   const needed = [...t.key, ...(t.id ? [t.id] : []), ...Object.keys(t.refs ?? {})];
   const lacking = needed.filter((c) => !have.has(c));
   if (lacking.length) throw new Error(`${t.name} i kilden mangler ${lacking.join(", ")}.`);
@@ -311,13 +353,14 @@ async function copyTable(src: CopyDb, dst: CopyDb, t: Table, ids: IdMaps, group?
   const read = [...(t.id ? [t.id] : []), ...columns];
   const select = read.map((c) => (t.casts[c] ? `${c}::text AS ${c}` : c)).join(", ");
   const g = t.group;
-  let where = "";
+  const conds = t.filter ? [t.filter] : [];
   if (group && g) {
-    where = typeof g === "string" ? ` WHERE ${g} = $1` : ` WHERE ${g.column} IN (SELECT id FROM ${g.parent} WHERE spond_group_id = $1)`;
+    conds.push(typeof g === "string" ? `${g} = $1` : `${g.column} IN (SELECT id FROM ${g.parent} WHERE spond_group_id = $1)`);
   }
+  const where = conds.length ? ` WHERE ${conds.join(" AND ")}` : "";
   const rows = await src.query<Record<string, unknown>>(
-    `SELECT ${select} FROM ${t.name}${where} ORDER BY ${[...t.key, ...(t.id ? [t.id] : [])].join(", ")}`,
-    where ? [group] : [],
+    `SELECT ${select} FROM ${t.from?.sql ?? t.name}${where} ORDER BY ${[...t.key, ...(t.id ? [t.id] : [])].join(", ")}`,
+    group && g ? [group] : [],
   );
   res.read = rows.length;
 

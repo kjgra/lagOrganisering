@@ -1,15 +1,17 @@
 import { MemberList } from "@/components/members/MemberList";
 import { AppShell } from "@/components/shell/AppShell";
 import { Avatar } from "@/components/ui/status";
-import { contextFromParams } from "@/lib/context";
+import { contextFromParams, pairCandidates } from "@/lib/context";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
-import { listTags, tagSuggestions } from "@/lib/store/tags";
+import { listPlayerTags, pairsOf, tagSuggestions } from "@/lib/store/tags";
 
-/** Members of the context: trainers, players (with tags) and other adults. */
+/** Members of the context: trainers, players (with tags, if the user may see them) and other adults. */
 export default async function MembersPage(props: PageProps<"/g/[groupId]/[sub]/medlemmer">) {
   const ctx = await contextFromParams(props.params);
-  const tags = await listTags(await db(), ctx.user.access, ctx.group.id);
+  const info = await listPlayerTags(await db(), ctx.user.access, ctx.user.rights, ctx.group.id);
+  const { tags } = info;
+  const canTag = ctx.user.rights.tags;
   const coaches = ctx.members.filter((m) => m.kind === "coach");
   const players = ctx.members.filter((m) => m.kind === "player");
   const adults = ctx.members.filter((m) => m.kind === "adult");
@@ -40,14 +42,25 @@ export default async function MembersPage(props: PageProps<"/g/[groupId]/[sub]/m
       {players.length ? (
         <MemberList
           groupId={ctx.group.id}
-          rows={players.map((m) => ({ id: m.id, name: m.displayName, tags: tags.get(m.id) ?? [], suggestions: tagSuggestions(tags, m.id, fixed) }))}
+          canTag={canTag}
+          players={pairCandidates(ctx)}
+          rows={players.map((m) => ({
+            id: m.id,
+            name: m.displayName,
+            tags: tags.get(m.id) ?? [],
+            suggestions: tagSuggestions(tags, m.id, fixed),
+            level: info.levels.get(m.id) ?? null,
+            pairs: pairsOf(info.pairs, m.id),
+          }))}
         />
       ) : (
         <p className="nm-muted">Ingen spillere her.</p>
       )}
-      <p className="nm-muted" style={{ fontSize: "var(--fs-caption)" }}>
-        Trykk på en spiller for å legge til eller fjerne tagger. Tagger gjelder hele {ctx.group.name}.
-      </p>
+      {canTag ? (
+        <p className="nm-muted" style={{ fontSize: "var(--fs-caption)" }}>
+          Trykk på en spiller for å endre nivå, hvem spilleren spiller godt med, og tagger. Det gjelder hele {ctx.group.name}.
+        </p>
+      ) : null}
       {adults.length ? (
         <>
           <h2 className="nm-section-label">Andre voksne · {adults.length}</h2>
