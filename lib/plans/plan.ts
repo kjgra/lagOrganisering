@@ -493,6 +493,9 @@ export function validateSeason(year: number, themes: string[], descriptions: str
 export interface TeamSettings {
   age_group: string;
   session_minutes: number | null;
+  /** The chosen pitch (`pitches.id`, the fiksId on fotball.no), or null. */
+  pitch_id: number | null;
+  /** Free-text note about the pitch, e.g. «halve banen». */
   pitch: string;
   equipment: string;
   principles: string;
@@ -502,18 +505,62 @@ export function validateTeamSettings(s: Record<string, unknown>): TeamSettings {
   const out: TeamSettings = {
     age_group: txt(s.age_group),
     session_minutes: intOrNull(s.session_minutes, "Øktlengde", 15, 240),
+    pitch_id: intOrNull(s.pitch_id, "Bane", 1, 2_000_000_000),
     pitch: txt(s.pitch),
     equipment: txt(s.equipment),
     principles: txt(s.principles),
   };
-  const max: Record<string, number> = { age_group: 40, pitch: 200, equipment: 1000, principles: 2000 };
+  const max = { age_group: 40, pitch: 200, equipment: 1000, principles: 2000 };
   for (const [k, m] of Object.entries(max)) {
-    if ((out[k as keyof TeamSettings] as string).length > m) throw new PlanError(`Feltet «${k}» kan ha maks ${m} tegn.`);
+    if (out[k as keyof typeof max].length > m) throw new PlanError(`Feltet «${k}» kan ha maks ${m} tegn.`);
   }
   if (isSensitive(out.age_group, out.pitch, out.equipment, out.principles)) {
     throw new PlanError("Lagets standard skal ikke inneholde helseopplysninger eller andre sensitive opplysninger.");
   }
   return out;
+}
+
+// Pitches -----------------------------------------------------------------------------------
+
+export interface Pitch {
+  id: number;
+  parent_id: number | null;
+  facility: string;
+  name: string;
+  /** Underlag, e.g. «Kunstgress m/plastholdig innfyll». */
+  surface: string | null;
+  /** Banetype, e.g. «7er». */
+  pitch_type: string | null;
+  /** E.g. «150 lux»; null is no lighting. */
+  lighting: string | null;
+  length_m: number | null;
+  width_m: number | null;
+  retired: boolean;
+}
+
+/** «7er · Kunstgress m/plastholdig innfyll · 48 × 30 m · lys 150 lux», for the picker and for KI. */
+export function pitchFacts(p: Pitch): string {
+  const size = p.length_m && p.width_m ? `${p.length_m} × ${p.width_m} m` : "";
+  const light = p.lighting ? `lys ${p.lighting}` : "uten lys";
+  return [p.pitch_type, p.surface, size, light].filter(Boolean).join(" · ");
+}
+
+/** The pitch line in the order: «Nymark idrettsanlegg, Nymark Kunstgress 04 7er A (7er · …). Halve banen». */
+export function pitchText(p: Pitch | null, note: string): string {
+  const n = txt(note);
+  if (!p) return n;
+  const head = `${p.facility}, ${p.name} (${pitchFacts(p)})`;
+  return n ? `${head}. ${n}` : head;
+}
+
+/** Pitches in list order with their depth below the main pitch (0 for a main pitch). */
+export function pitchTree(pitches: Pitch[]): { pitch: Pitch; depth: number }[] {
+  const byId = new Map(pitches.map((p) => [p.id, p]));
+  const depth = (p: Pitch, seen = 0): number => {
+    const parent = p.parent_id === null ? undefined : byId.get(p.parent_id);
+    return parent && seen < 10 ? 1 + depth(parent, seen + 1) : 0;
+  };
+  return pitches.map((pitch) => ({ pitch, depth: depth(pitch) }));
 }
 
 // Similarity, so the bank does not fill up with nearly identical exercises ------------------

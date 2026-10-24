@@ -2,7 +2,7 @@ import { unzipSync, strFromU8 } from "fflate";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Db } from "@/lib/db";
 import { runMaintenance } from "@/lib/maintenance";
-import { validatePlan } from "@/lib/plans/plan";
+import { pitchText, pitchTree, validatePlan } from "@/lib/plans/plan";
 import reference from "@/lib/plans/reference-plan.json";
 import { NO_RIGHTS, type Access, type Rights } from "@/lib/store/access";
 import { archivePending, buildArchive, confirmArchive } from "@/lib/store/archive";
@@ -10,11 +10,15 @@ import {
   addPlanComment,
   approvePlan,
   getPlan,
+  getPitch,
+  getTeamSettings,
   listExercises,
+  listPitches,
   planVersions,
   saveFeedback,
   savePlan,
   savePlanExercise,
+  saveTeamSettings,
 } from "@/lib/store/training";
 import { testDb } from "../helpers/db";
 
@@ -65,6 +69,32 @@ describe("training plans", () => {
     await expect(savePlan(d, other, "G1", "E1", plan)).rejects.toThrow(/tilgang/);
     const [v] = await planVersions(d, me, "G1", "E1");
     await expect(getPlan(d, other, v.id)).rejects.toThrow(/tilgang/);
+  });
+});
+
+describe("pitches and team settings", () => {
+  it("has the Nymark pitches with sub-pitches from fotball.no", async () => {
+    const pitches = await listPitches(d);
+    expect(pitches).toHaveLength(36);
+    const tree = pitchTree(pitches);
+    const a7 = tree.find((x) => x.pitch.id === 18049)!;
+    expect(a7.depth).toBe(2);
+    expect(a7.pitch).toMatchObject({ name: "Nymark Kunstgress 04 7er A", pitch_type: "7er", length_m: 48, width_m: 30, lighting: "150 lux", parent_id: 8876 });
+    expect(pitches.find((p) => p.id === 686)).toMatchObject({ surface: "Naturgress", lighting: null, length_m: 100, width_m: 60 });
+    expect(pitches.find((p) => p.id === 22419)?.retired).toBe(true);
+  });
+
+  it("saves the chosen pitch with a note, and refuses unknown pitches", async () => {
+    await saveTeamSettings(d, me, sa, "G1", { age_group: "G10", pitch_id: "18049", pitch: "Deler med G11" });
+    const s = await getTeamSettings(d, me, "G1");
+    expect([s.pitch_id, s.pitch]).toEqual([18049, "Deler med G11"]);
+    expect(pitchText(await getPitch(d, 18049), s.pitch)).toBe(
+      "Nymark idrettsanlegg, Nymark Kunstgress 04 7er A (7er · Kunstgress m/plastholdig innfyll · 48 × 30 m · lys 150 lux). Deler med G11",
+    );
+    await expect(saveTeamSettings(d, me, sa, "G1", { pitch_id: "999" })).rejects.toThrow(/Ukjent bane/);
+    await expect(saveTeamSettings(d, me, sa, "G1", { pitch_id: "x" })).rejects.toThrow(/Bane/);
+    await saveTeamSettings(d, me, sa, "G1", { pitch_id: "" });
+    expect((await getTeamSettings(d, me, "G1")).pitch_id).toBeNull();
   });
 });
 

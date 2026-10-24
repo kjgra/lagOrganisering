@@ -72,6 +72,21 @@ test("admin: give KI access and save the season plan", async ({ page }) => {
   await expect(page.locator(".nm-toast")).toContainText(/Årshjulet for \d{4} er lagret/);
 });
 
+test("admin: choose the team's pitch, and KI gets it", async ({ page }) => {
+  await loginToEvents(page);
+  await openNextTraining(page);
+  const eventUrl = page.url().split("?")[0];
+  await page.goto("/innstillinger/standard?lag=G-FOTBALL");
+  const pitch = page.getByRole("combobox", { name: /^Bane/ });
+  await pitch.selectOption("18049");
+  await expect(page.getByText("7er · Kunstgress m/plastholdig innfyll · 48 × 30 m · lys 150 lux")).toBeVisible();
+  await page.getByRole("button", { name: "Lagre" }).click();
+  await expect(page.locator(".nm-toast")).toContainText(/Lagets standard er lagret/);
+
+  await page.goto(`${eventUrl}/opplegg/ki`);
+  await expect(page.getByText(/Bane: Nymark idrettsanlegg, Nymark Kunstgress 04 7er A/)).toBeVisible();
+});
+
 test("a starred group stays starred", async ({ page }) => {
   await login(page);
   await expect(page).toHaveURL(/arrangementer|velg-gruppe/);

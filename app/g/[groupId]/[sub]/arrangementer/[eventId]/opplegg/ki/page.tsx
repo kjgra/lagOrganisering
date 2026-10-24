@@ -8,9 +8,10 @@ import { aiMode } from "@/lib/env";
 import { findEvent } from "@/lib/events-data";
 import { dayLabel, decimal, osloMonthStart } from "@/lib/format";
 import { themeForEvent } from "@/lib/plan-data";
+import { pitchText } from "@/lib/plans/plan";
 import { eventIsPast } from "@/lib/spond/events";
 import { aiSpend, getAiSettings } from "@/lib/store/ai";
-import { getPlan, getTeamSettings, listPlanComments } from "@/lib/store/training";
+import { getPitch, getPlan, getTeamSettings, listPlanComments } from "@/lib/store/training";
 
 /** KI may take a minute or two; the Server Action runs within this page's limit. */
 export const maxDuration = 300;
@@ -33,6 +34,7 @@ export default async function KiPage(props: PageProps<"/g/[groupId]/[sub]/arrang
     aiSpend(d, ctx.user.access, ctx.group.id, osloMonthStart(new Date())),
     fromId ? getPlan(d, ctx.user.access, fromId).catch(() => null) : Promise.resolve(null),
   ]);
+  const pitch = team.pitch_id ? await getPitch(d, team.pitch_id) : null;
   if (fromId && (!base || base.eventId !== event.id)) notFound();
   const budget = budgetCheck(spend, settings);
   const budgetText = budget.ok
@@ -50,6 +52,7 @@ export default async function KiPage(props: PageProps<"/g/[groupId]/[sub]/arrang
         theme={theme}
         themeNote={!base && season ? `Månedens tema i årshjulet${season.description ? `: ${season.description}` : ""}` : ""}
         minutes={team.session_minutes}
+        pitch={pitchText(pitch, team.pitch)}
         models={Object.entries(AI_MODELS).map(([id, m]) => ({ id, label: m.label, choice: m.choice }))}
         model={settings.model}
         comments={comments.filter((c) => c.used_in_plan_id === null).map((c) => ({ id: c.id, text: `v${c.version}${c.exercise_no ? `, øvelse ${c.exercise_no}` : ""}: ${c.body}` }))}

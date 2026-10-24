@@ -132,7 +132,17 @@ export function SeasonForm({ groupId, year, months, themes, descriptions }: { gr
 
 // Team settings -----------------------------------------------------------------------------
 
-export function TeamSettingsForm({ groupId, initial }: { groupId: string; initial: Record<string, string> }) {
+export interface PitchOption {
+  id: string;
+  facility: string;
+  /** Short label for the list, indented below the main pitch. */
+  label: string;
+  /** All facts, shown under the list when chosen. */
+  facts: string;
+}
+
+export function TeamSettingsForm({ groupId, initial, pitches }: { groupId: string; initial: Record<string, string>; pitches: PitchOption[] }) {
+  const facilities = [...new Set(pitches.map((p) => p.facility))];
   const [v, setV] = useState(initial);
   const { pending, run, errorBox } = useSave();
   const set = (k: string) => (e: { target: { value: string } }) => setV((x) => ({ ...x, [k]: e.target.value }));
@@ -153,7 +163,23 @@ export function TeamSettingsForm({ groupId, initial }: { groupId: string; initia
           <input className="nm-input" inputMode="numeric" value={v.session_minutes} onChange={set("session_minutes")} />
         </Field>
       </div>
-      <Field label="Bane">
+      <Field label="Bane" hint={pitches.find((p) => p.id === v.pitch_id)?.facts ?? "Velg banen eller delbanen laget trener på. Mål og lys sendes med til KI."}>
+        <select className="nm-input" value={v.pitch_id} onChange={set("pitch_id")}>
+          <option value="">Ingen valgt</option>
+          {facilities.map((f) => (
+            <optgroup key={f} label={f}>
+              {pitches
+                .filter((p) => p.facility === f)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+            </optgroup>
+          ))}
+        </select>
+      </Field>
+      <Field label="Merknad om bane" hint="F.eks. «halve banen» eller «deler med G12».">
         <input className="nm-input" value={v.pitch} maxLength={200} onChange={set("pitch")} />
       </Field>
       <Field label="Utstyr">

@@ -14,6 +14,7 @@ import {
   type ExerciseInput,
   type Plan,
   type PlanExercise,
+  type Pitch,
   type TeamSettings,
 } from "@/lib/plans/plan";
 import { compactDrawing, validateDrawing } from "@/lib/plans/drawing";
@@ -89,26 +90,40 @@ export interface StoredTeamSettings extends TeamSettings {
 export async function getTeamSettings(d: Db, access: Access, groupId: string): Promise<StoredTeamSettings> {
   assertGroup(access, groupId);
   const rows = await d.query<StoredTeamSettings>(
-    `SELECT coalesce(age_group, '') AS age_group, session_minutes, coalesce(pitch, '') AS pitch,
+    `SELECT coalesce(age_group, '') AS age_group, session_minutes, pitch_id, coalesce(pitch, '') AS pitch,
             coalesce(equipment, '') AS equipment, coalesce(principles, '') AS principles, updated_by, updated_at
        FROM team_settings WHERE spond_group_id = $1`,
     [groupId],
   );
-  return rows[0] ?? { age_group: "", session_minutes: null, pitch: "", equipment: "", principles: "", updated_by: null, updated_at: null };
+  return rows[0] ?? { age_group: "", session_minutes: null, pitch_id: null, pitch: "", equipment: "", principles: "", updated_by: null, updated_at: null };
 }
 
 export async function saveTeamSettings(d: Db, access: Access, rights: Rights, groupId: string, input: Record<string, unknown>): Promise<void> {
   assertGroup(access, groupId);
   assertAdmin(rights);
   const s = wrap(() => validateTeamSettings(input));
+  if (s.pitch_id && !(await getPitch(d, s.pitch_id))) throw new UserError("Ukjent bane.");
   await d.query(
-    `INSERT INTO team_settings (spond_group_id, age_group, session_minutes, pitch, equipment, principles, updated_by)
-     VALUES ($1, NULLIF($2, ''), $3, NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), $7)
+    `INSERT INTO team_settings (spond_group_id, age_group, session_minutes, pitch_id, pitch, equipment, principles, updated_by)
+     VALUES ($1, NULLIF($2, ''), $3, $4, NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''), $8)
      ON CONFLICT (spond_group_id) DO UPDATE
-       SET age_group = EXCLUDED.age_group, session_minutes = EXCLUDED.session_minutes, pitch = EXCLUDED.pitch,
+       SET age_group = EXCLUDED.age_group, session_minutes = EXCLUDED.session_minutes, pitch_id = EXCLUDED.pitch_id, pitch = EXCLUDED.pitch,
            equipment = EXCLUDED.equipment, principles = EXCLUDED.principles, updated_by = EXCLUDED.updated_by, updated_at = now()`,
-    [groupId, s.age_group, s.session_minutes, s.pitch, s.equipment, s.principles, access.profileId],
+    [groupId, s.age_group, s.session_minutes, s.pitch_id, s.pitch, s.equipment, s.principles, access.profileId],
   );
+}
+
+// Pitches (shared by all groups) ------------------------------------------------------------
+
+const PITCH_COLUMNS = "id, parent_id, facility, name, surface, pitch_type, lighting, length_m, width_m, retired";
+
+export async function listPitches(d: Db): Promise<Pitch[]> {
+  return d.query<Pitch>(`SELECT ${PITCH_COLUMNS} FROM pitches ORDER BY facility, sort, id`);
+}
+
+export async function getPitch(d: Db, id: number): Promise<Pitch | null> {
+  const rows = await d.query<Pitch>(`SELECT ${PITCH_COLUMNS} FROM pitches WHERE id = $1`, [id]);
+  return rows[0] ?? null;
 }
 
 // The exercise bank -------------------------------------------------------------------------

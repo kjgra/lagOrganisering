@@ -4,6 +4,7 @@ import type { Db } from "@/lib/db";
 import { fetchLinks, parseLinks } from "@/lib/ai/links";
 import { AiError, WISH_MAX, type OrderContext } from "@/lib/ai/plan-ai";
 import { osloParts } from "@/lib/format";
+import { pitchText } from "@/lib/plans/plan";
 import { teamTitle } from "@/lib/proposal-view";
 import { memberNames, namesProblem, isSensitive } from "@/lib/sensitive";
 import { isPlayerKind } from "@/lib/spond/data";
@@ -11,7 +12,7 @@ import { eventParticipants, placeable } from "@/lib/spond/events";
 import type { Group, SpondEvent } from "@/lib/spond/types";
 import { approvedForEvent } from "@/lib/store/proposals";
 import { getAiSettings } from "@/lib/store/ai";
-import { getTeamSettings, listPlanComments, seasonTheme } from "@/lib/store/training";
+import { getPitch, getTeamSettings, listPlanComments, seasonTheme } from "@/lib/store/training";
 
 /**
  * The groups of the approved team proposal for an event, with names. Used
@@ -66,6 +67,7 @@ export async function orderContext(d: Db, user: CurrentUser, group: Group, event
     listPlanComments(d, user.access, group.id, event.id),
     urls.length ? fetchLinks(urls, settings.link_domains) : Promise.resolve([]),
   ]);
+  const pitch = team.pitch_id ? await getPitch(d, team.pitch_id) : null;
   const chosen = comments.filter((c) => input.commentIds.includes(c.id) && c.used_in_plan_id === null);
   const theme = input.theme.trim() || season?.theme || "";
   if (!theme) throw new AiError("Skriv et tema for økta.");
@@ -78,7 +80,7 @@ export async function orderContext(d: Db, user: CurrentUser, group: Group, event
       minutes: input.minutes ?? team.session_minutes,
       theme,
       themeDescription: season && season.theme.toLowerCase() === theme.toLowerCase() ? season.description : "",
-      team: { age_group: team.age_group, pitch: team.pitch, equipment: team.equipment, principles: team.principles },
+      team: { age_group: team.age_group, pitch: pitchText(pitch, team.pitch), equipment: team.equipment, principles: team.principles },
       nPlayers,
       groupSizes: groups.map((g) => g.players.length),
       wish,

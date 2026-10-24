@@ -15,6 +15,8 @@ export interface KiFormProps {
   theme: string;
   themeNote: string;
   minutes: number | null;
+  /** The team's pitch from «Lagets standard», as KI gets it; empty if none. */
+  pitch: string;
   models: { id: string; label: string; choice: string }[];
   model: string;
   comments: { id: number; text: string }[];
@@ -86,6 +88,9 @@ export function KiForm(p: KiFormProps) {
         {p.baseVersion
           ? `KI justerer versjon ${p.baseVersion} etter ønskene dine og lagrer resultatet som en ny versjon.`
           : "KI lager et opplegg ut fra månedens tema, lagets standard, øvelsesbanken og evalueringene. Navn på spillere sendes aldri."}
+      </p>
+      <p className="nm-hint" style={{ margin: 0 }}>
+        Bane: {p.pitch || "ikke valgt. Velg bane under Lagets standard."}
       </p>
       <label className="nm-field">
         <span className="nm-field__label">Tema</span>

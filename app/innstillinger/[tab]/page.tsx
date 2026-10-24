@@ -14,12 +14,12 @@ import { superadminId } from "@/lib/env";
 import { decimal, MONTH_NAMES, osloMidnight, osloMonthStart, osloParts, savedAt, shortDate } from "@/lib/format";
 import { MAINTENANCE_RULES } from "@/lib/maintenance";
 import { FEEDBACK_TAGS, meanText, shouldAvoid } from "@/lib/plans/feedback";
-import { CATEGORIES, EXERCISE_STATUSES } from "@/lib/plans/plan";
+import { CATEGORIES, EXERCISE_STATUSES, pitchFacts, pitchTree } from "@/lib/plans/plan";
 import { profileName } from "@/lib/proposal-view";
 import { aiSpend, aiUsagePeriod, getAiSettings } from "@/lib/store/ai";
 import { archiveKey, archiveLog, archivePending } from "@/lib/store/archive";
 import { listRoles } from "@/lib/store/roles";
-import { getTeamSettings, learningState, listExercises, listSeason } from "@/lib/store/training";
+import { getTeamSettings, learningState, listExercises, listPitches, listSeason } from "@/lib/store/training";
 
 /** The admin panel: one tab per page, per main group (?lag=). */
 export default async function AdminTabPage(props: PageProps<"/innstillinger/[tab]">) {
@@ -221,13 +221,29 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
   },
 
   async standard({ user, group }) {
-    const s = await getTeamSettings(await db(), user.access, group.id);
+    const d = await db();
+    const [s, pitches] = await Promise.all([getTeamSettings(d, user.access, group.id), listPitches(d)]);
     return (
       <>
         <p style={{ marginTop: 0 }}>Det som gjelder for laget hver gang. Brukes som utgangspunkt i opplegg og av KI.</p>
         <TeamSettingsForm
           groupId={group.id}
-          initial={{ age_group: s.age_group, session_minutes: s.session_minutes ? String(s.session_minutes) : "", pitch: s.pitch, equipment: s.equipment, principles: s.principles }}
+          initial={{
+            age_group: s.age_group,
+            session_minutes: s.session_minutes ? String(s.session_minutes) : "",
+            pitch_id: s.pitch_id ? String(s.pitch_id) : "",
+            pitch: s.pitch,
+            equipment: s.equipment,
+            principles: s.principles,
+          }}
+          pitches={pitchTree(pitches)
+            .filter(({ pitch: p }) => !p.retired || p.id === s.pitch_id)
+            .map(({ pitch: p, depth }) => ({
+              id: String(p.id),
+              facility: p.facility,
+              label: `${"\u2003".repeat(depth)}${p.name}${p.length_m && p.width_m ? ` (${p.length_m} × ${p.width_m} m)` : ""}`,
+              facts: pitchFacts(p),
+            }))}
         />
         {s.updated_by && s.updated_at ? (
           <p className="nm-hint">
