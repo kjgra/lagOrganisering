@@ -1,6 +1,7 @@
 import { isSensitive } from "@/lib/sensitive";
 import { compactDrawing, DrawingError, validateDrawing, type Drawing } from "./drawing";
 import { BIRTH_YEAR_MAX, BIRTH_YEAR_MIN, GENDERS, type Gender } from "@/lib/nff/bands";
+import { AKTIVITETER, BAND_KEYS, isKnownTag, learningPoint, type BandKey } from "@/lib/nff/fagplan";
 
 /**
  * Training plans (treningsopplegg), ported from the old app (fct_plan.R and
@@ -44,6 +45,10 @@ export interface PlanExercise {
   naermeste_kode: string;
   hvorfor_ny: string;
   tegning: Drawing | null;
+  /** NFF aktivitetskategori (AKTIVITETER key), from KI. Optional, so older plans stay valid. */
+  aktivitet?: string;
+  /** NFF tags (tema.*, delf.*), from KI. */
+  nff_tags?: string[];
 }
 
 export interface Plan {
@@ -188,9 +193,20 @@ export function validatePlan(input: unknown): Plan {
         naermeste_kode: str(e.naermeste_kode, `${w}naermeste_kode`, 60),
         hvorfor_ny: str(e.hvorfor_ny, `${w}hvorfor_ny`, 300),
         tegning,
+        ...planNff(e),
       };
     }),
   };
+}
+
+/** NFF activity and tags on a plan exercise, only when present and known. */
+function planNff(e: Record<string, unknown>): Pick<PlanExercise, "aktivitet" | "nff_tags"> {
+  const out: Pick<PlanExercise, "aktivitet" | "nff_tags"> = {};
+  const a = txt(e.aktivitet);
+  if (AKTIVITETER.some((x) => x.key === a)) out.aktivitet = a;
+  const tags = Array.isArray(e.nff_tags) ? [...new Set(e.nff_tags.map(txt))].filter(isKnownTag).slice(0, 20) : [];
+  if (tags.length) out.nff_tags = tags;
+  return out;
 }
 
 /** For the database: drawings without defaults. */
@@ -264,6 +280,10 @@ export interface BankExercise {
   based_on: string;
   status: "active" | "candidate" | "archived";
   updated_at: Date;
+  /** NFF bands the exercise suits, and its NFF tags (lib/nff/fagplan.ts). */
+  bands: BandKey[];
+  nff_activity: string;
+  nff_tags: string[];
   // Evaluations summed up per code.
   fb_n: number;
   fb_sessions: number;
@@ -415,6 +435,25 @@ export interface ExerciseInput {
   nff_url: string;
   drawing: string;
   status: string;
+  bands: string[];
+  nff_activity: string;
+  nff_tags: string[];
+}
+
+/** NFF bands, activity and tags, cleaned. Unknown tags (e.g. removed from the catalog) are dropped, as are learning points for other bands. */
+export function validateNff(e: { bands?: unknown; nff_activity?: unknown; nff_tags?: unknown }) {
+  const raw = Array.isArray(e.bands) ? e.bands.map(txt) : [];
+  if (raw.some((b) => !BAND_KEYS.includes(b as BandKey))) throw new PlanError("Ukjent aldersbånd.");
+  const bands = BAND_KEYS.filter((b) => raw.includes(b));
+  const nff_activity = txt(e.nff_activity);
+  if (nff_activity && !AKTIVITETER.some((a) => a.key === nff_activity)) throw new PlanError("Ukjent aktivitetskategori.");
+  const tags = [...new Set((Array.isArray(e.nff_tags) ? e.nff_tags : []).map(txt))].filter((t) => {
+    if (!isKnownTag(t)) return false;
+    const lp = learningPoint(t);
+    return !lp || !bands.length || bands.includes(lp.band);
+  });
+  if (tags.length > 60) throw new PlanError("En øvelse kan ha maks 60 NFF-tagger.");
+  return { bands, nff_activity, nff_tags: tags };
 }
 
 type TextField = "area" | "organisation" | "execution" | "learning_points" | "questions" | "easier" | "harder" | "nff_url";
@@ -470,6 +509,7 @@ export function validateExercise(e: Partial<ExerciseInput>) {
     ...texts,
     drawing,
     status: (status || null) as "active" | "candidate" | "archived" | null,
+    ...validateNff(e),
   };
 }
 

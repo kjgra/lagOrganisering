@@ -1,5 +1,6 @@
 import { unzipSync, strFromU8 } from "fflate";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { osloParts } from "@/lib/format";
 import type { Db } from "@/lib/db";
 import { runMaintenance } from "@/lib/maintenance";
 import { pitchText, pitchTree, validatePlan } from "@/lib/plans/plan";
@@ -20,6 +21,7 @@ import {
   saveFeedback,
   savePlan,
   savePlanExercise,
+  saveExercise,
   saveTeamSettings,
   teamPitches,
 } from "@/lib/store/training";
@@ -103,6 +105,27 @@ describe("training plans", () => {
     const id = await savePlanExercise(d, other, "G9", plan.ovelser[1], ["Samhandling"], "ai", { min_players: 6, max_players: 10, duration_minutes: 15, area: "20 × 15 m" });
     const [b] = await listExercises(d, other, "G9");
     expect(b).toMatchObject({ id, source: "ai", status: "candidate", min_players: 6, max_players: 10, duration_minutes: 15, area: "20 × 15 m", themes: ["Samhandling"] });
+  });
+
+  it("tags exercises with NFF's fagplan, and gives KI exercises the team's band", async () => {
+    const other: Access = { profileId: "P-1", groupIds: new Set(["G8"]) };
+    const base = { name: "Rondo NFF", category: "pasning_mottak", themes: [], status: "active" };
+    const id = await saveExercise(d, other, sa, "G8", {
+      ...base,
+      bands: ["10-12", "8-9"],
+      nff_activity: "med-og-mot",
+      nff_tags: ["tema.spille-framover", "delf.pasning", "lm.8-9.pasning.1", "lm.6-7.foring.1", "tema.finnes-ikke"],
+    }, null);
+    let [b] = await listExercises(d, other, "G8");
+    expect(b).toMatchObject({ id, bands: ["8-9", "10-12"], nff_activity: "med-og-mot", nff_tags: ["tema.spille-framover", "delf.pasning", "lm.8-9.pasning.1"] });
+    await expect(saveExercise(d, other, sa, "G8", { ...base, bands: ["13-16"] }, id)).rejects.toThrow(/aldersbånd/);
+    await expect(saveExercise(d, other, sa, "G8", { ...base, nff_activity: "x" }, id)).rejects.toThrow(/aktivitetskategori/);
+
+    await saveTeamSettings(d, other, sa, "G8", { birth_year: String(osloParts(new Date()).year - 9) });
+    const ex = { ...plan.ovelser[1], kode: "ki-nff", aktivitet: "spill", nff_tags: ["tema.vinne-ball"] };
+    await savePlanExercise(d, other, "G8", ex, [], "ai");
+    b = (await listExercises(d, other, "G8")).find((x) => x.code === "ki-nff")!;
+    expect(b).toMatchObject({ bands: ["8-9"], nff_activity: "spill", nff_tags: ["tema.vinne-ball"] });
   });
 
   it("refuses other groups", async () => {

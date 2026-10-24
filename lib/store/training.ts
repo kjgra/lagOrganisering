@@ -18,6 +18,9 @@ import {
   type TeamSettings,
 } from "@/lib/plans/plan";
 import { compactDrawing, validateDrawing } from "@/lib/plans/drawing";
+import { osloParts } from "@/lib/format";
+import { teamBand } from "@/lib/nff/bands";
+import type { BandKey } from "@/lib/nff/fagplan";
 import { assertAdmin, assertGroup, UserError, type Access, type Rights } from "./access";
 
 /**
@@ -168,6 +171,9 @@ interface ExerciseRow {
   based_on: string;
   status: "active" | "candidate" | "archived";
   updated_at: Date;
+  bands: BandKey[];
+  nff_activity: string;
+  nff_tags: string[];
   fb_n: number;
   fb_sessions: number;
   fb_bank: number;
@@ -189,6 +195,7 @@ const EXERCISE_SELECT = `
          coalesce(e.learning_points, '') AS learning_points, coalesce(e.questions, '') AS questions,
          coalesce(e.easier, '') AS easier, coalesce(e.harder, '') AS harder, coalesce(e.nff_url, '') AS nff_url,
          e.drawing::text AS drawing, e.source, coalesce(e.based_on, '') AS based_on, e.status, e.updated_at,
+         e.bands, coalesce(e.nff_activity, '') AS nff_activity, e.nff_tags,
          coalesce(s.fb_n, 0) AS fb_n, coalesce(s.fb_sessions, 0) AS fb_sessions, coalesce(s.fb_bank, 0) AS fb_bank, coalesce(s.fb_good, 0) AS fb_good,
          coalesce(s.fb_ok, 0) AS fb_ok, coalesce(s.fb_bad, 0) AS fb_bad, coalesce(s.fb_yes, 0) AS fb_yes,
          coalesce(s.fb_changes, 0) AS fb_changes, coalesce(s.fb_no, 0) AS fb_no, s.fb_mean, s.fb_minutes, s.fb_last, t.fb_tags
@@ -225,7 +232,7 @@ function toBank(r: ExerciseRow): BankExercise {
     const [k, n] = part.split(":");
     tags[k] = Number(n);
   }
-  return { ...r, themes: r.themes ?? [], drawing, fb_tags: tags };
+  return { ...r, themes: r.themes ?? [], bands: r.bands ?? [], nff_tags: r.nff_tags ?? [], drawing, fb_tags: tags };
 }
 
 /** The bank of a main group with the trainers' evaluations summed up per code. */
@@ -248,15 +255,16 @@ export async function saveExercise(d: Db, access: Access, rights: Rights, groupI
   assertAdmin(rights);
   const v = wrap(() => validateExercise(input));
   const drawing = v.drawing ? JSON.stringify(compactDrawing(v.drawing)) : null;
-  const fields = [v.name, v.category, v.themes, v.min_players, v.max_players, v.duration_minutes, v.area, v.organisation, v.execution, v.learning_points, v.questions, v.easier, v.harder, v.nff_url, access.profileId, drawing, v.status];
+  const fields = [v.name, v.category, v.themes, v.min_players, v.max_players, v.duration_minutes, v.area, v.organisation, v.execution, v.learning_points, v.questions, v.easier, v.harder, v.nff_url, access.profileId, drawing, v.status, v.bands, v.nff_activity, v.nff_tags];
   if (!id) {
     const taken = (await d.query<{ code: string }>("SELECT code FROM exercises WHERE spond_group_id = $1", [groupId])).map((r) => r.code);
     const [{ id: newId }] = await d.query<{ id: number }>(
       `INSERT INTO exercises (spond_group_id, code, name, category, themes, min_players, max_players, duration_minutes, area,
                               organisation, execution, learning_points, questions, easier, harder, nff_url, created_by, updated_by,
-                              drawing, status)
+                              drawing, status, bands, nff_activity, nff_tags)
        VALUES ($1, $2, $3, $4, $5::text[], $6, $7, $8, NULLIF($9, ''), NULLIF($10, ''), NULLIF($11, ''), NULLIF($12, ''),
-               NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), NULLIF($16, ''), $17, $17, $18::jsonb, coalesce($19, 'active'))
+               NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), NULLIF($16, ''), $17, $17, $18::jsonb, coalesce($19, 'active'),
+               $20::text[], NULLIF($21, ''), $22::text[])
        RETURNING id`,
       [groupId, exerciseCode(v.name, taken), ...fields],
     );
@@ -266,7 +274,8 @@ export async function saveExercise(d: Db, access: Access, rights: Rights, groupI
     `UPDATE exercises SET name = $3, category = $4, themes = $5::text[], min_players = $6, max_players = $7, duration_minutes = $8,
             area = NULLIF($9, ''), organisation = NULLIF($10, ''), execution = NULLIF($11, ''), learning_points = NULLIF($12, ''),
             questions = NULLIF($13, ''), easier = NULLIF($14, ''), harder = NULLIF($15, ''), nff_url = NULLIF($16, ''),
-            updated_by = $17, drawing = $18::jsonb, status = coalesce($19, status), updated_at = now()
+            updated_by = $17, drawing = $18::jsonb, status = coalesce($19, status), bands = $20::text[],
+            nff_activity = NULLIF($21, ''), nff_tags = $22::text[], updated_at = now()
       WHERE id = $1 AND spond_group_id = $2 RETURNING id`,
     [id, groupId, ...fields],
   );
@@ -296,7 +305,7 @@ export async function savePlanExercise(
   e: PlanExercise,
   themes: string[],
   source: "manual" | "ai",
-  extra: { min_players?: number | null; max_players?: number | null; duration_minutes?: number | null; area?: string } = {},
+  extra: { min_players?: number | null; max_players?: number | null; duration_minutes?: number | null; area?: string; bands?: BandKey[] } = {},
 ): Promise<number | null> {
   assertGroup(access, groupId);
   const known = await d.query<{ code: string; based_on: string | null }>(
@@ -308,13 +317,15 @@ export async function savePlanExercise(
   const basedOn = !e.basert_pa || !base ? null : base.based_on || e.basert_pa;
   const taken = (await d.query<{ code: string }>("SELECT code FROM exercises WHERE spond_group_id = $1", [groupId])).map((r) => r.code);
   const code = CODE_RE.test(e.kode) && e.kode.length <= 60 ? e.kode : exerciseCode(e.navn, taken);
+  const bands = extra.bands ?? (await teamBands(d, groupId));
   const join = (x: string[]) => x.join("\n");
   const [{ id }] = await d.query<{ id: number }>(
     `INSERT INTO exercises (spond_group_id, code, name, category, themes, organisation, execution, learning_points, questions,
                             easier, harder, nff_url, drawing, source, created_by, updated_by, based_on, status,
-                            min_players, max_players, duration_minutes, area)
+                            min_players, max_players, duration_minutes, area, bands, nff_activity, nff_tags)
      VALUES ($1, $2, $3, $4, $5::text[], NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, ''), NULLIF($9, ''), NULLIF($10, ''),
-             NULLIF($11, ''), NULLIF($12, ''), $13::jsonb, $14, $15, $15, $16, 'candidate', $17, $18, $19, NULLIF($20, ''))
+             NULLIF($11, ''), NULLIF($12, ''), $13::jsonb, $14, $15, $15, $16, 'candidate', $17, $18, $19, NULLIF($20, ''),
+             $21::text[], NULLIF($22, ''), $23::text[])
      RETURNING id`,
     [
       groupId,
@@ -337,9 +348,19 @@ export async function savePlanExercise(
       extra.max_players ?? null,
       extra.duration_minutes ?? null,
       (extra.area ?? "").slice(0, 60),
+      bands,
+      e.aktivitet ?? "",
+      e.nff_tags ?? [],
     ],
   );
   return id;
+}
+
+/** The NFF band the team is in this year, from its birth year (none if unknown or over 12). */
+async function teamBands(d: Db, groupId: string): Promise<BandKey[]> {
+  const [row] = await d.query<{ birth_year: number | null }>("SELECT birth_year FROM team_settings WHERE spond_group_id = $1", [groupId]);
+  const band = teamBand(row?.birth_year ?? null, osloParts(new Date()).year);
+  return band ? [band] : [];
 }
 
 // Training plans ----------------------------------------------------------------------------

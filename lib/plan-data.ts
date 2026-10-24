@@ -2,9 +2,9 @@ import "server-only";
 import type { CurrentUser } from "@/lib/auth/current";
 import type { Db } from "@/lib/db";
 import { fetchLinks, parseLinks } from "@/lib/ai/links";
-import { AiError, WISH_MAX, type ExerciseOrderContext, type OrderContext } from "@/lib/ai/plan-ai";
+import { AiError, WISH_MAX, fagplanText, type ExerciseOrderContext, type OrderContext } from "@/lib/ai/plan-ai";
 import { osloParts } from "@/lib/format";
-import { teamAgeText } from "@/lib/nff/bands";
+import { teamAgeText, teamBand } from "@/lib/nff/bands";
 import { CATEGORIES, pitchText } from "@/lib/plans/plan";
 import { teamTitle } from "@/lib/proposal-view";
 import { memberNames, namesProblem, isSensitive } from "@/lib/sensitive";
@@ -91,6 +91,7 @@ export async function orderContext(d: Db, user: CurrentUser, group: Group, event
       theme,
       themeDescription: season && season.theme.toLowerCase() === theme.toLowerCase() ? season.description : "",
       team: { age_group: teamAgeText(team.birth_year, team.gender, osloParts(event.start ?? new Date()).year, team.age_group), pitch: pitchText(chosenPitches, team.pitch), equipment: team.equipment, principles: team.principles },
+      fagplan: fagplanText(teamBand(team.birth_year, osloParts(event.start ?? new Date()).year), theme),
       nPlayers,
       groupSizes: groups.map((g) => g.players.length),
       wish,
@@ -136,6 +137,7 @@ export async function exerciseOrderContext(d: Db, user: CurrentUser, group: Grou
     theme,
     themeDescription: season && theme && season.theme.toLowerCase() === theme.toLowerCase() ? season.description : "",
     team: { age_group: teamAgeText(team.birth_year, team.gender, year, team.age_group), pitch: pitchText(chosen, team.pitch), equipment: team.equipment, principles: team.principles },
+    fagplan: fagplanText(teamBand(team.birth_year, year), theme || season?.theme || ""),
     players: input.players,
     minutes: input.minutes,
     category: input.category,

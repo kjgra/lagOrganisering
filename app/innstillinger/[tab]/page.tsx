@@ -13,6 +13,7 @@ import { db } from "@/lib/db";
 import { superadminId } from "@/lib/env";
 import { decimal, MONTH_NAMES, osloMidnight, osloMonthStart, osloParts, savedAt, shortDate } from "@/lib/format";
 import { MAINTENANCE_RULES } from "@/lib/maintenance";
+import { nffSummary } from "@/lib/nff/fagplan";
 import { feedbackSummary, shouldAvoid } from "@/lib/plans/feedback";
 import { CATEGORIES, EXERCISE_STATUSES, pitchFacts, pitchTree, type Pitch } from "@/lib/plans/plan";
 import { profileName } from "@/lib/proposal-view";
@@ -324,6 +325,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
                         {b.fb_last ? ` · sist ${shortDate(b.fb_last)}` : ""}
                         {b.based_on ? ` · variant av ${bank.find((x) => x.code === b.based_on)?.name ?? b.based_on}` : ""}
                       </div>
+                      {nffSummary(b) ? <div className="nm-hint">NFF: {nffSummary(b)}</div> : null}
                     </div>
                     {shouldAvoid(b) ? <span className="nm-badge nm-badge--kommer-ikke">Unngås av KI</span> : null}
                     <span className={`nm-badge ${status(b.status)}`}>{EXERCISE_STATUSES[b.status]}</span>

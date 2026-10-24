@@ -40,6 +40,11 @@ export function formatFor(age: number): string | null {
   return null;
 }
 
+/** The team's band key in a year, from its birth year (null if unknown or outside the bands). */
+export function teamBand(birthYear: number | null, year: number): NffBand["key"] | null {
+  return birthYear ? (bandFor(seasonAge(birthYear, year))?.key ?? null) : null;
+}
+
 export interface TeamAge {
   /** «G10», «J8» or «10 år» (mix). */
   short: string;

@@ -7,7 +7,9 @@ import { db } from "@/lib/db";
 import { prettyDrawing } from "@/lib/plans/drawing";
 import { feedbackSummary } from "@/lib/plans/feedback";
 import { CATEGORIES, EXERCISE_STATUSES } from "@/lib/plans/plan";
-import { getExercise } from "@/lib/store/training";
+import { getExercise, getTeamSettings } from "@/lib/store/training";
+import { osloParts } from "@/lib/format";
+import { teamBand } from "@/lib/nff/bands";
 
 /** A new exercise (/ny), or change one from the bank. Evaluating it is a page of its own (/evaluering). */
 export default async function ExercisePage(props: PageProps<"/innstillinger/ovelse/[id]">) {
@@ -37,8 +39,16 @@ export default async function ExercisePage(props: PageProps<"/innstillinger/ovel
         nff_url: b.nff_url,
         drawing: prettyDrawing(b.drawing),
         status: b.status,
+        bands: b.bands,
+        nff_activity: b.nff_activity,
+        nff_tags: b.nff_tags,
       }
-    : { name: "", category: "", themes: "", min_players: "", max_players: "", duration_minutes: "", area: "", organisation: "", execution: "", learning_points: "", questions: "", easier: "", harder: "", nff_url: "", drawing: "", status: "active" };
+    : {
+        ...{ name: "", category: "", themes: "", min_players: "", max_players: "", duration_minutes: "", area: "", organisation: "", execution: "", learning_points: "" },
+        ...{ questions: "", easier: "", harder: "", nff_url: "", drawing: "", status: "active", nff_activity: "", nff_tags: [] },
+        // A new exercise is for the team's own band to begin with.
+        bands: [teamBand((await getTeamSettings(d, ctx.user.access, ctx.group.id)).birth_year, osloParts(new Date()).year)].filter((x) => x !== null),
+      };
   const listHref = `/innstillinger/ovelser${ctx.q()}`;
   return (
     <SettingsShell user={ctx.user} back={ctx.back} tab="ovelser" groupId={ctx.group.id}>
