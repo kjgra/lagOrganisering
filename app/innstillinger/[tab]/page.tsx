@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AiSettingsForm, LearningForm, SeasonForm, TeamSettingsForm } from "@/components/settings/admin/forms";
@@ -270,7 +270,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
     return (
       <>
         <p style={{ marginTop: 0 }}>
-          Lagets øvelsesbank. Nye øvelser fra godkjente opplegg kommer inn som <em>kandidater</em>, og blir aktive når en trener gir 👍 og «Bruke igjen: Ja». Trykk på en øvelse for å evaluere den, også uten at den er brukt på en trening.
+          Lagets øvelsesbank. Nye øvelser fra godkjente opplegg kommer inn som <em>kandidater</em>, og blir aktive når en trener gir 👍 og «Bruke igjen: Ja». Trykk på en øvelse for å evaluere den, også uten at den er brukt på en trening, eller på blyanten for å endre den.
         </p>
         <Link href={`/innstillinger/ovelse/ny${q()}`} className="nm-btn nm-btn--primary" style={{ marginBottom: "var(--space-4)" }}>
           <Icon icon={Plus} />
@@ -285,7 +285,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
                 .map((b) => (
                   <li key={b.id} className="nm-pick">
                     <div>
-                      <Link href={`/innstillinger/ovelse/${b.id}${q()}`} style={{ fontWeight: 700, textDecoration: "underline" }}>
+                      <Link href={`/innstillinger/ovelse/${b.id}/evaluering${q()}`} style={{ fontWeight: 700, textDecoration: "underline" }}>
                         {b.name}
                       </Link>
                       <div className="nm-hint">
@@ -296,6 +296,9 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
                     </div>
                     {shouldAvoid(b) ? <span className="nm-badge nm-badge--kommer-ikke">Unngås av KI</span> : null}
                     <span className={`nm-badge ${status(b.status)}`}>{EXERCISE_STATUSES[b.status]}</span>
+                    <Link href={`/innstillinger/ovelse/${b.id}${q()}`} className="nm-btn nm-btn--ghost" aria-label={`Endre ${b.name}`} title="Endre øvelsen">
+                      <Icon icon={Pencil} />
+                    </Link>
                   </li>
                 ))}
             </ul>
