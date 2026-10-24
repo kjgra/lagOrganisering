@@ -1,4 +1,4 @@
-import { CalendarDays, Clock, MapPin, Pencil, Plus, Send, Users } from "lucide-react";
+import { CalendarDays, Clock, MapPin, Pencil, Play, Plus, Send, Users } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ParticipantList, type ParticipantRow } from "@/components/events/ParticipantList";
@@ -12,7 +12,7 @@ import { contextFromParams, pairCandidates } from "@/lib/context";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { findEvent } from "@/lib/events-data";
-import { clock, dayLabel, shortDate, timeRange } from "@/lib/format";
+import { clock, dayLabel, osloDate, shortDate, timeRange } from "@/lib/format";
 import { profileName, proposalView } from "@/lib/proposal-view";
 import { isPlayerKind } from "@/lib/spond/data";
 import { eventCoaches, eventIsPast, eventParticipants, eventSentTo, placeable, responseCounts } from "@/lib/spond/events";
@@ -55,6 +55,7 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
   const views = sortProposals(proposals).map((p) => proposalView(p, ctx.group, tags, event, locks, ctx.user.session.profileId));
   const newLocks = locks.filter((l) => l.eventId === event.id && !l.proposalId && l.editor !== ctx.user.session.profileId);
   const eventPath = ctx.path(`/arrangementer/${encodeURIComponent(event.id)}`);
+  const today = !!event.start && osloDate(event.start) === osloDate(new Date());
 
   return (
     <AppShell
@@ -64,22 +65,35 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
       back={ctx.path("/arrangementer")}
       actions={
         !past && !event.cancelled ? (
-          // One yellow button per screen: once a proposal exists, its card carries the next step.
-          views.length ? (
-            <Link href={`${eventPath}/lag`} className="nm-btn nm-btn--secondary nm-btn--lg">
-              <Icon icon={Plus} />
-              Nytt lagforslag
-            </Link>
-          ) : (
-            <Link href={`${eventPath}/lag`} className="nm-btn nm-btn--primary nm-btn--lg">
-              <Icon icon={Users} />
-              {event.notSent ? `Lag lag av ${nPlaceable} inviterte` : `Lag lag av ${nPlaceable} spillere`}
-            </Link>
-          )
+          <>
+            {/* One yellow button per screen: on the day it is «Dagens økt»; once a proposal exists, its card carries the next step. */}
+            {views.length || today ? (
+              <Link href={`${eventPath}/lag`} className="nm-btn nm-btn--secondary nm-btn--lg">
+                <Icon icon={Plus} />
+                {views.length ? "Nytt lagforslag" : "Lag lag"}
+              </Link>
+            ) : (
+              <Link href={`${eventPath}/lag`} className="nm-btn nm-btn--primary nm-btn--lg">
+                <Icon icon={Users} />
+                {event.notSent ? `Lag lag av ${nPlaceable} inviterte` : `Lag lag av ${nPlaceable} spillere`}
+              </Link>
+            )}
+            {today ? (
+              <Link href={`${eventPath}/dagens-okt`} className="nm-btn nm-btn--primary nm-btn--lg">
+                <Icon icon={Play} />
+                Dagens økt
+              </Link>
+            ) : null}
+          </>
         ) : undefined
       }
     >
       <AutoRefresh />
+      <nav className="nm-jump" aria-label="Hopp til">
+        <a href="#lag-h">Lag</a>
+        {!event.match ? <a href="#plan-h">Opplegg</a> : null}
+        <a href="#sp-h">Spillere</a>
+      </nav>
       <div className="nm-stack" style={{ gap: "var(--space-4)" }}>
         <div>
           <div style={{ fontSize: "var(--fs-heading)", lineHeight: "var(--lh-heading)", fontWeight: 700 }}>{event.heading}</div>
