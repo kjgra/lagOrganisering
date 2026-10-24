@@ -2,9 +2,9 @@ import "server-only";
 import type { CurrentUser } from "@/lib/auth/current";
 import type { Db } from "@/lib/db";
 import { fetchLinks, parseLinks } from "@/lib/ai/links";
-import { AiError, WISH_MAX, type OrderContext } from "@/lib/ai/plan-ai";
+import { AiError, WISH_MAX, type ExerciseOrderContext, type OrderContext } from "@/lib/ai/plan-ai";
 import { osloParts } from "@/lib/format";
-import { pitchText } from "@/lib/plans/plan";
+import { CATEGORIES, pitchText } from "@/lib/plans/plan";
 import { teamTitle } from "@/lib/proposal-view";
 import { memberNames, namesProblem, isSensitive } from "@/lib/sensitive";
 import { isPlayerKind } from "@/lib/spond/data";
@@ -52,14 +52,18 @@ export interface KiInput {
   pitchIds: number[];
 }
 
-/** Everything the KI order needs, from the event, the team settings and the trainer's wishes. */
-export async function orderContext(d: Db, user: CurrentUser, group: Group, event: SpondEvent, input: KiInput): Promise<{ order: OrderContext; commentIds: number[] }> {
-  const names = memberNames(group.members);
-  const wish = input.wish.trim();
+function checkWish(wish: string, names: string[]) {
   if (wish.length > WISH_MAX) throw new AiError(`Ønsket kan ha maks ${WISH_MAX} tegn.`);
   if (isSensitive(wish)) throw new AiError("Ønsket skal ikke inneholde helseopplysninger eller andre sensitive opplysninger.");
   const np = namesProblem(wish, names);
   if (np) throw new AiError(np);
+}
+
+/** Everything the KI order needs, from the event, the team settings and the trainer's wishes. */
+export async function orderContext(d: Db, user: CurrentUser, group: Group, event: SpondEvent, input: KiInput): Promise<{ order: OrderContext; commentIds: number[] }> {
+  const names = memberNames(group.members);
+  const wish = input.wish.trim();
+  checkWish(wish, names);
   const settings = await getAiSettings(d);
   const urls = parseLinks(input.links, settings.link_domains);
   const [team, pitches, season, groups, comments, links] = await Promise.all([
@@ -94,5 +98,48 @@ export async function orderContext(d: Db, user: CurrentUser, group: Group, event
       names,
       comments: chosen.map((c) => (c.exercise_no ? `Øvelse ${c.exercise_no}: ${c.body}` : c.body)),
     },
+  };
+}
+
+export interface ExerciseKiInput {
+  theme: string;
+  players: number | null;
+  minutes: number | null;
+  category: string;
+  wish: string;
+  link: string;
+  pitchIds: number[];
+}
+
+/** The order for «Ny øvelse med KI»: the team settings, the chosen pitches and the trainer's wishes. */
+export async function exerciseOrderContext(d: Db, user: CurrentUser, group: Group, input: ExerciseKiInput, now = new Date()): Promise<ExerciseOrderContext> {
+  const names = memberNames(group.members);
+  const wish = input.wish.trim();
+  checkWish(wish, names);
+  const theme = input.theme.trim();
+  if (theme.length > 80) throw new AiError("Temaet kan ha maks 80 tegn.");
+  if (input.category && !(input.category in CATEGORIES)) throw new AiError("Ukjent kategori.");
+  const settings = await getAiSettings(d);
+  const urls = parseLinks(input.link, settings.link_domains);
+  if (urls.length > 1) throw new AiError("Maks én lenke per øvelse.");
+  const { year, month } = osloParts(now);
+  const [team, pitches, season, links] = await Promise.all([
+    getTeamSettings(d, user.access, group.id),
+    teamPitches(d, user.access, group.id),
+    seasonTheme(d, user.access, group.id, year, month),
+    urls.length ? fetchLinks(urls, settings.link_domains) : Promise.resolve([]),
+  ]);
+  const chosen = pitches.filter((p) => input.pitchIds.includes(p.id));
+  if (chosen.length !== new Set(input.pitchIds).size) throw new AiError("Banene må være blant lagets baner.");
+  return {
+    theme,
+    themeDescription: season && theme && season.theme.toLowerCase() === theme.toLowerCase() ? season.description : "",
+    team: { age_group: team.age_group, pitch: pitchText(chosen, team.pitch), equipment: team.equipment, principles: team.principles },
+    players: input.players,
+    minutes: input.minutes,
+    category: input.category,
+    wish,
+    links,
+    names,
   };
 }

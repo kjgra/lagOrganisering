@@ -16,7 +16,7 @@ import {
   type PlanExercise,
 } from "@/lib/plans/plan";
 import referencePlan from "@/lib/plans/reference-plan.json";
-import { PLAN_INSTRUCTIONS } from "./prompts";
+import { EXERCISE_TASK, PLAN_INSTRUCTIONS } from "./prompts";
 
 /**
  * KI for training plans (port of fct_ai.R). One call gives a plan as JSON
@@ -100,6 +100,28 @@ const strs = { type: "array", items: str } as const;
 const int = { type: "integer" } as const;
 const obj = (props: Record<string, unknown>) => ({ type: "object", properties: props, required: Object.keys(props), additionalProperties: false });
 
+/** The fields of one exercise in an answer. */
+const EXERCISE_PROPS = {
+  // «uendret»: kept as it is when adjusting (only `kode` is sent).
+  kilde: { type: "string", enum: ["bank", "justert", "ny", "uendret"] },
+  kode: str,
+  basert_pa: str,
+  naermeste_kode: str,
+  hvorfor_ny: str,
+  navn: str,
+  kategori: { type: "string", enum: Object.keys(CATEGORIES) },
+  fokus: str,
+  organisering: strs,
+  gjennomforing: strs,
+  tilpasning: strs,
+  laeringsmomenter: strs,
+  sporsmal: strs,
+  enklere: str,
+  vanskeligere: str,
+  tegning_json: str,
+  lenke: str,
+};
+
 /** Every field is required; empty strings and lists mean «not used». Lengths are checked in code. */
 export const PLAN_SCHEMA = obj({
   tittel: str,
@@ -118,29 +140,17 @@ export const PLAN_SCHEMA = obj({
   merknad: str,
   avslutning_sporsmal: strs,
   kilde: str,
-  ovelser: {
-    type: "array",
-    items: obj({
-      // «uendret»: kept as it is when adjusting (only `kode` is sent).
-      kilde: { type: "string", enum: ["bank", "justert", "ny", "uendret"] },
-      kode: str,
-      basert_pa: str,
-      naermeste_kode: str,
-      hvorfor_ny: str,
-      navn: str,
-      kategori: { type: "string", enum: Object.keys(CATEGORIES) },
-      fokus: str,
-      organisering: strs,
-      gjennomforing: strs,
-      tilpasning: strs,
-      laeringsmomenter: strs,
-      sporsmal: strs,
-      enklere: str,
-      vanskeligere: str,
-      tegning_json: str,
-      lenke: str,
-    }),
-  },
+  ovelser: { type: "array", items: obj(EXERCISE_PROPS) },
+});
+
+/** «Ny øvelse med KI»: one exercise for the bank (new or adjusted), with players, minutes and area. */
+export const EXERCISE_SCHEMA = obj({
+  ...EXERCISE_PROPS,
+  kilde: { type: "string", enum: ["justert", "ny"] },
+  min_spillere: int,
+  maks_spillere: int,
+  minutter: int,
+  omrade: str,
 });
 
 export interface AnswerExercise {
@@ -161,6 +171,13 @@ export interface AnswerExercise {
   vanskeligere: string;
   tegning_json: string;
   lenke: string;
+}
+
+export interface ExerciseAnswer extends AnswerExercise {
+  min_spillere: number;
+  maks_spillere: number;
+  minutter: number;
+  omrade: string;
 }
 
 export interface PlanAnswer {
@@ -395,6 +412,43 @@ export function orderText(c: OrderContext): string {
   return `${out.join("\n")}${linksText(c.links)}\n\nLag treningsøkta.`;
 }
 
+export interface ExerciseOrderContext {
+  theme: string;
+  themeDescription: string;
+  team: OrderContext["team"];
+  /** How many players the exercise is for, if the trainer said. */
+  players: number | null;
+  minutes: number | null;
+  /** A key in CATEGORIES, or empty for any. */
+  category: string;
+  wish: string;
+  links: LinkText[];
+  /** Member names the wish must not contain; never sent. */
+  names: string[];
+}
+
+/** The order for «Ny øvelse med KI»: one exercise for the bank, without names. */
+export function exerciseOrderText(c: ExerciseOrderContext): string {
+  if (!c.theme.trim() && !c.wish.trim() && !c.links.length) throw new AiError("Skriv et tema eller et ønske for øvelsen.");
+  checkWish([c.wish], c.names);
+  const line = (label: string, x: string | number | null | undefined) => (x !== null && x !== undefined && String(x).trim() ? `- ${label}: ${String(x).trim()}` : null);
+  const out = [
+    "# Bestilling",
+    "",
+    line("Tema", c.theme),
+    line("Om temaet", c.themeDescription),
+    line("Alder", c.team.age_group),
+    line("Baner", c.team.pitch),
+    line("Utstyr", c.team.equipment),
+    line("Lagets prinsipper", c.team.principles),
+    line("Antall spillere", c.players),
+    line("Varighet", c.minutes ? `${c.minutes} min` : null),
+    line("Kategori", CATEGORIES[c.category] ? `${c.category} (${CATEGORIES[c.category]})` : null),
+    line("Ønsker fra treneren", c.wish),
+  ].filter((x) => x !== null);
+  return `${EXERCISE_TASK}\n${out.join("\n")}${linksText(c.links)}\n\nLag øvelsen.`;
+}
+
 /** The order for «Juster med KI»: the current plan, the facts now, comments and what to change. */
 export function revisionText(base: Plan, c: OrderContext): string {
   const comments = (c.comments ?? []).map(txt).filter(Boolean);
@@ -417,6 +471,67 @@ const clip = (x: unknown, n: number) => {
   return t.length > n ? `${t.slice(0, n - 1)}…` : t;
 };
 const clips = (x: unknown, items = 8, n = 400) => (Array.isArray(x) ? x : []).map((v) => clip(v, n)).filter(Boolean).slice(0, items);
+
+interface NewExerciseCtx {
+  /** Codes in the bank, and codes already given in this answer. */
+  codes: string[];
+  used: string[];
+  allowedLinks: Set<string>;
+  warnings: string[];
+}
+
+/**
+ * A «justert» or «ny» exercise from the answer: texts clipped, the drawing
+ * checked and fixed, a clashing code renamed. Null (with a warning) without a name.
+ */
+function newExercise(e: Partial<AnswerExercise>, k: string, w: string, c: NewExerciseCtx): PlanExercise | null {
+  let kilde = k === "justert" ? "justert" : "ny";
+  let base = txt(e.basert_pa);
+  if (kilde === "justert" && !c.codes.includes(base)) {
+    kilde = "ny";
+    base = "";
+  }
+  if (kilde === "ny") base = "";
+  const navn = clip(e.navn, 80);
+  if (!navn) {
+    c.warnings.push(`${w} manglet navn og er utelatt.`);
+    return null;
+  }
+  let kode = txt(e.kode);
+  if (!CODE_RE.test(kode) || kode.length > 60 || c.codes.includes(kode) || c.used.includes(kode)) kode = exerciseCode(navn, [...c.codes, ...c.used]);
+  c.used.push(kode);
+  let tegning = null;
+  if (txt(e.tegning_json)) {
+    try {
+      const d = validateDrawing(e.tegning_json);
+      tegning = d ? fixDrawing(d) : null;
+    } catch (err) {
+      if (!(err instanceof DrawingError)) throw err;
+      c.warnings.push(`${w}: tegningen kunne ikke brukes (${err.message}) og er utelatt.`);
+    }
+  }
+  const lenke = txt(e.lenke);
+  const nearest = txt(e.naermeste_kode);
+  return {
+    kode,
+    navn,
+    kategori: CATEGORIES[txt(e.kategori)] ?? "Annet",
+    fokus: clip(e.fokus, 300),
+    organisering: clips(e.organisering),
+    gjennomforing: clips(e.gjennomforing),
+    tilpasning: clips(e.tilpasning, 4),
+    laeringsmomenter: clips(e.laeringsmomenter),
+    sporsmal: clips(e.sporsmal, 6),
+    enklere: clip(e.enklere, 400),
+    vanskeligere: clip(e.vanskeligere, 400),
+    nff_url: c.allowedLinks.has(lenke) ? lenke : "",
+    kilde: kilde as "justert" | "ny",
+    basert_pa: base,
+    naermeste_kode: kilde === "ny" && c.codes.includes(nearest) ? nearest : "",
+    hvorfor_ny: kilde === "ny" ? clip(e.hvorfor_ny, 300) : "",
+    tegning,
+  };
+}
 
 export interface AnswerContext {
   theme: string;
@@ -448,7 +563,7 @@ export function planFromAnswer(answer: string, bank: BankExercise[], ctx: Answer
   (a.ovelser ?? []).forEach((e, i) => {
     const w = `Øvelse ${i + 1}`;
     let kilde = txt(e.kilde);
-    let kode = txt(e.kode);
+    const kode = txt(e.kode);
     if (kilde === "uendret") {
       const old = baseEx.find((x) => x.kode === kode);
       if (old && !used.includes(kode)) {
@@ -480,51 +595,8 @@ export function planFromAnswer(answer: string, bank: BankExercise[], ctx: Answer
       warnings.push(`${w}: koden «${kode}» finnes ikke i banken, så øvelsen er lagt inn som ny.`);
       kilde = "ny";
     }
-    if (kilde !== "justert" && kilde !== "ny") kilde = "ny";
-    let base = txt(e.basert_pa);
-    if (kilde === "justert" && !codes.includes(base)) {
-      kilde = "ny";
-      base = "";
-    }
-    if (kilde === "ny") base = "";
-    const navn = clip(e.navn, 80);
-    if (!navn) {
-      warnings.push(`${w} manglet navn og er utelatt.`);
-      return;
-    }
-    if (!CODE_RE.test(kode) || kode.length > 60 || codes.includes(kode) || used.includes(kode)) kode = exerciseCode(navn, [...codes, ...used]);
-    used.push(kode);
-    let tegning = null;
-    if (txt(e.tegning_json)) {
-      try {
-        const d = validateDrawing(e.tegning_json);
-        tegning = d ? fixDrawing(d) : null;
-      } catch (err) {
-        if (!(err instanceof DrawingError)) throw err;
-        warnings.push(`${w}: tegningen kunne ikke brukes (${err.message}) og er utelatt.`);
-      }
-    }
-    const lenke = txt(e.lenke);
-    const nearest = txt(e.naermeste_kode);
-    ex.push({
-      kode,
-      navn,
-      kategori: CATEGORIES[txt(e.kategori)] ?? "Annet",
-      fokus: clip(e.fokus, 300),
-      organisering: clips(e.organisering),
-      gjennomforing: clips(e.gjennomforing),
-      tilpasning: clips(e.tilpasning, 4),
-      laeringsmomenter: clips(e.laeringsmomenter),
-      sporsmal: clips(e.sporsmal, 6),
-      enklere: clip(e.enklere, 400),
-      vanskeligere: clip(e.vanskeligere, 400),
-      nff_url: allowedLinks.has(lenke) ? lenke : "",
-      kilde: kilde as "justert" | "ny",
-      basert_pa: base,
-      naermeste_kode: kilde === "ny" && codes.includes(nearest) ? nearest : "",
-      hvorfor_ny: kilde === "ny" ? clip(e.hvorfor_ny, 300) : "",
-      tegning,
-    });
+    const x = newExercise(e, kilde, w, { codes, used, allowedLinks, warnings });
+    if (x) ex.push(x);
   });
   const list = ex.slice(0, 6);
   if (!list.length) throw new AiError("Svaret hadde ingen øvelser som kunne brukes.");
@@ -559,6 +631,36 @@ export function planFromAnswer(answer: string, bank: BankExercise[], ctx: Answer
     if (Math.abs(total - ctx.minutes) > 5) warnings.push(`Tidsplanen er ${total} min, men økta er ${ctx.minutes} min.`);
   }
   return { plan, warnings };
+}
+
+/** Players, minutes and area for the bank, from an answer to «Ny øvelse med KI». */
+export interface ExerciseExtra {
+  min_players: number | null;
+  max_players: number | null;
+  duration_minutes: number | null;
+  area: string;
+}
+
+/** Turn the answer to «Ny øvelse med KI» into an exercise for the bank. */
+export function exerciseFromAnswer(answer: string, bank: BankExercise[], ctx: { linkUrls: string[] }): { exercise: PlanExercise; extra: ExerciseExtra; warnings: string[] } {
+  let a: Partial<ExerciseAnswer>;
+  try {
+    a = JSON.parse(answer);
+  } catch {
+    throw new AiError("Svaret er ikke gyldig JSON.");
+  }
+  const warnings: string[] = [];
+  const exercise = newExercise(a, txt(a.kilde), "Øvelsen", { codes: bank.map((b) => b.code), used: [], allowedLinks: new Set(ctx.linkUrls), warnings });
+  if (!exercise) throw new AiError("Svaret hadde ingen øvelse som kunne brukes.");
+  for (const u of ctx.linkUrls) if (exercise.nff_url !== u) warnings.push(`Øvelsen bygger ikke på ${u}.`);
+  const n = (x: unknown, hi: number) => {
+    const v = Number(x);
+    return Number.isInteger(v) && v > 0 ? Math.min(v, hi) : null;
+  };
+  let min = n(a.min_spillere, 60);
+  let max = n(a.maks_spillere, 60);
+  if (min !== null && max !== null && max < min) [min, max] = [max, min];
+  return { exercise, extra: { min_players: min, max_players: max, duration_minutes: n(a.minutter, 120), area: clip(a.omrade, 60) }, warnings };
 }
 
 export function checkLearning(body: string, names: string[], allowEmpty = false): string {

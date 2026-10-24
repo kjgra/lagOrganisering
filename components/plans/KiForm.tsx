@@ -1,10 +1,10 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { kiEstimateAction, kiRunAction } from "@/app/actions/plans";
+import { ModelFields, PitchFields } from "@/components/plans/KiFields";
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
 
@@ -101,30 +101,15 @@ export function KiForm(p: KiFormProps) {
         <input className="nm-input" value={theme} maxLength={80} onChange={(e) => setTheme(e.target.value)} />
         {p.themeNote ? <span className="nm-hint">{p.themeNote}</span> : null}
       </label>
-      <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-        <legend className="nm-field__label" style={{ marginBottom: "var(--space-1)" }}>
-          Baner for økta
-        </legend>
-        {p.pitches.map((x) => (
-          <label key={x.id} className="nm-check">
-            <input type="checkbox" checked={pitchIds.includes(x.id)} onChange={(e) => setPitchIds((y) => (e.target.checked ? [...y, x.id] : y.filter((z) => z !== x.id)))} />
-            <span>
-              {x.name}
-              <span className="nm-hint" style={{ display: "block" }}>
-                {x.facts}
-              </span>
-            </span>
-          </label>
-        ))}
-        <p className="nm-hint" style={{ margin: 0 }}>
-          {p.pitches.length ? (p.pitchNote ? `Merknad: ${p.pitchNote}` : "Velg én eller flere. KI får med mål og lys.") : "Laget har ingen baner i Lagets standard ennå. "}
-          {!p.pitches.length && p.standardHref ? (
-            <Link href={p.standardHref} style={{ textDecoration: "underline" }}>
-              Legg til baner
-            </Link>
-          ) : null}
-        </p>
-      </fieldset>
+      <PitchFields
+        legend="Baner for økta"
+        hint="Velg én eller flere. KI får med mål og lys."
+        pitches={p.pitches}
+        pitchNote={p.pitchNote}
+        standardHref={p.standardHref}
+        value={pitchIds}
+        onChange={setPitchIds}
+      />
       {!p.baseId ? (
         <label className="nm-field">
           <span className="nm-field__label">Lengde på økta (min)</span>
@@ -160,26 +145,7 @@ export function KiForm(p: KiFormProps) {
           ))}
         </fieldset>
       ) : null}
-      <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-        <legend className="nm-field__label" style={{ marginBottom: "var(--space-1)" }}>
-          Modell
-        </legend>
-        {p.models.map((m) => (
-          <label key={m.id} className="nm-check">
-            <input type="radio" name="model" checked={model === m.id} onChange={() => setModel(m.id)} />
-            <span>
-              {m.choice} ({m.label})
-              {prices?.[m.id] ? <span className="nm-hint" style={{ display: "block" }}>Pris: {prices[m.id]}</span> : null}
-            </span>
-          </label>
-        ))}
-        <button type="button" className="nm-btn nm-btn--ghost" onClick={estimate} disabled={pending}>
-          Beregn pris
-        </button>
-        <p className="nm-hint" style={{ margin: "var(--space-1) 0 0" }}>
-          {p.budgetText}
-        </p>
-      </fieldset>
+      <ModelFields models={p.models} value={model} onChange={setModel} prices={prices} onEstimate={estimate} pending={pending} budgetText={p.budgetText} />
       {error ? (
         <div className="nm-alert" role="alert">
           {error}

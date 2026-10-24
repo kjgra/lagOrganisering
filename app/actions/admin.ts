@@ -5,9 +5,11 @@ import { z } from "zod";
 import { runAction, type ActionResult } from "@/lib/actions";
 import { trainers } from "@/lib/admin";
 import { findGroup, requireAdmin } from "@/lib/auth/current";
-import { updateLearningsWithKi } from "@/lib/ai/service";
+import { AI_MODELS } from "@/lib/ai/plan-ai";
+import { estimateKi, prepareExerciseKi, runExerciseKi, updateLearningsWithKi } from "@/lib/ai/service";
 import { db } from "@/lib/db";
 import { maintenanceResultText, runMaintenanceNow } from "@/lib/maintenance";
+import { exerciseOrderContext } from "@/lib/plan-data";
 import { assertSuperadmin, UserError } from "@/lib/store/access";
 import { saveAiSettings } from "@/lib/store/ai";
 import { confirmArchive } from "@/lib/store/archive";
@@ -123,6 +125,44 @@ export async function deleteExerciseAction(groupId: string, id: number): Promise
     const { user, d } = await admin(v.groupId);
     await deleteExercise(d, user.access, user.rights, v.groupId, v.id);
     return { data: undefined, message: "Øvelsen er slettet." };
+  });
+}
+
+const exerciseKiInput = z.object({
+  groupId: sid,
+  theme: z.string().max(80),
+  players: z.number().int().min(1).max(60).nullable(),
+  minutes: z.number().int().min(1).max(120).nullable(),
+  category: z.string().max(40),
+  wish: z.string().max(1000),
+  link: z.string().max(600),
+  pitchIds: z.array(z.number().int().positive()).max(50),
+  model: z.string().refine((m) => m in AI_MODELS),
+});
+
+async function exerciseKiPrep(input: z.input<typeof exerciseKiInput>) {
+  const v = exerciseKiInput.parse(input);
+  const { user, group, d } = await admin(v.groupId);
+  const order = await exerciseOrderContext(d, user, group, v);
+  return { d, user, prep: await prepareExerciseKi(d, user, user.rights, group, order, { model: v.model }) };
+}
+
+/** Price estimate per model for «Ny øvelse med KI». */
+export async function exerciseKiEstimateAction(input: z.input<typeof exerciseKiInput>): Promise<ActionResult<Record<string, string> | null>> {
+  return runAction("Prisoverslag", async () => {
+    const { d, prep } = await exerciseKiPrep(input);
+    return { data: await estimateKi(d, prep) };
+  });
+}
+
+/** «Ny øvelse med KI»: the exercise is saved in the bank as a candidate. */
+export async function exerciseKiRunAction(input: z.input<typeof exerciseKiInput>): Promise<ActionResult<number>> {
+  return runAction("KI", async () => {
+    const { d, user, prep } = await exerciseKiPrep(input);
+    const r = await runExerciseKi(d, user, prep);
+    refresh();
+    const warn = r.warnings.length ? ` Merk: ${r.warnings.join(" ")}` : "";
+    return { data: r.id, message: `«${r.name}» er laget med KI (${r.costText}) og lagt i banken som kandidat.${warn}` };
   });
 }
 

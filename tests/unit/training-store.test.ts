@@ -49,8 +49,8 @@ describe("training plans", () => {
     ]);
     expect((await getPlan(d, me, v2.id)).plan.tittel).toBe("Versjon to");
 
-    expect(await savePlanExercise(d, me, "G1", plan.ovelser[0], [plan.tema], "ai")).toBe(true);
-    expect(await savePlanExercise(d, me, "G1", plan.ovelser[0], [plan.tema], "ai")).toBe(false);
+    expect(await savePlanExercise(d, me, "G1", plan.ovelser[0], [plan.tema], "ai")).toEqual(expect.any(Number));
+    expect(await savePlanExercise(d, me, "G1", plan.ovelser[0], [plan.tema], "ai")).toBeNull();
     const bank = await listExercises(d, me, "G1");
     expect(bank).toHaveLength(1);
     expect(bank[0].status).toBe("candidate");
@@ -96,6 +96,13 @@ describe("training plans", () => {
     const row = { exercise_no: null, exercise_code: cand.code, rating: 3, tags: [], actual_minutes: null, actual_players: null, body: "", use_again: "yes" };
     expect(await saveBankFeedback(d, me, "G1", cand.id, row)).toBe(true);
     expect((await listExercises(d, me, "G1")).find((b) => b.id === cand.id)!.status).toBe("active");
+  });
+
+  it("saves an exercise from «Ny øvelse med KI» with players, minutes and area", async () => {
+    const other: Access = { profileId: "P-1", groupIds: new Set(["G9"]) };
+    const id = await savePlanExercise(d, other, "G9", plan.ovelser[1], ["Samhandling"], "ai", { min_players: 6, max_players: 10, duration_minutes: 15, area: "20 × 15 m" });
+    const [b] = await listExercises(d, other, "G9");
+    expect(b).toMatchObject({ id, source: "ai", status: "candidate", min_players: 6, max_players: 10, duration_minutes: 15, area: "20 × 15 m", themes: ["Samhandling"] });
   });
 
   it("refuses other groups", async () => {
