@@ -120,6 +120,13 @@ async function seedTraining(d: Db): Promise<void> {
         [e.code, e.name, e.category, e.themes, e.organisation, e.execution, e.learning_points],
       );
     }
+    // The reference plan's exercises are tagged with NFF's fagplan, so tags and filters can be tried.
+    await t.query(
+      `UPDATE exercises SET bands = '{8-9,10-12}', nff_activity = 'med-og-mot',
+              nff_tags = '{tema.spille-framover,delf.pasning,delf.mottak,lm.10-12.spille-framover.laget.2}'
+        WHERE spond_group_id = 'G-FOTBALL' AND code = ANY($1::text[])`,
+      [ref.ovelser.map((e) => e.kode)],
+    );
     const next = now.month === 12 ? { year: now.year + 1, month: 1 } : { year: now.year, month: now.month + 1 };
     await t.query(
       `INSERT INTO season_themes (spond_group_id, year, month, theme, description, updated_by) VALUES

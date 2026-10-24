@@ -107,6 +107,9 @@ const exerciseInput = z.object({
   nff_url: z.string().max(600),
   drawing: z.string().max(20000),
   status: z.string().max(20),
+  bands: z.array(z.string().max(10)).max(5),
+  nff_activity: z.string().max(40),
+  nff_tags: z.array(z.string().max(80)).max(200),
 });
 
 export async function saveExerciseAction(groupId: string, id: number | null, input: z.input<typeof exerciseInput>): Promise<ActionResult<number>> {

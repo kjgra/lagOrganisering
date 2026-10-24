@@ -7,6 +7,8 @@ import { deleteExerciseAction, saveExerciseAction } from "@/app/actions/admin";
 import { DrawingSvg } from "@/components/plans/DrawingSvg";
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
+import { NffTagger } from "@/components/settings/admin/NffTagger";
+import type { BandKey } from "@/lib/nff/fagplan";
 import { checkDrawing, DrawingError, EXAMPLE_DRAWING, fixDrawing, prettyDrawing, validateDrawing, type Drawing } from "@/lib/plans/drawing";
 
 export interface ExerciseValues {
@@ -26,6 +28,9 @@ export interface ExerciseValues {
   nff_url: string;
   drawing: string;
   status: string;
+  bands: BandKey[];
+  nff_activity: string;
+  nff_tags: string[];
 }
 
 function preview(json: string): { drawing: Drawing | null; error: string; warnings: string[] } {
@@ -56,6 +61,7 @@ export function ExerciseForm(p: {
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
   const set = (k: keyof ExerciseValues) => (e: { target: { value: string } }) => setV((x) => ({ ...x, [k]: e.target.value }));
+  type TextKey = { [K in keyof ExerciseValues]: ExerciseValues[K] extends string ? K : never }[keyof ExerciseValues];
   const pv = useMemo(() => preview(v.drawing), [v.drawing]);
 
   const save = () =>
@@ -75,7 +81,7 @@ export function ExerciseForm(p: {
       router.push(p.listHref);
     });
 
-  const text = (k: keyof ExerciseValues, label: string, hint?: string, rows = 4) => (
+  const text = (k: TextKey, label: string, hint?: string, rows = 4) => (
     <label className="nm-field">
       <span className="nm-field__label">{label}</span>
       <textarea className="nm-input" rows={rows} value={v[k]} onChange={set(k)} />
@@ -143,6 +149,7 @@ export function ExerciseForm(p: {
           <input className="nm-input" value={v.area} maxLength={60} onChange={set("area")} />
         </label>
       </div>
+      <NffTagger value={{ bands: v.bands, nff_activity: v.nff_activity, nff_tags: v.nff_tags }} onChange={(n) => setV((x) => ({ ...x, ...n }))} />
       {text("organisation", "Organisering", "Én ting per linje")}
       {text("execution", "Gjennomføring", "Én ting per linje")}
       {text("learning_points", "Læringsmomenter", "Én ting per linje")}

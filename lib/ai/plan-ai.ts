@@ -16,6 +16,19 @@ import {
   type PlanExercise,
 } from "@/lib/plans/plan";
 import referencePlan from "@/lib/plans/reference-plan.json";
+import {
+  AKTIVITETER,
+  DELFERDIGHETER,
+  HOVEDTEMA,
+  LEARNING_POINTS,
+  ROLES,
+  aktivitetLabel,
+  delfTag,
+  isKnownTag,
+  matchHovedtema,
+  temaTag,
+  type BandKey,
+} from "@/lib/nff/fagplan";
 import { EXERCISE_TASK, PLAN_INSTRUCTIONS } from "./prompts";
 
 /**
@@ -120,6 +133,9 @@ const EXERCISE_PROPS = {
   vanskeligere: str,
   tegning_json: str,
   lenke: str,
+  // NFF: aktivitetskategori, and hovedtema/delferdigheter as tags («tema.*», «delf.*»).
+  aktivitet: { type: "string", enum: ["", ...AKTIVITETER.map((a) => a.key)] },
+  nff_tags: { type: "array", items: { type: "string", enum: [...HOVEDTEMA.map((t) => temaTag(t.key)), ...DELFERDIGHETER.map((t) => delfTag(t.key))] } },
 };
 
 /** Every field is required; empty strings and lists mean «not used». Lengths are checked in code. */
@@ -171,6 +187,8 @@ export interface AnswerExercise {
   vanskeligere: string;
   tegning_json: string;
   lenke: string;
+  aktivitet: string;
+  nff_tags: string[];
 }
 
 export interface ExerciseAnswer extends AnswerExercise {
@@ -238,6 +256,8 @@ export function answerFromPlan(p: Plan): PlanAnswer {
       vanskeligere: e.vanskeligere,
       tegning_json: e.tegning ? JSON.stringify(compactDrawing(e.tegning)) : "",
       lenke: e.nff_url,
+      aktivitet: e.aktivitet ?? "",
+      nff_tags: e.nff_tags ?? [],
     })),
   };
 }
@@ -258,6 +278,41 @@ export function systemText(): string {
     "Utfordringer: laget kommer ikke hjem bak ballen, og ballfører har få pasningsalternativer. Banken var tom.\n\n" +
     `${JSON.stringify(exampleAnswer())}\n`
   );
+}
+
+/** «NFF 8–9/10–12, Spille med og mot, tema.spille-framover, delf.pasning» for the catalogue. */
+function nffText(b: BankExercise): string {
+  const tags = b.nff_tags.filter((t) => t.startsWith("tema.") || t.startsWith("delf."));
+  const parts = [b.bands.length ? `NFF ${b.bands.join("/")} år` : "", aktivitetLabel(b.nff_activity) ?? "", ...tags].filter(Boolean);
+  return parts.join(", ");
+}
+
+/**
+ * NFF's fagplan for the team's band, for the order: the hovedtema to choose from, the activity
+ * categories with their shares, the delferdigheter, and the learning points of the theme when
+ * it matches a hovedtema. Empty without a band.
+ */
+export function fagplanText(band: BandKey | null, theme: string): string {
+  if (!band) return "";
+  const temaer = HOVEDTEMA.filter((t) => t.bands.includes(band));
+  const delf = DELFERDIGHETER.filter((t) => t.bands.includes(band));
+  const out = [
+    `# NFFs fagplan for laget (${band} år)`,
+    "",
+    `Hovedtema (ett per økt, fra start til slutt): ${temaer.map((t) => `${t.label} (${temaTag(t.key)})`).join("; ")}.`,
+    `Aktivitetskategorier i denne rekkefølgen: ${AKTIVITETER.map((a) => `${a.label} (${a.key}, ${a.share})`).join("; ")}.`,
+    `Delferdigheter: ${delf.map((t) => `${t.label} (${delfTag(t.key)})`).join("; ")}.`,
+  ];
+  const hit = matchHovedtema(theme, band);
+  if (hit) {
+    out.push("", `## Læringsmomenter for «${hit.label}»`);
+    const points = LEARNING_POINTS.filter((p) => p.band === band && p.topic === hit.key);
+    for (const role of [...new Set(points.map((p) => p.role))]) {
+      out.push("", `### ${ROLES[role ?? ""] ?? "Laget"}`);
+      for (const p of points.filter((x) => x.role === role)) out.push(`- ${p.group}: ${p.text}`);
+    }
+  }
+  return out.join("\n");
 }
 
 /**
@@ -288,6 +343,7 @@ export function catalogue(bank: BankExercise[], theme = "", max = 30): string {
       b.name,
       b.category,
       b.themes.length ? `tema: ${b.themes.join(", ")}` : "",
+      nffText(b),
       players,
       b.duration_minutes ? `${b.duration_minutes} min` : "",
       b.based_on ? `variant av ${b.based_on}` : "",
@@ -297,7 +353,7 @@ export function catalogue(bank: BankExercise[], theme = "", max = 30): string {
     ].filter(Boolean);
     return `- ${parts.join(" | ")}`;
   });
-  return `# Øvelsesbanken\n\nkode | navn | kategori | tema | spillere | minutter | merknader | kort beskrivelse\n\n${lines.join("\n")}`;
+  return `# Øvelsesbanken\n\nkode | navn | kategori | tema | NFF | spillere | minutter | merknader | kort beskrivelse\n\n${lines.join("\n")}`;
 }
 
 const MIN = { sessions: 3, evaluations: 5, tagCount: 2, tagShare: 0.2, minutes: 1, attendance: 0.05 };
@@ -372,6 +428,8 @@ export interface OrderContext {
   /** Member names the wish must not contain; never sent. */
   names: string[];
   comments?: string[];
+  /** NFF's fagplan for the team's band (fagplanText), or empty. */
+  fagplan?: string;
 }
 
 export function linksText(links: LinkText[]): string {
@@ -409,7 +467,7 @@ export function orderText(c: OrderContext): string {
     line("Maks nye øvelser", c.maxNew),
     line("Ønsker fra treneren", c.wish),
   ].filter((x) => x !== null);
-  return `${out.join("\n")}${linksText(c.links)}\n\nLag treningsøkta.`;
+  return `${out.join("\n")}${c.fagplan ? `\n\n${c.fagplan}` : ""}${linksText(c.links)}\n\nLag treningsøkta.`;
 }
 
 export interface ExerciseOrderContext {
@@ -425,6 +483,8 @@ export interface ExerciseOrderContext {
   links: LinkText[];
   /** Member names the wish must not contain; never sent. */
   names: string[];
+  /** NFF's fagplan for the team's band (fagplanText), or empty. */
+  fagplan?: string;
 }
 
 /** The order for «Ny øvelse med KI»: one exercise for the bank, without names. */
@@ -446,7 +506,7 @@ export function exerciseOrderText(c: ExerciseOrderContext): string {
     line("Kategori", CATEGORIES[c.category] ? `${c.category} (${CATEGORIES[c.category]})` : null),
     line("Ønsker fra treneren", c.wish),
   ].filter((x) => x !== null);
-  return `${EXERCISE_TASK}\n${out.join("\n")}${linksText(c.links)}\n\nLag øvelsen.`;
+  return `${EXERCISE_TASK}\n${out.join("\n")}${c.fagplan ? `\n\n${c.fagplan}` : ""}${linksText(c.links)}\n\nLag øvelsen.`;
 }
 
 /** The order for «Juster med KI»: the current plan, the facts now, comments and what to change. */
@@ -454,7 +514,7 @@ export function revisionText(base: Plan, c: OrderContext): string {
   const comments = (c.comments ?? []).map(txt).filter(Boolean);
   if (!c.wish.trim() && !comments.length && !c.links.length) throw new AiError("Skriv hva som skal endres, velg en kommentar eller legg inn en lenke.");
   checkWish([c.wish, ...comments], c.names);
-  const facts = orderText({ ...c, wish: "", theme: "", themeDescription: "", links: [] })
+  const facts = orderText({ ...c, wish: "", theme: "", themeDescription: "", links: [], fagplan: "" })
     .replace(/^# Bestilling/, "# Fakta nå")
     .replace("\n\nLag treningsøkta.", "");
   return (
@@ -530,6 +590,8 @@ function newExercise(e: Partial<AnswerExercise>, k: string, w: string, c: NewExe
     naermeste_kode: kilde === "ny" && c.codes.includes(nearest) ? nearest : "",
     hvorfor_ny: kilde === "ny" ? clip(e.hvorfor_ny, 300) : "",
     tegning,
+    ...(AKTIVITETER.some((a) => a.key === txt(e.aktivitet)) ? { aktivitet: txt(e.aktivitet) } : {}),
+    ...(Array.isArray(e.nff_tags) && e.nff_tags.some(isKnownTag) ? { nff_tags: [...new Set(e.nff_tags.map(txt))].filter(isKnownTag).slice(0, 20) } : {}),
   };
 }
 
