@@ -139,8 +139,8 @@ async function seedTraining(d: Db): Promise<void> {
       );
     }
     await t.query(
-      `INSERT INTO team_settings (spond_group_id, age_group, session_minutes, pitch, equipment, principles, updated_by)
-       VALUES ('G-FOTBALL', 'G10', 75, 'Deler med G11 annenhver uke', 'Kjegler, vester i fire farger, 6 småmål, 20 baller',
+      `INSERT INTO team_settings (spond_group_id, birth_year, gender, session_minutes, pitch, equipment, principles, updated_by)
+       VALUES ('G-FOTBALL', 2016, 'gutter', 75, 'Deler med G11 annenhver uke', 'Kjegler, vester i fire farger, 6 småmål, 20 baller',
                'Mye ballkontakt, lite kø. Alle skal oppleve mestring.', 'P-KJETIL')`,
     );
     await t.query("INSERT INTO team_pitches (spond_group_id, pitch_id) VALUES ('G-FOTBALL', 8876), ('G-FOTBALL', 3985)");
