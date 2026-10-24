@@ -364,3 +364,32 @@ select.nm-input { appearance: auto; }
 .nm-table td.num, .nm-table th.num { text-align: right; white-space: nowrap; }
 .nm-scroll-x { overflow-x: auto; }
 .nm-h3 { margin: 0; font-size: 17px; line-height: 24px; font-weight: 700; }
+
+/* ---------- Hjemskjerm-app (iOS standalone) ---------- */
+/* No rubber-band of the whole page, no grey tap flash, no double-tap zoom. Inner scroll areas keep their native bounce. */
+html { overscroll-behavior: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: manipulation; }
+body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+/* Controls and app chrome behave like native UI: no text selection or long-press callout. Content and fields stay selectable. */
+:where(button, a, label, summary, [role="button"], [role="tab"], .nm-chrome, .nm-bottomnav, .nm-actions) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+:where(input, textarea, [contenteditable="true"]) { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+/* Safe areas (viewport-fit=cover): status bar/notch on top, home indicator at the bottom, notch in landscape. */
+.nm-appbar { padding-top: calc(var(--space-2) + env(safe-area-inset-top)); padding-left: calc(var(--space-3) + env(safe-area-inset-left)); padding-right: calc(var(--space-3) + env(safe-area-inset-right)); }
+.nm-login__top { padding-top: calc(var(--space-5) + env(safe-area-inset-top)); padding-left: calc(var(--space-4) + env(safe-area-inset-left)); padding-right: calc(var(--space-4) + env(safe-area-inset-right)); }
+.nm-main, .nm-login__body, .nm-picker-body { padding-left: calc(var(--space-4) + env(safe-area-inset-left)); padding-right: calc(var(--space-4) + env(safe-area-inset-right)); }
+.nm-login__body, .nm-picker-body { padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom)); }
+.nm-bottomnav { padding-bottom: env(safe-area-inset-bottom); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+.nm-sheet { padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom)); }
+.nm-toast { bottom: calc(96px + env(safe-area-inset-bottom)); }
+@media (min-width: 768px) {
+  .nm-appbar { padding: env(safe-area-inset-top) calc(var(--space-6) + env(safe-area-inset-right)) 0 var(--space-6); }
+  .nm-side { padding-top: calc(var(--space-5) + env(safe-area-inset-top)); padding-left: calc(var(--space-4) + env(safe-area-inset-left)); }
+  .nm-main { padding-left: var(--space-6); padding-right: calc(var(--space-6) + env(safe-area-inset-right)); }
+  .nm-actions { padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom)); padding-right: calc(var(--space-6) + env(safe-area-inset-right)); }
+  .nm-side__user { padding-bottom: env(safe-area-inset-bottom); }
+  .nm-login__top { padding-left: calc(var(--space-6) + env(safe-area-inset-left)); padding-right: calc(var(--space-6) + env(safe-area-inset-right)); }
+  .nm-login__body, .nm-picker-body { padding-left: calc(var(--space-6) + env(safe-area-inset-left)); padding-right: calc(var(--space-6) + env(safe-area-inset-right)); }
+  .nm-login__body { padding-bottom: calc(var(--space-7) + env(safe-area-inset-bottom)); }
+  .nm-picker-body { padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom)); }
+  .nm-sheet { padding-bottom: var(--space-5); }
+  .nm-toast { bottom: calc(88px + env(safe-area-inset-bottom)); }
+}

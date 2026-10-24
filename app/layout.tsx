@@ -28,12 +28,18 @@ const barlowCondensed = localFont({
 export const metadata: Metadata = {
   title: appTitle(),
   description: "Fordel spillere på lag og lag treningsopplegg for trenere i Nymark.",
+  applicationName: "Nymark",
+  // Home-screen app on iOS: no Safari UI, dark status bar over the app bar (see safe-area in globals.css).
+  appleWebApp: { capable: true, title: "Nymark", statusBarStyle: "black-translucent" },
+  formatDetection: { telephone: false, date: false, address: false, email: false },
 };
 
 export const viewport: Viewport = {
   themeColor: "#121212",
   width: "device-width",
   initialScale: 1,
+  // Draw under the notch/home indicator; the shell pads itself with env(safe-area-inset-*).
+  viewportFit: "cover",
 };
 
 const THEMES = ["light", "dark", "system"] as const;
