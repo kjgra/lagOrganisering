@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, Plus, Save, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { savePlanAction } from "@/app/actions/plans";
+import { DraftNote, LeaveGuard, useLocalDraft } from "@/components/ui/draft";
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
 import type { PlanSettings } from "@/lib/plans/plan";
@@ -37,6 +38,18 @@ export function PlanEditor(props: {
   const [error, setError] = useState<string | null>(null);
   const [bankOpen, setBankOpen] = useState(!props.chosen.length);
   const set = <K extends keyof PlanSettings>(k: K, v: PlanSettings[K]) => setS((x) => ({ ...x, [k]: v }));
+  const [saved, setSaved] = useState(false);
+  const [initial] = useState(() => JSON.stringify({ s: props.initial, list: props.chosen }));
+  const value = useMemo(() => ({ s, list }), [s, list]);
+  const dirty = !saved && JSON.stringify(value) !== initial;
+  const draft = useLocalDraft(`nm-plan:${props.groupId}:${props.eventId}:${props.baseId ?? "ny"}`, value, dirty);
+  const restore = () => {
+    const v = draft.saved?.value;
+    if (!v) return;
+    setS({ ...props.initial, ...v.s });
+    setList(v.list.filter((x) => props.bank.some((b) => b.key === x.key) || props.chosen.some((c) => c.key === x.key)));
+    draft.dismiss();
+  };
 
   const total = useMemo(() => {
     const n = list.length;
@@ -57,6 +70,8 @@ export function PlanEditor(props: {
       setError(null);
       const r = await savePlanAction({ groupId: props.groupId, eventId: props.eventId, baseId: props.baseId, exercises: list.map((x) => x.ref), settings: s });
       if (!r.ok) return setError(r.error);
+      setSaved(true);
+      draft.clear();
       if (r.message) toast(r.message);
       router.push(`${props.doneHref}?opplegg=${r.data.id}#plan-h`);
     });
@@ -78,6 +93,8 @@ export function PlanEditor(props: {
         save();
       }}
     >
+      {draft.saved ? <DraftNote at={draft.saved.at} onRestore={restore} onDiscard={draft.clear} /> : null}
+      <LeaveGuard when={dirty && !pending} text="Endringene i opplegget er ikke lagret. De ligger som kladd på denne enheten, så du kan fortsette senere." />
       <label className="nm-field">
         <span className="nm-field__label">Tittel</span>
         <input className="nm-input" value={s.tittel} maxLength={120} required onChange={(e) => set("tittel", e.target.value)} />

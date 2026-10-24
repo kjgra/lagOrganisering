@@ -12,11 +12,12 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { ArrowDown, Bookmark, GripVertical, Minus, Pencil, Plus, Send, Shuffle, Trash2 } from "lucide-react";
+import { ArrowDown, Bookmark, GripVertical, Minus, Pencil, Plus, Send, Shuffle, Trash2, Undo2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { lockAction, saveProposalAction, unlockAction } from "@/app/actions/proposals";
 import { Icon } from "@/components/ui/icon";
+import { DraftNote, LeaveGuard, useLocalDraft } from "@/components/ui/draft";
 import { useToast } from "@/components/ui/toast";
 import { distribute, labelProblem, moveFollow, nextLabel, parentNotes, type Assignments, type ParentLink } from "@/lib/board";
 import { teamTitle, vestOf } from "@/lib/proposal-view";
@@ -66,24 +67,42 @@ interface BoardState extends BoardProps {
   removeLabel: (l: string) => void;
   renameTeam: (from: string, to: string) => string | null;
   reshuffle: () => void;
-  save: (submit: boolean) => void;
+  undo: () => void;
+  canUndo: boolean;
+  submit: boolean;
+  setSubmit: (on: boolean) => void;
+  save: () => void;
   pending: boolean;
   error: string | null;
   live: string;
+  dirty: boolean;
+  draft: { at: number } | null;
+  restoreDraft: () => void;
+  discardDraft: () => void;
+}
+
+interface Snapshot {
+  labels: string[];
+  assignments: Assignments;
+}
+
+interface BoardDraft extends Snapshot {
+  name: string;
 }
 
 const Ctx = createContext<BoardState | null>(null);
 const useBoard = () => useContext(Ctx)!;
 
 const MAX_TEAMS = 8;
+const MAX_UNDO = 30;
 
 /** Holds the board's state, shared by the board and the action bar. */
 export function BoardProvider({ props, children }: { props: BoardProps; children: ReactNode }) {
   const router = useRouter();
   const toast = useToast();
-  const [name, setName] = useState(props.name);
+  const [name, setNameState] = useState(props.name);
   const [labels, setLabels] = useState(props.labels);
-  const [seed, setSeed] = useState(1);
+  const seed = useRef(1);
   const byId = useMemo(() => new Map(props.members.map((m) => [m.id, m])), [props.members]);
   const allowed = useMemo(() => new Set(props.members.map((m) => m.id)), [props.members]);
   const [assignments, setAssignments] = useState<Assignments>(() =>
@@ -93,7 +112,22 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
   const [live, setLive] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [submit, setSubmit] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  // A new board is distributed automatically until someone moves a player by hand.
+  const [manual, setManual] = useState(!props.autoStart);
   const lockKey = useRef<string>("");
+  const history = useRef<Snapshot[]>([]);
+  const [undoCount, setUndoCount] = useState(0);
+  // The latest labels and assignments, for actions run later from a toast.
+  const cur = useRef<Snapshot>({ labels, assignments });
+  useLayoutEffect(() => {
+    cur.current = { labels, assignments };
+  }, [labels, assignments]);
+
+  const draftKey = `nm-board:${props.groupId}:${props.eventId ?? `utkast-${props.subgroupId ?? "alle"}`}:${props.proposalId ?? "ny"}`;
+  const draftValue = useMemo<BoardDraft>(() => ({ name, labels, assignments }), [name, labels, assignments]);
+  const draft = useLocalDraft<BoardDraft>(draftKey, draftValue, dirty);
 
   // Advisory edit lock: taken when the editor opens, renewed every 30 s, released on leaving.
   useEffect(() => {
@@ -112,24 +146,70 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
 
   const nameOf = useCallback((id: string) => byId.get(id)?.name ?? "Tidligere medlem", [byId]);
 
+  /** Every change to the teams goes through here, so it can be undone. */
+  const change = (nextLabels: string[], nextAssignments: Assignments) => {
+    history.current = [...history.current.slice(-(MAX_UNDO - 1)), cur.current];
+    setUndoCount(history.current.length);
+    setLabels(nextLabels);
+    setAssignments(nextAssignments);
+    setDirty(true);
+  };
+
+  const undo = () => {
+    const prev = history.current.pop();
+    if (!prev) return;
+    setUndoCount(history.current.length);
+    setLabels(prev.labels);
+    setAssignments(prev.assignments);
+    setSelected(null);
+    setLive("Siste endring er angret.");
+  };
+
+  /** Coaches keep their place (gruppeutkast); the players are spread on `ls`. */
+  const spread = (ls: string[], s: number): Assignments => {
+    const keep = Object.fromEntries(Object.entries(cur.current.assignments).filter(([id, l]) => byId.get(id)?.coach && ls.includes(l)));
+    return { ...keep, ...distribute(props.members, ls, s, props.pairs) };
+  };
+
+  const reshuffle = () => {
+    seed.current += 1;
+    change(cur.current.labels, spread(cur.current.labels, seed.current));
+    setManual(false);
+    setSelected(null);
+    setLive("Spillerne er fordelt på nytt.");
+    toast("Spillerne er fordelt på nytt", { label: "Angre", run: undo });
+  };
+
   const moveTo = (id: string, label: string) => {
     if ((assignments[id] ?? "") === label) {
       setSelected(null);
       return;
     }
     const r = moveFollow(assignments, id, label, allowed, labels, props.links);
-    setAssignments(r.assignments);
+    change(labels, r.assignments);
+    setManual(true);
     setSelected(null);
     const where = label ? `til ${label}` : "tilbake til ikke fordelt";
     setLive(`${nameOf(id)} flyttet ${where}.${r.followed.length ? ` ${r.followed.map(nameOf).join(", ")} fulgte med.` : ""}`);
-    if (r.followed.length) toast(`${r.followed.map(nameOf).join(", ")} ble flyttet sammen med ${nameOf(id)}`);
+    if (r.followed.length) toast(`${r.followed.map(nameOf).join(", ")} ble flyttet sammen med ${nameOf(id)}`, { label: "Angre", run: undo });
   };
 
   const removeLabel = (l: string) => {
     if (labels.length <= 1) return;
-    setLabels(labels.filter((x) => x !== l));
-    setAssignments(Object.fromEntries(Object.entries(assignments).filter(([, x]) => x !== l)));
-    setLive(`${l} er fjernet. Spillerne er tilbake blant dem som ikke er fordelt.`);
+    const rest = labels.filter((x) => x !== l);
+    if (!manual) {
+      change(rest, spread(rest, seed.current));
+      setLive(`${l} er fjernet, og spillerne er fordelt på ${rest.length} lag.`);
+    } else {
+      change(rest, Object.fromEntries(Object.entries(assignments).filter(([, x]) => x !== l)));
+      setLive(`${l} er fjernet. Spillerne er tilbake blant dem som ikke er fordelt.`);
+    }
+    toast(`${l} er fjernet`, { label: "Angre", run: undo });
+  };
+
+  const setName = (n: string) => {
+    setNameState(n);
+    setDirty(true);
   };
 
   const state: BoardState = {
@@ -144,8 +224,15 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
     addTeam: () => {
       if (labels.length >= MAX_TEAMS) return;
       const l = nextLabel(labels);
-      setLabels([...labels, l]);
-      setLive(`${l} er lagt til.`);
+      const next = [...labels, l];
+      if (!manual) {
+        change(next, spread(next, seed.current));
+        setLive(`${l} er lagt til, og spillerne er fordelt på ${next.length} lag.`);
+      } else {
+        change(next, assignments);
+        setLive(`${l} er lagt til.`);
+        toast(`${l} er lagt til`, { label: "Fordel på nytt", run: reshuffle });
+      }
     },
     removeTeam: () => removeLabel(labels[labels.length - 1]),
     removeLabel,
@@ -154,19 +241,18 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
       if (t === from) return null;
       const problem = labelProblem(t, labels.filter((x) => x !== from));
       if (problem) return problem;
-      setLabels(labels.map((x) => (x === from ? t : x)));
-      setAssignments(Object.fromEntries(Object.entries(assignments).map(([k, v]) => [k, v === from ? t : v])));
+      change(
+        labels.map((x) => (x === from ? t : x)),
+        Object.fromEntries(Object.entries(assignments).map(([k, v]) => [k, v === from ? t : v])),
+      );
       return null;
     },
-    reshuffle: () => {
-      const s = seed + 1;
-      setSeed(s);
-      const keep = Object.fromEntries(Object.entries(assignments).filter(([id]) => byId.get(id)?.coach));
-      setAssignments({ ...keep, ...distribute(props.members, labels, s, props.pairs) });
-      setSelected(null);
-      setLive("Spillerne er fordelt på nytt.");
-    },
-    save: (submit) =>
+    reshuffle,
+    undo,
+    canUndo: undoCount > 0,
+    submit,
+    setSubmit,
+    save: () =>
       start(async () => {
         setError(null);
         const r = await saveProposalAction({
@@ -183,6 +269,8 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
           setError(r.error);
           return;
         }
+        setDirty(false);
+        draft.clear();
         if (r.message) toast(r.message);
         router.push(props.doneHref);
         router.refresh();
@@ -190,8 +278,27 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
     pending,
     error,
     live,
+    dirty,
+    draft: draft.saved ? { at: draft.saved.at } : null,
+    restoreDraft: () => {
+      const v = draft.saved?.value;
+      if (!v) return;
+      const ls = v.labels.filter((l) => typeof l === "string").slice(0, MAX_TEAMS);
+      if (!ls.length) return draft.clear();
+      change(ls, Object.fromEntries(Object.entries(v.assignments).filter(([id, l]) => allowed.has(id) && ls.includes(l))));
+      setNameState(v.name || name);
+      setManual(true);
+      draft.dismiss();
+      setLive("Kladden er hentet fram.");
+    },
+    discardDraft: draft.clear,
   };
-  return <Ctx value={state}>{children}</Ctx>;
+  return (
+    <Ctx value={state}>
+      {children}
+      <LeaveGuard when={dirty && !pending} text="Endringene i lagene er ikke lagret. De ligger som kladd på denne enheten, så du kan fortsette senere." />
+    </Ctx>
+  );
 }
 
 function Chip({ p, overlay }: { p: BoardPlayer; overlay?: boolean }) {
@@ -353,9 +460,18 @@ export function TeamBoard() {
 
   return (
     <div onClick={() => b.setSelected(null)}>
-      <label className="nm-field" style={{ marginBottom: "var(--space-4)", maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+      {b.draft ? (
+        <div style={{ marginBottom: "var(--space-3)" }} onClick={(e) => e.stopPropagation()}>
+          <DraftNote at={b.draft.at} onRestore={b.restoreDraft} onDiscard={b.discardDraft} />
+        </div>
+      ) : null}
+      <label className="nm-field" style={{ marginBottom: "var(--space-2)", maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
         <span className="nm-field__label">Navn på forslaget</span>
         <input className="nm-input" value={b.name} maxLength={120} onChange={(e) => b.setName(e.target.value)} />
+      </label>
+      <label className="nm-check" style={{ marginBottom: "var(--space-3)" }} onClick={(e) => e.stopPropagation()}>
+        <input type="checkbox" checked={b.submit} onChange={(e) => b.setSubmit(e.target.checked)} />
+        Send til godkjenning når jeg lagrer
       </label>
       {b.lockedBy ? (
         <div className="nm-note" role="status" style={{ marginBottom: "var(--space-3)" }}>
@@ -384,16 +500,31 @@ export function TeamBoard() {
       </div>
       {selP ? (
         <div className="nm-movebar" style={{ marginBottom: "var(--space-3)" }} onClick={(e) => e.stopPropagation()}>
-          {selP.name} er valgt. Trykk på laget spilleren skal til.
+          {selP.name} er valgt. Trykk på laget spilleren skal til, her eller nederst.
           <button type="button" className="nm-btn" onClick={() => b.setSelected(null)}>
             Avbryt
           </button>
         </div>
       ) : (
-        <p className="nm-muted" style={{ margin: "0 0 var(--space-3)", fontSize: "var(--fs-body)", lineHeight: "var(--lh-body)" }}>
-          <span className="nm-phone-only">Trykk på en spiller, deretter på et lag for å flytte.</span>
-          <span className="nm-desk-only">Dra spillere mellom lagene, eller trykk på spiller og deretter lag.</span>
-        </p>
+        <div className="nm-row" style={{ margin: "0 0 var(--space-3)", flexWrap: "nowrap", alignItems: "center" }}>
+          <p className="nm-muted" style={{ margin: 0, flex: 1, fontSize: "var(--fs-body)", lineHeight: "var(--lh-body)" }}>
+            <span className="nm-phone-only">Trykk på en spiller, deretter på et lag for å flytte.</span>
+            <span className="nm-desk-only">Dra spillere mellom lagene, eller trykk på spiller og deretter lag.</span>
+          </p>
+          {b.canUndo ? (
+            <button
+              type="button"
+              className="nm-btn nm-btn--secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                b.undo();
+              }}
+            >
+              <Icon icon={Undo2} />
+              Angre
+            </button>
+          ) : null}
+        </div>
       )}
       {b.error ? (
         <div className="nm-alert" role="alert" style={{ marginBottom: "var(--space-3)" }}>
@@ -409,12 +540,6 @@ export function TeamBoard() {
         </div>
         <DragOverlay>{dragging ? <Chip p={b.members.find((m) => m.id === dragging)!} overlay /> : null}</DragOverlay>
       </DndContext>
-      <div className="nm-row" style={{ marginTop: "var(--space-4)" }}>
-        <button type="button" className="nm-btn nm-btn--ghost" disabled={b.pending} onClick={(e) => { e.stopPropagation(); b.save(true); }}>
-          <Icon icon={Send} size={20} />
-          Lagre og send til godkjenning
-        </button>
-      </div>
       <div aria-live="polite" className="nm-sr">
         {b.live}
       </div>
@@ -422,18 +547,50 @@ export function TeamBoard() {
   );
 }
 
-/** «Fordel på nytt» and «Lagre forslag» in the action bar. */
+/**
+ * The action bar: «Fordel på nytt» and «Lagre forslag». While a player is
+ * selected it becomes a row of teams instead, so a tap moves the player
+ * without scrolling down to the team (the main flow on a phone).
+ */
 export function BoardActions() {
   const b = useBoard();
+  const selP = b.members.find((m) => m.id === b.selected);
+  if (selP) {
+    const from = b.assignments[selP.id] && b.labels.includes(b.assignments[selP.id]) ? b.assignments[selP.id] : "";
+    const count = (l: string) => b.members.filter((m) => b.assignments[m.id] === l).length;
+    return (
+      <div className="nm-moveto" role="group" aria-label={`Flytt ${selP.name} til`}>
+        <span className="nm-moveto__label">Flytt {selP.name} til</span>
+        <div className="nm-moveto__list">
+          {b.labels.map((l, i) =>
+            l === from ? null : (
+              <button key={l} type="button" className={`nm-moveto__team nm-team--${vestOf(i).n}`} onClick={() => b.moveTo(selP.id, l)}>
+                {teamTitle(l, i)}
+                <span className="nm-team__count">{count(l)}</span>
+              </button>
+            ),
+          )}
+          {from ? (
+            <button type="button" className="nm-moveto__team nm-team--pool" onClick={() => b.moveTo(selP.id, "")}>
+              Ikke fordelt
+            </button>
+          ) : null}
+          <button type="button" className="nm-iconbtn nm-iconbtn--outline" aria-label="Avbryt flytting" onClick={() => b.setSelected(null)}>
+            <Icon icon={X} />
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <>
       <button type="button" className="nm-btn nm-btn--secondary nm-btn--lg" onClick={b.reshuffle} disabled={b.pending}>
         <Icon icon={Shuffle} />
         Fordel på nytt
       </button>
-      <button type="button" className="nm-btn nm-btn--primary nm-btn--lg" onClick={() => b.save(false)} disabled={b.pending} aria-busy={b.pending}>
-        <Icon icon={Bookmark} />
-        {b.pending ? "Lagrer …" : "Lagre forslag"}
+      <button type="button" className="nm-btn nm-btn--primary nm-btn--lg" onClick={b.save} disabled={b.pending} aria-busy={b.pending}>
+        <Icon icon={b.submit ? Send : Bookmark} />
+        {b.pending ? "Lagrer …" : b.submit ? "Lagre og send" : "Lagre forslag"}
       </button>
     </>
   );

@@ -393,3 +393,30 @@ body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
   .nm-sheet { padding-bottom: var(--space-5); }
   .nm-toast { bottom: calc(88px + env(safe-area-inset-bottom)); }
 }
+
+/* ---------- UX-forbedringer ---------- */
+/* Toast: just above whatever bars the page has (action bar 82px, bottom menu 64px), wraps on narrow screens, a tap closes it, one optional action. */
+body .nm-toast { bottom: calc(var(--space-4) + env(safe-area-inset-bottom)); }
+body:has(.nm-actions) .nm-toast { bottom: calc(94px + env(safe-area-inset-bottom)); }
+body:has(.nm-bottomnav) .nm-toast { bottom: calc(76px + env(safe-area-inset-bottom)); }
+body:has(.nm-actions):has(.nm-bottomnav) .nm-toast { bottom: calc(158px + env(safe-area-inset-bottom)); }
+@media (min-width: 768px) {
+  body .nm-toast, body:has(.nm-bottomnav) .nm-toast { bottom: calc(var(--space-4) + env(safe-area-inset-bottom)); }
+  body:has(.nm-actions) .nm-toast, body:has(.nm-actions):has(.nm-bottomnav) .nm-toast { bottom: calc(94px + env(safe-area-inset-bottom)); }
+}
+/* Screen-reader-only text after the app frame must not make the page itself scrollable (it shifted the frame up on iOS). */
+.nm-sr { top: 0; left: 0; }
+.nm-toast { width: max-content; max-width: calc(100vw - 2 * var(--space-4)); white-space: normal; cursor: pointer; }
+.nm-toast__text { flex: 1; }
+.nm-toast__action { flex: none; min-height: var(--touch-min); margin-left: var(--space-2); padding: 0 var(--space-4); border: var(--border-2) solid var(--primary); border-radius: var(--radius-pill); background: transparent; color: var(--primary); font-weight: 700; cursor: pointer; }
+/* Loading skeleton (loading.tsx): grey blocks in the app frame. */
+.nm-skel { border-radius: var(--radius-md); background: var(--surface-muted); animation: nm-pulse 0.9s ease-in-out infinite alternate; }
+.nm-skel--card { height: 120px; border-radius: var(--radius-lg); }
+.nm-skel--chrome { background: var(--chrome-raised); }
+@keyframes nm-pulse { from { opacity: 1; } to { opacity: 0.55; } }
+/* TeamBoard: «Flytt til» row in the action bar while a player is selected. */
+.nm-moveto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.nm-moveto__label { font-weight: 700; font-size: var(--fs-body); line-height: var(--lh-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nm-moveto__list { display: flex; align-items: center; gap: var(--space-2); overflow-x: auto; scrollbar-width: none; }
+.nm-moveto__team { flex: none; display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--control-md); padding: 0 var(--space-4); border: var(--border-2) solid var(--ink); border-radius: var(--radius-pill); background: var(--tc); color: var(--tc-on); font-weight: 700; font-size: var(--fs-body); white-space: nowrap; cursor: pointer; }
+.nm-draftnote { flex-wrap: wrap; align-items: center; }

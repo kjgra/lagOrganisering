@@ -11,7 +11,12 @@ import { env } from "@/lib/env";
  */
 
 export const SESSION_COOKIE = "nymark_session";
-const MAX_HOURS = 12;
+/**
+ * At most 30 days, and never longer than Spond's own token. Coaches use the
+ * app as a home-screen app at every training; a shorter limit meant logging
+ * in again almost every time. Logging out clears the cookie at once.
+ */
+const MAX_DAYS = 30;
 
 export interface Session {
   /** Spond access token. Never sent to the browser in readable form. */
@@ -34,7 +39,7 @@ async function key(): Promise<Uint8Array> {
 }
 
 export async function sealSession(s: Omit<Session, "exp">, expiration: string | null): Promise<{ value: string; exp: number }> {
-  const max = Math.floor(Date.now() / 1000) + MAX_HOURS * 3600;
+  const max = Math.floor(Date.now() / 1000) + MAX_DAYS * 24 * 3600;
   const spondExp = expiration ? Math.floor(Date.parse(expiration) / 1000) : NaN;
   const exp = Number.isFinite(spondExp) ? Math.min(max, spondExp) : max;
   const value = await new EncryptJWT({ t: s.token, p: s.profileId, s: s.sid })
