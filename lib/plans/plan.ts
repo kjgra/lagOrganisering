@@ -266,6 +266,8 @@ export interface BankExercise {
   // Evaluations summed up per code.
   fb_n: number;
   fb_sessions: number;
+  /** Evaluations made from the bank, not after a training. */
+  fb_bank: number;
   fb_good: number;
   fb_ok: number;
   fb_bad: number;

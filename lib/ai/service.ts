@@ -141,13 +141,15 @@ function learningOrder(rows: Awaited<ReturnType<typeof feedbackSince>>, old: str
     const t = x.replace(/\s+/g, " ").trim();
     return !t || isSensitive(t) || namesProblem(t, names) ? "" : ` «${t}»`;
   };
-  const events = [...new Set(rows.map((r) => r.spond_event_id))];
+  // Evaluations from the bank have no event and come last, in a block of their own.
+  const events = [...new Set(rows.map((r) => r.spond_event_id))].sort((a, b) => Number(!a) - Number(!b));
+  const sessions = events.filter(Boolean).length;
   const blocks = events.map((ev, k) => {
     const list = rows.filter((r) => r.spond_event_id === ev);
     const first = new Date(Math.min(...list.map((r) => new Date(r.created_at).getTime())));
-    const head = `## Økt ${k + 1}, evaluert ${shortDate(first)}${list[0].theme ? `, tema: ${list[0].theme}` : ""}`;
+    const head = ev ? `## Økt ${k + 1}, evaluert ${shortDate(first)}${list[0].theme ? `, tema: ${list[0].theme}` : ""}` : "## Fra øvelsesbanken (ikke knyttet til en økt)";
     const lines = list.map((r) => {
-      const what = r.exercise_no === null ? "Hele økta" : `Øvelse ${r.exercise_no}${r.exercise_name ? `, ${r.exercise_name}` : ""}`;
+      const what = !ev ? `Øvelse ${r.exercise_name}` : r.exercise_no === null ? "Hele økta" : `Øvelse ${r.exercise_no}${r.exercise_name ? `, ${r.exercise_name}` : ""}`;
       const parts = [
         r.rating ? words[r.rating] : "",
         r.tags.filter((t) => t in FEEDBACK_TAGS).map((t) => FEEDBACK_TAGS[t]).join(", "),
@@ -159,7 +161,7 @@ function learningOrder(rows: Awaited<ReturnType<typeof feedbackSince>>, old: str
     });
     return [head, ...lines].join("\n");
   });
-  return `# Lærdommer nå\n\n${old || "Ingen ennå."}\n\n# Nye evalueringer (${rows.length} fra ${events.length} økter)\n\n${blocks.join("\n\n")}\n\nSkriv de oppdaterte lærdommene.`;
+  return `# Lærdommer nå\n\n${old || "Ingen ennå."}\n\n# Nye evalueringer (${rows.length} fra ${sessions} økter${sessions < events.length ? " og øvelsesbanken" : ""})\n\n${blocks.join("\n\n")}\n\nSkriv de oppdaterte lærdommene.`;
 }
 
 /** «Oppdater med KI» for the team's learnings (admins with KI). Saves a new version. */

@@ -137,6 +137,7 @@ interface ExerciseRow {
   updated_at: Date;
   fb_n: number;
   fb_sessions: number;
+  fb_bank: number;
   fb_good: number;
   fb_ok: number;
   fb_bad: number;
@@ -155,12 +156,13 @@ const EXERCISE_SELECT = `
          coalesce(e.learning_points, '') AS learning_points, coalesce(e.questions, '') AS questions,
          coalesce(e.easier, '') AS easier, coalesce(e.harder, '') AS harder, coalesce(e.nff_url, '') AS nff_url,
          e.drawing::text AS drawing, e.source, coalesce(e.based_on, '') AS based_on, e.status, e.updated_at,
-         coalesce(s.fb_n, 0) AS fb_n, coalesce(s.fb_sessions, 0) AS fb_sessions, coalesce(s.fb_good, 0) AS fb_good,
+         coalesce(s.fb_n, 0) AS fb_n, coalesce(s.fb_sessions, 0) AS fb_sessions, coalesce(s.fb_bank, 0) AS fb_bank, coalesce(s.fb_good, 0) AS fb_good,
          coalesce(s.fb_ok, 0) AS fb_ok, coalesce(s.fb_bad, 0) AS fb_bad, coalesce(s.fb_yes, 0) AS fb_yes,
          coalesce(s.fb_changes, 0) AS fb_changes, coalesce(s.fb_no, 0) AS fb_no, s.fb_mean, s.fb_minutes, s.fb_last, t.fb_tags
     FROM exercises e
     LEFT JOIN (
       SELECT exercise_code, count(*)::int AS fb_n, count(DISTINCT spond_event_id)::int AS fb_sessions,
+             (count(*) FILTER (WHERE plan_id IS NULL))::int AS fb_bank,
              avg(rating)::float8 AS fb_mean,
              (count(*) FILTER (WHERE rating = 3))::int AS fb_good, (count(*) FILTER (WHERE rating = 2))::int AS fb_ok,
              (count(*) FILTER (WHERE rating = 1))::int AS fb_bad,
@@ -168,12 +170,12 @@ const EXERCISE_SELECT = `
              (count(*) FILTER (WHERE use_again = 'no'))::int AS fb_no,
              avg(actual_minutes)::float8 AS fb_minutes, max(updated_at) AS fb_last
         FROM exercise_feedback
-       WHERE spond_group_id = $1 AND exercise_no IS NOT NULL AND exercise_code IS NOT NULL
+       WHERE spond_group_id = $1 AND (exercise_no IS NOT NULL OR plan_id IS NULL) AND exercise_code IS NOT NULL
        GROUP BY exercise_code) s ON s.exercise_code = e.code
     LEFT JOIN (
       SELECT exercise_code, string_agg(tag || ':' || n, ',' ORDER BY n DESC, tag) AS fb_tags
         FROM (SELECT exercise_code, tag, count(*) AS n FROM exercise_feedback, unnest(tags) AS tag
-               WHERE spond_group_id = $1 AND exercise_no IS NOT NULL AND exercise_code IS NOT NULL
+               WHERE spond_group_id = $1 AND (exercise_no IS NOT NULL OR plan_id IS NULL) AND exercise_code IS NOT NULL
                GROUP BY exercise_code, tag) t0
        GROUP BY exercise_code) t ON t.exercise_code = e.code
    WHERE e.spond_group_id = $1`;
@@ -511,7 +513,7 @@ export async function markCommentsUsed(d: Db, access: Access, groupId: string, i
 
 export interface FeedbackRow {
   id: number;
-  plan_id: number;
+  plan_id: number | null;
   exercise_no: number | null;
   exercise_code: string;
   rating: number | null;
@@ -575,6 +577,47 @@ export async function saveFeedback(d: Db, access: Access, planId: number, rows: 
   });
 }
 
+/** One trainer's evaluation of an exercise from the bank, if any. */
+export async function myBankFeedback(d: Db, access: Access, groupId: string, exerciseCode: string): Promise<FeedbackRow | null> {
+  assertGroup(access, groupId);
+  const r = await d.query<FeedbackRow>(
+    `SELECT id, plan_id, exercise_no, exercise_code, rating, tags, actual_minutes, actual_players,
+            coalesce(body, '') AS body, coalesce(use_again, '') AS use_again, author, updated_at
+       FROM exercise_feedback WHERE spond_group_id = $1 AND exercise_code = $2 AND author = $3 AND plan_id IS NULL`,
+    [groupId, exerciseCode, access.profileId],
+  );
+  return r[0] ?? null;
+}
+
+/**
+ * Replace (or with null remove) one trainer's evaluation of an exercise from
+ * the bank. It counts like an evaluation after a training, so 👍 with «Bruke
+ * igjen: Ja» makes a candidate active.
+ * @returns whether the exercise became active.
+ */
+export async function saveBankFeedback(d: Db, access: Access, groupId: string, exerciseId: number, row: FeedbackInput | null): Promise<boolean> {
+  assertGroup(access, groupId);
+  const ex = await d.query<{ code: string }>("SELECT code FROM exercises WHERE id = $1 AND spond_group_id = $2", [exerciseId, groupId]);
+  if (!ex.length) throw new UserError("Fant ikke øvelsen.");
+  const code = ex[0].code;
+  return d.tx(async (t) => {
+    await t.query("DELETE FROM exercise_feedback WHERE spond_group_id = $1 AND exercise_code = $2 AND author = $3 AND plan_id IS NULL", [groupId, code, access.profileId]);
+    if (!row) return false;
+    await t.query(
+      `INSERT INTO exercise_feedback (spond_group_id, exercise_code, rating, tags, actual_minutes, body, use_again, author)
+       VALUES ($1, $2, $3, $4::text[], $5, NULLIF($6, ''), NULLIF($7, ''), $8)`,
+      [groupId, code, row.rating, row.tags, row.actual_minutes, row.body, row.use_again, access.profileId],
+    );
+    if (row.rating !== 3 || row.use_again !== "yes") return false;
+    const act = await t.query(
+      `UPDATE exercises SET status = 'active', updated_by = $3, updated_at = now()
+        WHERE id = $1 AND spond_group_id = $2 AND status = 'candidate' RETURNING id`,
+      [exerciseId, groupId, access.profileId],
+    );
+    return act.length > 0;
+  });
+}
+
 /** What the trainers' evaluations say about the team (counts only, no text or names). */
 export async function teamExperience(d: Db, access: Access, groupId: string, since: Date) {
   assertGroup(access, groupId);
@@ -588,10 +631,10 @@ export async function teamExperience(d: Db, access: Access, groupId: string, sin
     tags: string | null;
   }>(
     `WITH f AS (SELECT * FROM exercise_feedback WHERE spond_group_id = $1 AND created_at > $2::timestamptz)
-     SELECT (SELECT count(*) FROM f WHERE exercise_no IS NOT NULL)::int AS n_eval,
+     SELECT (SELECT count(*) FROM f WHERE exercise_no IS NOT NULL OR plan_id IS NULL)::int AS n_eval,
             t.time_n, t.time_sessions, t.time_diff, a.att_sessions, a.att_ratio,
             (SELECT string_agg(tag || ':' || n, ',' ORDER BY n DESC, tag)
-               FROM (SELECT tag, count(*) AS n FROM f, unnest(f.tags) AS tag WHERE f.exercise_no IS NOT NULL GROUP BY tag) g) AS tags
+               FROM (SELECT tag, count(*) AS n FROM f, unnest(f.tags) AS tag WHERE f.exercise_no IS NOT NULL OR f.plan_id IS NULL GROUP BY tag) g) AS tags
        FROM (SELECT count(*)::int AS time_n, count(DISTINCT f.spond_event_id)::int AS time_sessions,
                     avg(f.actual_minutes - (p.plan->'tidsplan'->'stasjoner'->>'minutter')::int)::float8 AS time_diff
                FROM f JOIN training_plans p ON p.id = f.plan_id
@@ -647,7 +690,10 @@ export async function saveLearning(d: Db, access: Access, rights: Rights, groupI
   await d.query("INSERT INTO team_learnings (spond_group_id, body, source, created_by) VALUES ($1, $2, $3, $4)", [groupId, b, source, access.profileId]);
 }
 
-/** Evaluations saved or changed after `since`, with exercise name, planned minutes and theme. No authors. */
+/**
+ * Evaluations saved or changed after `since`, with exercise name, planned minutes and theme. No authors.
+ * Evaluations from the bank have an empty event id.
+ */
 export async function feedbackSince(d: Db, access: Access, groupId: string, since: Date, max = 150) {
   assertGroup(access, groupId);
   return d.query<{
@@ -666,14 +712,15 @@ export async function feedbackSince(d: Db, access: Access, groupId: string, sinc
     created_at: Date;
   }>(
     `SELECT * FROM (
-       SELECT f.spond_event_id, f.exercise_no,
-              coalesce(p.plan->'ovelser'->(f.exercise_no - 1)->>'navn', '') AS exercise_name,
+       SELECT coalesce(f.spond_event_id, '') AS spond_event_id, f.exercise_no,
+              coalesce(p.plan->'ovelser'->(f.exercise_no - 1)->>'navn', e.name, '') AS exercise_name,
               coalesce(p.plan->>'tema', '') AS theme,
               CASE WHEN jsonb_typeof(p.plan->'tidsplan'->'stasjoner'->'minutter') = 'number'
                    THEN (p.plan->'tidsplan'->'stasjoner'->>'minutter')::int END AS planned_minutes,
               f.rating, f.tags, f.actual_minutes, f.actual_players, f.registered_players,
               coalesce(f.body, '') AS body, coalesce(f.use_again, '') AS use_again, f.created_at, f.updated_at, f.id
-         FROM exercise_feedback f JOIN training_plans p ON p.id = f.plan_id
+         FROM exercise_feedback f LEFT JOIN training_plans p ON p.id = f.plan_id
+         LEFT JOIN exercises e ON f.plan_id IS NULL AND e.spond_group_id = f.spond_group_id AND e.code = f.exercise_code
         WHERE f.spond_group_id = $1 AND f.updated_at > $2::timestamptz
         ORDER BY f.updated_at DESC, f.id DESC LIMIT $3) x
       ORDER BY created_at, spond_event_id, exercise_no NULLS FIRST, id`,
