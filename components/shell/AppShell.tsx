@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { envLabel } from "@/lib/env";
 import { pickerGroups } from "@/lib/groups";
 import { getPreferences } from "@/lib/store/preferences";
+import { pendingProposals } from "@/lib/store/proposals";
 import { ContextCard, GroupSwitcherProvider, SideGroupSelect } from "./GroupSwitcher";
 
 export type Section = "events" | "proposals" | "members";
@@ -42,14 +43,29 @@ export async function AppShell({
   wide?: boolean;
   children: ReactNode;
 }) {
-  const prefs = await getPreferences(await db(), ctx.user.session.profileId);
+  const d = await db();
+  const [prefs, pending] = await Promise.all([
+    getPreferences(d, ctx.user.session.profileId),
+    pendingProposals(d, ctx.user.access, ctx.group.id).catch(() => []),
+  ]);
+  // Proposals waiting for approval, as a number on «Lagforslag» in both menus.
+  const badge = (key: Section) =>
+    key === "proposals" && pending.length ? (
+      <span className="nm-navbadge">
+        {pending.length}
+        <span className="nm-sr"> venter på godkjenning</span>
+      </span>
+    ) : null;
   const label = envLabel();
   const top = !back;
   const sectionPath = NAV.find((n) => n.key === section)!.path;
   const navLinks = (cls?: string) =>
     NAV.map((n) => (
       <Link key={n.key} href={ctx.path(n.path)} aria-current={n.key === section && top ? "page" : undefined} className={cls}>
-        <Icon icon={n.icon} />
+        <span className="nm-navicon">
+          <Icon icon={n.icon} />
+          {badge(n.key)}
+        </span>
         {n.label}
       </Link>
     ));
@@ -75,6 +91,7 @@ export async function AppShell({
               <Link key={n.key} href={ctx.path(n.path)} aria-current={n.key === section ? "page" : undefined}>
                 <Icon icon={n.icon} />
                 {n.label}
+                {badge(n.key)}
               </Link>
             ))}
           </nav>

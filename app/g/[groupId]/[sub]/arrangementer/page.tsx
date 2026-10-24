@@ -1,16 +1,17 @@
-import { RefreshCw } from "lucide-react";
+import { Play, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { EventCard } from "@/components/events/EventCard";
-import { ProposalBadge } from "@/components/proposals/ProposalBadge";
+import { PlanBadge, ProposalBadge } from "@/components/proposals/ProposalBadge";
 import { AppShell } from "@/components/shell/AppShell";
 import { Icon } from "@/components/ui/icon";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
 import { forSubgroup, pastEvents, upcomingEvents } from "@/lib/events-data";
-import { pastSection, weekSection } from "@/lib/format";
+import { clock, osloDate, pastSection, weekSection } from "@/lib/format";
 import { eventSentTo, responseCounts } from "@/lib/spond/events";
 import type { SpondEvent } from "@/lib/spond/types";
 import { activeLocks, listProposals, pendingProposals } from "@/lib/store/proposals";
+import { latestPlans } from "@/lib/store/training";
 
 const UNSENT_STEP = 5;
 const PAST_STEP = 30;
@@ -53,11 +54,15 @@ export default async function EventsPage(props: PageProps<"/g/[groupId]/[sub]/ar
   }
 
   const d = await db();
-  const [proposals, locks, pending] = await Promise.all([
+  const [proposals, locks, pending, plans] = await Promise.all([
     listProposals(d, ctx.user.access, ctx.group.id, { eventIds: events.map((e) => e.id), drafts: false }),
     activeLocks(d, ctx.user.access, ctx.group.id),
     pendingProposals(d, ctx.user.access, ctx.group.id),
+    latestPlans(d, ctx.user.access, ctx.group.id, events.filter((e) => !e.match).map((e) => e.id)),
   ]);
+
+  const todayKey = osloDate(new Date());
+  const today = past ? [] : events.filter((e) => e.start && !e.cancelled && !e.notSent && osloDate(e.start) === todayKey);
 
   const sections: { title: string; events: SpondEvent[] }[] = [];
   for (const e of events) {
@@ -103,6 +108,17 @@ export default async function EventsPage(props: PageProps<"/g/[groupId]/[sub]/ar
         </div>
       ) : null}
 
+      {today.map((e) => (
+        <Link key={e.id} href={ctx.path(`/arrangementer/${encodeURIComponent(e.id)}/dagens-okt`)} className="nm-today">
+          <span className="nm-today__when">I dag {e.start ? clock(e.start) : ""}</span>
+          <span className="nm-today__what">{e.heading}</span>
+          <span className="nm-today__go">
+            <Icon icon={Play} size={20} />
+            Dagens økt
+          </span>
+        </Link>
+      ))}
+
       {error ? (
         <div className="nm-alert" role="alert" style={{ marginTop: "var(--space-4)" }}>
           {error}
@@ -124,10 +140,13 @@ export default async function EventsPage(props: PageProps<"/g/[groupId]/[sub]/ar
                   counts={responseCounts(e, ctx.group)}
                   sentTo={ctx.subgroup ? undefined : eventSentTo(e, ctx.group)}
                   badges={
-                    <ProposalBadge
-                      proposals={proposals.filter((p) => p.eventId === e.id)}
-                      locked={locks.some((l) => l.eventId === e.id && l.editor !== ctx.user.session.profileId)}
-                    />
+                    <>
+                      <ProposalBadge
+                        proposals={proposals.filter((p) => p.eventId === e.id)}
+                        locked={locks.some((l) => l.eventId === e.id && l.editor !== ctx.user.session.profileId)}
+                      />
+                      <PlanBadge plan={plans.find((x) => x.spond_event_id === e.id)} />
+                    </>
                   }
                 />
               ))}
