@@ -1,4 +1,4 @@
-import { Check, Pencil } from "lucide-react";
+import { Check, ClipboardList, Pencil } from "lucide-react";
 import { Icon } from "@/components/ui/icon";
 import type { Proposal } from "@/lib/store/proposals";
 
@@ -24,5 +24,21 @@ export function ProposalBadge({ proposals, locked }: { proposals: Proposal[]; lo
         </span>
       ) : null}
     </>
+  );
+}
+
+/** On an event card: whether the session has a training plan, and if it is approved. */
+export function PlanBadge({ plan }: { plan?: { approved: boolean } }) {
+  if (!plan) return null;
+  return plan.approved ? (
+    <span className="nm-badge nm-badge--kommer">
+      <Icon icon={Check} size={16} />
+      Godkjent opplegg
+    </span>
+  ) : (
+    <span className="nm-badge nm-badge--neutral">
+      <Icon icon={ClipboardList} size={16} />
+      Opplegg (utkast)
+    </span>
   );
 }

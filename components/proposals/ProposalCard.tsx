@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Pencil, RotateCcw, Send, Trash2, X } from "lucide-react";
+import { Check, Pencil, RotateCcw, Send, Share, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { commentAction, proposalAction } from "@/app/actions/proposals";
@@ -56,6 +56,24 @@ export function ProposalCard({ p, editHref, eventLine }: { p: ProposalView; edit
       setConfirmDelete(false);
       if (r.message) toast(r.message);
     });
+
+  /** The teams as plain text for Spond chat or a message: the share sheet on a phone, the clipboard elsewhere. */
+  const share = async () => {
+    const text = [
+      p.name,
+      ...p.groups.map((g) => `${g.title}: ${g.members.filter((c) => !c.coach).map((c) => c.name).join(", ") || "ingen"}`),
+    ].join("\n");
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: p.name, text });
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      toast("Lagene er kopiert");
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") setError("Fikk ikke delt lagene. Prøv igjen.");
+    }
+  };
 
   return (
     <article className="nm-card nm-proposal" aria-busy={pending}>
@@ -142,6 +160,10 @@ export function ProposalCard({ p, editHref, eventLine }: { p: ProposalView; edit
               Åpne og rediger
             </Link>
           ) : null}
+          <button type="button" className="nm-btn nm-btn--secondary" onClick={share}>
+            <Icon icon={Share} size={20} />
+            Del lagene
+          </button>
           {p.actions.map((a) => {
             const ui = ACTION_UI[a];
             return (

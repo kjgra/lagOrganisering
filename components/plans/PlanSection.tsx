@@ -29,9 +29,9 @@ function Lines({ title, items }: { title: string; items: string[] }) {
   );
 }
 
-function ExerciseDetails({ e, n }: { e: PlanExercise; n: number }) {
+export function ExerciseDetails({ e, n, open }: { e: PlanExercise; n: number; open?: boolean }) {
   return (
-    <details className="nm-exercise">
+    <details className="nm-exercise" open={open}>
       <summary style={{ cursor: "pointer", fontSize: "var(--fs-body-lg)", fontWeight: 700, minHeight: 32 }}>
         {n}. {e.navn}
         <span className="nm-muted" style={{ fontWeight: 400 }}>
