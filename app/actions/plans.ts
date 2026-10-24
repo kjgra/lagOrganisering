@@ -9,7 +9,7 @@ import { AI_MODELS } from "@/lib/ai/plan-ai";
 import { db } from "@/lib/db";
 import { findEvent } from "@/lib/events-data";
 import { orderContext } from "@/lib/plan-data";
-import { validateFeedback } from "@/lib/plans/feedback";
+import { validateBankFeedback, validateFeedback } from "@/lib/plans/feedback";
 import { bankCandidates, buildPlan, exerciseFromBank, type PlanExercise } from "@/lib/plans/plan";
 import { memberNames, namesProblem } from "@/lib/sensitive";
 import { eventIsPast } from "@/lib/spond/events";
@@ -18,8 +18,10 @@ import {
   addPlanComment,
   approvePlan,
   deletePlanComment,
+  getExercise,
   getPlan,
   listExercises,
+  saveBankFeedback,
   saveFeedback,
   savePlan,
   savePlanExercise,
@@ -240,5 +242,24 @@ export async function feedbackAction(input: z.input<typeof feedbackInput>): Prom
     refresh();
     const act = activated.length ? ` ${activated.length === 1 ? "Én øvelse" : `${activated.length} øvelser`} er nå aktive i banken.` : "";
     return { data: undefined, message: `Evalueringen er lagret.${act}` };
+  });
+}
+
+const feedbackRow = feedbackInput.shape.rows.element;
+const bankFeedbackInput = z.object({ groupId: sid, exerciseId: id, row: feedbackRow.omit({ exercise_no: true, actual_players: true }) });
+
+/** A trainer's evaluation of an exercise from the bank. Empty removes it. */
+export async function bankFeedbackAction(input: z.input<typeof bankFeedbackInput>): Promise<ActionResult> {
+  return runAction("Lagring av evaluering", async () => {
+    const v = bankFeedbackInput.parse(input);
+    const user = await requireUser();
+    const group = findGroup(user, v.groupId);
+    const d = await db();
+    const ex = await getExercise(d, user.access, group.id, v.exerciseId);
+    const row = validateBankFeedback({ ...v.row, exercise_no: null }, ex.code, memberNames(group.members));
+    const activated = await saveBankFeedback(d, user.access, group.id, ex.id, row);
+    refresh();
+    if (!row) return { data: undefined, message: "Evalueringen din er fjernet." };
+    return { data: undefined, message: `Evalueringen er lagret.${activated ? " Øvelsen er nå aktiv i banken." : ""}` };
   });
 }

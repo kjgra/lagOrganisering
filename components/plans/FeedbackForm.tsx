@@ -3,7 +3,7 @@
 import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { feedbackAction } from "@/app/actions/plans";
+import { bankFeedbackAction, feedbackAction } from "@/app/actions/plans";
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
 
@@ -19,15 +19,29 @@ export interface FeedbackDraft {
   use_again: string;
 }
 
-/** One trainer's evaluation after the training: each exercise and the session as a whole. */
-export function FeedbackForm(p: {
+/** After a training: the plan version, and where to go when saved. */
+interface PlanTarget {
   planId: number;
   registered: number | null;
+  doneHref: string;
+}
+
+/** From the bank: one exercise, and the page stays. */
+interface BankTarget {
+  groupId: string;
+  exerciseId: number;
+}
+
+/**
+ * One trainer's evaluation: after the training, each exercise and the session
+ * as a whole; from the bank, one exercise. Both end up in the same data.
+ */
+export function FeedbackForm(p: {
+  target: PlanTarget | BankTarget;
   rows: FeedbackDraft[];
   ratings: Record<string, string>;
   tags: Record<string, string>;
   useAgain: Record<string, string>;
-  doneHref: string;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -39,14 +53,16 @@ export function FeedbackForm(p: {
   const save = () =>
     start(async () => {
       setError(null);
-      const r = await feedbackAction({
-        planId: p.planId,
-        registered: p.registered,
-        rows: rows.map((x) => ({ exercise_no: x.exercise_no, rating: x.rating, tags: x.tags, actual_minutes: x.actual_minutes, actual_players: x.actual_players, body: x.body, use_again: x.use_again })),
-      });
+      const t = p.target;
+      const raw = (x: FeedbackDraft) => ({ rating: x.rating, tags: x.tags, actual_minutes: x.actual_minutes, body: x.body, use_again: x.use_again });
+      const r =
+        "planId" in t
+          ? await feedbackAction({ planId: t.planId, registered: t.registered, rows: rows.map((x) => ({ ...raw(x), exercise_no: x.exercise_no, actual_players: x.actual_players })) })
+          : await bankFeedbackAction({ groupId: t.groupId, exerciseId: t.exerciseId, row: raw(rows[0]) });
       if (!r.ok) return setError(r.error);
       if (r.message) toast(r.message);
-      router.push(`${p.doneHref}?opplegg=${p.planId}#plan-h`);
+      if ("planId" in t) router.push(`${t.doneHref}?opplegg=${t.planId}#plan-h`);
+      else router.refresh();
     });
 
   return (
@@ -59,9 +75,14 @@ export function FeedbackForm(p: {
         save();
       }}
     >
-      <p style={{ margin: 0 }}>Evalueringene hjelper laget og KI å lage bedre økter. Skriv uten navn på spillere.</p>
+      <p style={{ margin: 0 }}>
+        {"planId" in p.target
+          ? "Evalueringene hjelper laget og KI å lage bedre økter."
+          : "Vurder øvelsen slik den har fungert for laget. Den teller sammen med evalueringene etter trening. Tøm feltene og lagre for å fjerne din evaluering."}{" "}
+        Skriv uten navn på spillere.
+      </p>
       {rows.map((x, i) => {
-        const session = x.exercise_no === null;
+        const session = "planId" in p.target && x.exercise_no === null;
         return (
           <fieldset key={i} className="nm-card nm-proposal" style={{ margin: 0 }}>
             <legend style={{ fontWeight: 700, fontSize: "var(--fs-body-lg)", padding: "0 var(--space-1)" }}>{x.title}</legend>
@@ -110,7 +131,7 @@ export function FeedbackForm(p: {
               </>
             ) : (
               <label className="nm-field">
-                <span className="nm-field__label">Antall spillere som kom{p.registered !== null ? ` (${p.registered} påmeldt)` : ""}</span>
+                <span className="nm-field__label">Antall spillere som kom{"registered" in p.target && p.target.registered !== null ? ` (${p.target.registered} påmeldt)` : ""}</span>
                 <input className="nm-input" type="number" inputMode="numeric" min={0} max={200} value={x.actual_players} onChange={(e) => upd(i, { actual_players: e.target.value })} />
               </label>
             )}

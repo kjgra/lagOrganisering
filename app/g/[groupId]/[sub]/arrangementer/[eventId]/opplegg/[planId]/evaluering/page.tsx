@@ -40,13 +40,11 @@ export default async function FeedbackPage(props: PageProps<"/g/[groupId]/[sub]/
   return (
     <AppShell ctx={ctx} title={`Evaluering · ${event.start ? dayLabel(event.start) : event.heading}`} section="events" back={eventPath}>
       <FeedbackForm
-        planId={pl.id}
-        registered={event.notSent ? null : responseCounts(event, ctx.group).accepted}
+        target={{ planId: pl.id, registered: event.notSent ? null : responseCounts(event, ctx.group).accepted, doneHref: eventPath }}
         rows={rows}
         ratings={Object.fromEntries(Object.entries(RATINGS).map(([k, v]) => [k, v]))}
         tags={FEEDBACK_TAGS}
         useAgain={USE_AGAIN}
-        doneHref={eventPath}
       />
     </AppShell>
   );

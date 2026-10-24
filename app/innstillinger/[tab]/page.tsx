@@ -13,7 +13,7 @@ import { db } from "@/lib/db";
 import { superadminId } from "@/lib/env";
 import { decimal, MONTH_NAMES, osloMidnight, osloMonthStart, osloParts, savedAt, shortDate } from "@/lib/format";
 import { MAINTENANCE_RULES } from "@/lib/maintenance";
-import { FEEDBACK_TAGS, meanText, shouldAvoid } from "@/lib/plans/feedback";
+import { feedbackSummary, shouldAvoid } from "@/lib/plans/feedback";
 import { CATEGORIES, EXERCISE_STATUSES } from "@/lib/plans/plan";
 import { profileName } from "@/lib/proposal-view";
 import { aiSpend, aiUsagePeriod, getAiSettings } from "@/lib/store/ai";
@@ -270,7 +270,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
     return (
       <>
         <p style={{ marginTop: 0 }}>
-          Lagets øvelsesbank. Nye øvelser fra godkjente opplegg kommer inn som <em>kandidater</em>, og blir aktive når en trener gir 👍 og «Bruke igjen: Ja».
+          Lagets øvelsesbank. Nye øvelser fra godkjente opplegg kommer inn som <em>kandidater</em>, og blir aktive når en trener gir 👍 og «Bruke igjen: Ja». Trykk på en øvelse for å evaluere den, også uten at den er brukt på en trening.
         </p>
         <Link href={`/innstillinger/ovelse/ny${q()}`} className="nm-btn nm-btn--primary" style={{ marginBottom: "var(--space-4)" }}>
           <Icon icon={Plus} />
@@ -289,17 +289,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
                         {b.name}
                       </Link>
                       <div className="nm-hint">
-                        {b.fb_n
-                          ? `${b.fb_sessions} ${b.fb_sessions === 1 ? "økt" : "økter"} · snitt ${meanText(b.fb_mean ?? 0)} av 3${b.fb_minutes ? ` · ${b.fb_minutes} min` : ""}${
-                              Object.keys(b.fb_tags).length
-                                ? ` · ${Object.entries(b.fb_tags)
-                                    .sort((x, y) => y[1] - x[1])
-                                    .slice(0, 2)
-                                    .map(([k]) => FEEDBACK_TAGS[k] ?? k)
-                                    .join(", ")}`
-                                : ""
-                            }`
-                          : "Ikke evaluert"}
+                        {feedbackSummary(b)}
                         {b.fb_last ? ` · sist ${shortDate(b.fb_last)}` : ""}
                         {b.based_on ? ` · variant av ${bank.find((x) => x.code === b.based_on)?.name ?? b.based_on}` : ""}
                       </div>
