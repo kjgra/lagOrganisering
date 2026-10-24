@@ -20,7 +20,7 @@ import { testDb } from "../helpers/db";
 
 let d: Db;
 const me: Access = { profileId: "P-1", groupIds: new Set(["G1"]) };
-const sa: Rights = { superadmin: true, admin: true, ai: true, app: true };
+const sa: Rights = { superadmin: true, admin: true, ai: true, app: true, tags: true };
 const plan = validatePlan(reference);
 
 beforeAll(async () => {

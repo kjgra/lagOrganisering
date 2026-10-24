@@ -12,7 +12,7 @@ import { proposalView } from "@/lib/proposal-view";
 import { eventIsPast } from "@/lib/spond/events";
 import type { SpondEvent } from "@/lib/spond/types";
 import { activeLocks, listProposals, pendingProposals, sortProposals, type Proposal } from "@/lib/store/proposals";
-import { listTags } from "@/lib/store/tags";
+import { listPlayerTags } from "@/lib/store/tags";
 
 type View = "alle" | "godkjenning" | "utkast";
 
@@ -34,7 +34,7 @@ export default async function ProposalsPage(props: PageProps<"/g/[groupId]/[sub]
     error = "Kunne ikke hente arrangementer fra Spond. Forslagene vises uten arrangement.";
   }
   const [tags, locks, all, pending] = await Promise.all([
-    listTags(d, ctx.user.access, ctx.group.id),
+    listPlayerTags(d, ctx.user.access, ctx.user.rights, ctx.group.id).then((t) => t.tags),
     activeLocks(d, ctx.user.access, ctx.group.id),
     listProposals(d, ctx.user.access, ctx.group.id, { eventIds: events.map((e) => e.id), subgroupId: sub }),
     pendingProposals(d, ctx.user.access, ctx.group.id),

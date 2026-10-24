@@ -5,7 +5,7 @@ import { boardProps } from "@/lib/board-data";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
 import { activeLocks, getProposal, listProposals } from "@/lib/store/proposals";
-import { listTags } from "@/lib/store/tags";
+import { listPlayerTags } from "@/lib/store/tags";
 
 /**
  * A gruppeutkast: a sketch of new subgroups for the members of a (sub)group.
@@ -20,7 +20,7 @@ export async function EditDraftPage({ params, id }: { params: Promise<{ groupId:
   if (proposal && !["draft", "rejected", "rolled_back"].includes(proposal.status)) redirect(back);
   const subgroupId = proposal ? proposal.subgroupId : (ctx.subgroup?.id ?? null);
   const [tags, existing, locks] = await Promise.all([
-    listTags(d, ctx.user.access, ctx.group.id),
+    listPlayerTags(d, ctx.user.access, ctx.user.rights, ctx.group.id),
     listProposals(d, ctx.user.access, ctx.group.id, { subgroupId }),
     activeLocks(d, ctx.user.access, ctx.group.id),
   ]);

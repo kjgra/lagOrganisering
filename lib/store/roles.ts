@@ -9,7 +9,7 @@ export interface RoleListRow extends RoleRow {
 
 export async function getRole(d: Db, profileId: string): Promise<RoleRow | null> {
   const rows = await d.query<RoleRow>(
-    "SELECT can_use_ai, is_admin, can_use_app FROM app_roles WHERE spond_profile_id = $1",
+    "SELECT can_use_ai, is_admin, can_use_app, can_see_tags FROM app_roles WHERE spond_profile_id = $1",
     [profileId],
   );
   return rows[0] ?? null;
@@ -18,16 +18,16 @@ export async function getRole(d: Db, profileId: string): Promise<RoleRow | null>
 export async function listRoles(d: Db, profileIds: string[]): Promise<RoleListRow[]> {
   if (!profileIds.length) return [];
   return d.query<RoleListRow>(
-    `SELECT spond_profile_id, can_use_ai, is_admin, can_use_app, updated_by, updated_at
+    `SELECT spond_profile_id, can_use_ai, is_admin, can_use_app, can_see_tags, updated_by, updated_at
        FROM app_roles WHERE spond_profile_id = ANY($1::text[])`,
     [profileIds],
   );
 }
 
-export type RoleName = "app" | "ai" | "admin";
+export type RoleName = "app" | "ai" | "admin" | "tags";
 
 /**
- * Give or take one right, and log it. Admins may change app access and KI;
+ * Give or take one right, and log it. Admins may change app access, KI and tags;
  * only the superadmin may change admin. `allowedIds` are the trainers in the
  * main group the admin is looking at.
  */
@@ -43,7 +43,7 @@ export async function setRole(
   if (!rights.admin) throw new UserError("Du har ikke tilgang til å endre rettigheter.");
   if (role === "admin" && !rights.superadmin) throw new UserError("Bare superadmin kan gi og ta admin.");
   if (!allowedIds.includes(profileId)) throw new UserError("Treneren er ikke med i dette laget.");
-  const col = { ai: "can_use_ai", admin: "is_admin", app: "can_use_app" }[role];
+  const col = { ai: "can_use_ai", admin: "is_admin", app: "can_use_app", tags: "can_see_tags" }[role];
   await d.tx(async (t) => {
     await t.query(
       `INSERT INTO app_roles (spond_profile_id, ${col}, updated_by) VALUES ($1, $2, $3)

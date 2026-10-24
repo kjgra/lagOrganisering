@@ -27,28 +27,36 @@ export interface Rights {
   admin: boolean;
   ai: boolean;
   app: boolean;
+  /** See and change tags, levels and pairs. */
+  tags: boolean;
 }
 
-export const NO_RIGHTS: Rights = { superadmin: false, admin: false, ai: false, app: false };
+export const NO_RIGHTS: Rights = { superadmin: false, admin: false, ai: false, app: false, tags: false };
 
 export interface RoleRow {
   can_use_ai: boolean;
   is_admin: boolean;
   can_use_app: boolean;
+  can_see_tags: boolean;
 }
 
 /**
  * The superadmin (SUPERADMIN_PROFILE_ID, never in the database, so nobody can
- * be locked out) has every right. Admins always have app access.
+ * be locked out) has every right. Admins always have app access. Every
+ * trainer sees tags unless an admin has turned it off.
  */
 export function userRights(profileId: string, role: RoleRow | null, superadminId: string): Rights {
   const sa = !!superadminId.trim() && profileId === superadminId.trim();
   const admin = sa || !!role?.is_admin;
-  return { superadmin: sa, admin, ai: sa || !!role?.can_use_ai, app: admin || !!role?.can_use_app };
+  return { superadmin: sa, admin, ai: sa || !!role?.can_use_ai, app: admin || !!role?.can_use_app, tags: sa || (role?.can_see_tags ?? true) };
 }
 
 export function assertAdmin(rights: Rights): void {
   if (!rights.admin) throw new UserError("Bare administratorer kan endre dette.");
+}
+
+export function assertTags(rights: Rights): void {
+  if (!rights.tags) throw new UserError("Du har ikke tilgang til tagger.");
 }
 
 export function assertSuperadmin(rights: Rights): void {

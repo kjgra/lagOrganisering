@@ -92,3 +92,38 @@ test("a starred group stays starred", async ({ page }) => {
   // Clean up for the next run.
   await page.getByRole("button", { name: `Fjern ${label} fra favoritter` }).first().click();
 });
+
+test("tag sheet: set a level and a player who plays well with them", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/g/G-FOTBALL/S-G2016/medlemmer");
+  await page.locator(".nm-row-btn").first().click();
+  const sheet = page.getByRole("dialog");
+  const levels = sheet.getByRole("group", { name: "Nivå" });
+  const four = levels.getByRole("button", { name: "4", exact: true });
+  const target = (await four.getAttribute("aria-pressed")) === "true" ? "2" : "4";
+  await levels.getByRole("button", { name: target, exact: true }).click();
+  await expect(levels.getByRole("button", { name: target, exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".nm-toast")).toContainText(`har nivå ${target}`);
+
+  const select = sheet.getByLabel("Spiller", { exact: true });
+  await select.selectOption({ index: 1 });
+  const partner = (await select.locator("option:checked").textContent())!;
+  await sheet.getByRole("button", { name: "Legg til" }).first().click();
+  await expect(page.locator(".nm-toast")).toContainText("spiller godt sammen");
+  const remove = sheet.getByRole("button", { name: `Fjern ${partner}`, exact: true });
+  await remove.click();
+  await expect(remove).toHaveCount(0);
+});
+
+test("admin: the tags right can be turned off per trainer", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/innstillinger/trenere?lag=G-FOTBALL");
+  const tags = page.getByLabel("Tagger for Emma Haugen");
+  await expect(tags).toBeChecked();
+  await tags.click();
+  await expect(tags).not.toBeChecked();
+  await tags.click();
+  await expect(tags).toBeChecked();
+});

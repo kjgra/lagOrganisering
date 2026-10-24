@@ -57,6 +57,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
         app: !!r?.can_use_app,
         ai: !!r?.can_use_ai,
         admin: !!r?.is_admin,
+        tags: r?.can_see_tags ?? true,
         superadmin: t.profileId === sa,
         self: t.profileId === user.session.profileId,
         changed: r ? `Endret av ${profileName(group, r.updated_by)} ${savedAt(r.updated_at)}` : "",
@@ -66,7 +67,8 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
       <>
         <p style={{ marginTop: 0 }}>
           Trenere med profil i Spond. <strong>App</strong> gir tilgang til å logge inn i appen; ingen andre kommer inn. <strong>KI</strong> gir tilgang til å lage opplegg
-          med KI. <strong>Admin</strong> gir tannhjulet og alltid app-tilgang. Bare superadmin kan gi admin.
+          med KI. <strong>Tagger</strong> gir tilgang til å se og endre nivå, hvem som spiller godt sammen, og tagger på spillere; alle
+          trenere har det som standard. <strong>Admin</strong> gir tannhjulet og alltid app-tilgang. Bare superadmin kan gi admin.
         </p>
         {rows.length ? <RoleTable groupId={group.id} rows={rows} canAdmin={user.rights.superadmin} /> : <p className="nm-muted">Fant ingen trenere med Spond-profil i gruppa.</p>}
       </>

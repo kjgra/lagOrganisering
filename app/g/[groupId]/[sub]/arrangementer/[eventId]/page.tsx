@@ -8,7 +8,7 @@ import { AppShell } from "@/components/shell/AppShell";
 import { Icon } from "@/components/ui/icon";
 import { ResponseCounts, Tag } from "@/components/ui/status";
 import { PlanSection } from "@/components/plans/PlanSection";
-import { contextFromParams } from "@/lib/context";
+import { contextFromParams, pairCandidates } from "@/lib/context";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { findEvent } from "@/lib/events-data";
@@ -17,7 +17,7 @@ import { profileName, proposalView } from "@/lib/proposal-view";
 import { isPlayerKind } from "@/lib/spond/data";
 import { eventCoaches, eventIsPast, eventParticipants, eventSentTo, placeable, responseCounts } from "@/lib/spond/events";
 import { activeLocks, listProposals, sortProposals } from "@/lib/store/proposals";
-import { listTags, tagSuggestions } from "@/lib/store/tags";
+import { listPlayerTags, pairsOf, tagSuggestions } from "@/lib/store/tags";
 
 /** An event: who is coming, the team proposals, and the training plan. */
 export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arrangementer/[eventId]">) {
@@ -29,8 +29,8 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
   if (!event) notFound();
 
   const d = await db();
-  const [tags, proposals, locks] = await Promise.all([
-    listTags(d, ctx.user.access, ctx.group.id),
+  const [info, proposals, locks] = await Promise.all([
+    listPlayerTags(d, ctx.user.access, ctx.user.rights, ctx.group.id),
     listProposals(d, ctx.user.access, ctx.group.id, { eventIds: [event.id], drafts: false }),
     activeLocks(d, ctx.user.access, ctx.group.id),
   ]);
@@ -40,13 +40,16 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
   const players = parts.filter((p) => p.kind !== "coach" && p.kind !== "adult");
   const coaches = eventCoaches(event, ctx.group).filter((c) => c.status === "accepted");
   const fixed = env().TAG_SUGGESTIONS;
+  const { tags } = info;
   const rows: ParticipantRow[] = players.map((p) => ({
     memberId: p.memberId,
     name: p.displayName,
     status: p.status,
     tags: tags.get(p.memberId) ?? [],
-    canTag: p.known && p.kind === "player",
+    canTag: ctx.user.rights.tags && p.known && p.kind === "player",
     suggestions: tagSuggestions(tags, p.memberId, fixed),
+    level: info.levels.get(p.memberId) ?? null,
+    pairs: pairsOf(info.pairs, p.memberId),
   }));
   const nPlaceable = parts.filter((p) => placeable(p.status, event.notSent) && isPlayerKind(p.kind)).length;
   const views = sortProposals(proposals).map((p) => proposalView(p, ctx.group, tags, event, locks, ctx.user.session.profileId));
@@ -149,7 +152,7 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
           <h2 className="nm-section-label" id="sp-h">
             Spillere
           </h2>
-          <ParticipantList groupId={ctx.group.id} rows={rows} />
+          <ParticipantList groupId={ctx.group.id} rows={rows} players={pairCandidates(ctx)} />
         </section>
       </div>
     </AppShell>

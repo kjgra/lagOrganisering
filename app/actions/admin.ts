@@ -23,11 +23,11 @@ async function admin(groupId: string) {
   return { user, group, d: await db() };
 }
 
-export async function setRoleAction(groupId: string, profileId: string, role: "app" | "ai" | "admin", granted: boolean): Promise<ActionResult> {
+export async function setRoleAction(groupId: string, profileId: string, role: "app" | "ai" | "admin" | "tags", granted: boolean): Promise<ActionResult> {
   return runAction("Endring av rettighet", async () => {
-    const v = z.object({ groupId: sid, profileId: sid, role: z.enum(["app", "ai", "admin"]), granted: z.boolean() }).parse({ groupId, profileId, role, granted });
+    const v = z.object({ groupId: sid, profileId: sid, role: z.enum(["app", "ai", "admin", "tags"]), granted: z.boolean() }).parse({ groupId, profileId, role, granted });
     const { user, group, d } = await admin(v.groupId);
-    if (v.profileId === user.session.profileId && v.role !== "ai") throw new UserError("Du kan ikke endre din egen tilgang her.");
+    if (v.profileId === user.session.profileId && v.role !== "ai" && v.role !== "tags") throw new UserError("Du kan ikke endre din egen tilgang her.");
     await setRole(d, user.rights, user.session.profileId, v.profileId, v.role, v.granted, trainers(group).map((t) => t.profileId));
     refresh();
     return { data: undefined };

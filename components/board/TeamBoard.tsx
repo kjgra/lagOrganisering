@@ -28,6 +28,8 @@ export interface BoardPlayer {
   coach: boolean;
   tags: string[];
   short: string[];
+  /** Used by the automatic distribution only; never shown on the board, which others can see. */
+  level: number | null;
   /** «Kommer ikke» for a placed player who no longer comes. */
   note: string | null;
 }
@@ -45,6 +47,8 @@ export interface BoardProps {
   members: BoardPlayer[];
   poolLabel: string;
   links: ParentLink[];
+  /** Players who play well together; the automatic distribution keeps them on one team. */
+  pairs: [string, string][];
   doneHref: string;
   lockedBy: string | null;
 }
@@ -83,7 +87,7 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
   const byId = useMemo(() => new Map(props.members.map((m) => [m.id, m])), [props.members]);
   const allowed = useMemo(() => new Set(props.members.map((m) => m.id)), [props.members]);
   const [assignments, setAssignments] = useState<Assignments>(() =>
-    props.autoStart ? { ...props.assignments, ...distribute(props.members, props.labels, 1) } : props.assignments,
+    props.autoStart ? { ...props.assignments, ...distribute(props.members, props.labels, 1, props.pairs) } : props.assignments,
   );
   const [selected, setSelected] = useState<string | null>(null);
   const [live, setLive] = useState("");
@@ -158,7 +162,7 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
       const s = seed + 1;
       setSeed(s);
       const keep = Object.fromEntries(Object.entries(assignments).filter(([id]) => byId.get(id)?.coach));
-      setAssignments({ ...keep, ...distribute(props.members, labels, s) });
+      setAssignments({ ...keep, ...distribute(props.members, labels, s, props.pairs) });
       setSelected(null);
       setLive("Spillerne er fordelt på nytt.");
     },

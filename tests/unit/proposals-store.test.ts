@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Db } from "@/lib/db";
-import type { Access } from "@/lib/store/access";
+import { NO_RIGHTS, type Access, type Rights } from "@/lib/store/access";
 import { acquireLock, activeLocks, addComment, getProposal, listProposals, releaseLock, saveProposal, transition } from "@/lib/store/proposals";
-import { addTag, listTags, removeTag } from "@/lib/store/tags";
+import { addPair, addTag, listPlayerTags, listTags, removePair, removeTag, setLevel } from "@/lib/store/tags";
 import { testDb } from "../helpers/db";
 
 let d: Db;
@@ -69,13 +69,41 @@ describe("proposals", () => {
 });
 
 describe("tags", () => {
+  const coach: Rights = { ...NO_RIGHTS, app: true, tags: true };
   it("adds with the group's spelling and refuses sensitive tags", async () => {
-    await addTag(d, me, "G1", "m1", "Keeper");
-    expect(await addTag(d, me, "G1", "m2", "keeper")).toBe("Keeper");
-    await expect(addTag(d, me, "G1", "m2", "Astma")).rejects.toThrow();
-    await expect(addTag(d, me, "G1", "m2", "ring 99 88 77 66")).rejects.toThrow(/kontakt/);
+    await addTag(d, me, coach, "G1", "m1", "Keeper");
+    expect(await addTag(d, me, coach, "G1", "m2", "keeper")).toBe("Keeper");
+    await expect(addTag(d, me, coach, "G1", "m2", "Astma")).rejects.toThrow();
+    await expect(addTag(d, me, coach, "G1", "m2", "ring 99 88 77 66")).rejects.toThrow(/kontakt/);
+    await expect(addTag(d, me, coach, "G1", "m2", "3")).rejects.toThrow(/nivå/);
     expect((await listTags(d, me, "G1")).get("m2")).toEqual(["Keeper"]);
-    await removeTag(d, me, "G1", "m2", "Keeper");
+    await removeTag(d, me, coach, "G1", "m2", "Keeper");
     expect((await listTags(d, me, "G1")).get("m2")).toBeUndefined();
+  });
+
+  it("keeps one level per player and each pair once", async () => {
+    await setLevel(d, me, coach, "G1", "m1", 2);
+    await setLevel(d, me, coach, "G1", "m1", 4);
+    await expect(setLevel(d, me, coach, "G1", "m2", 6)).rejects.toThrow(/1 til 5/);
+    await addPair(d, me, coach, "G1", "m2", "m1");
+    await addPair(d, me, coach, "G1", "m1", "m2");
+    await expect(addPair(d, me, coach, "G1", "m1", "m1")).rejects.toThrow();
+    let t = await listPlayerTags(d, me, coach, "G1");
+    expect(t.levels.get("m1")).toBe(4);
+    expect(t.pairs).toEqual([["m1", "m2"]]);
+    await removePair(d, me, coach, "G1", "m2", "m1");
+    await setLevel(d, me, coach, "G1", "m1", null);
+    t = await listPlayerTags(d, me, coach, "G1");
+    expect([t.levels.size, t.pairs.length]).toEqual([0, 0]);
+  });
+
+  it("shows and changes nothing without the tags right", async () => {
+    const none: Rights = { ...coach, tags: false };
+    await addTag(d, me, coach, "G1", "m3", "Ny");
+    const t = await listPlayerTags(d, me, none, "G1");
+    expect([t.tags.size, t.levels.size, t.pairs.length]).toEqual([0, 0, 0]);
+    await expect(addTag(d, me, none, "G1", "m3", "Kaptein")).rejects.toThrow(/tagger/);
+    await expect(setLevel(d, me, none, "G1", "m3", 1)).rejects.toThrow(/tagger/);
+    await expect(addPair(d, me, none, "G1", "m3", "m1")).rejects.toThrow(/tagger/);
   });
 });

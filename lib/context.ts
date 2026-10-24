@@ -40,3 +40,11 @@ export async function contextFromParams(params: Promise<{ groupId: string; sub: 
   const p = await params;
   return getGroupContext(p.groupId, p.sub);
 }
+
+/** Players of the main group who can be paired, sorted by name. Pairs belong to the main group. */
+export function pairCandidates(ctx: GroupContext): { id: string; name: string }[] {
+  return ctx.group.members
+    .filter((m) => m.kind === "player")
+    .map((m) => ({ id: m.id, name: m.displayName }))
+    .sort((a, b) => a.name.localeCompare(b.name, "nb"));
+}
