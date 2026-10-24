@@ -241,6 +241,8 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
           groupId={group.id}
           initial={{
             age_group: s.age_group,
+            birth_year: s.birth_year ? String(s.birth_year) : "",
+            gender: s.gender ?? "",
             session_minutes: s.session_minutes ? String(s.session_minutes) : "",
             pitch: s.pitch,
             equipment: s.equipment,
@@ -248,6 +250,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
           }}
           initialPitches={s.pitch_ids}
           pitchGroups={pitchGroups(pitches, s.pitch_ids)}
+          year={osloParts(new Date()).year}
         />
         {s.updated_by && s.updated_at ? (
           <p className="nm-hint">

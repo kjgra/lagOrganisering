@@ -51,3 +51,23 @@ describe("tag types migration", () => {
     await d.close();
   });
 });
+
+describe("team birth year migration", () => {
+  it("reads birth year and gender from the old free text, and keeps what it cannot read", async () => {
+    const d = await testDb();
+    await d.query(
+      `INSERT INTO team_settings (spond_group_id, age_group, updated_by, updated_at)
+       VALUES ('G1', 'G10', 'P-1', '2026-05-01'), ('G2', 'Jenter 2015', 'P-1', '2026-05-01'),
+              ('G3', 'j9', 'P-1', '2025-12-31T23:30:00Z'), ('G4', 'Lilleputt', 'P-1', '2026-05-01')`,
+    );
+    const sql = (await migrationFiles()).find((m) => m.name.endsWith("_team_birth_year.sql"))!.sql;
+    await d.query(sql.slice(sql.indexOf("UPDATE team_settings")));
+    expect(await d.query("SELECT spond_group_id, age_group, birth_year, gender FROM team_settings ORDER BY spond_group_id")).toEqual([
+      { spond_group_id: "G1", age_group: null, birth_year: 2016, gender: "gutter" },
+      { spond_group_id: "G2", age_group: null, birth_year: 2015, gender: "jenter" },
+      { spond_group_id: "G3", age_group: null, birth_year: 2017, gender: "jenter" },
+      { spond_group_id: "G4", age_group: "Lilleputt", birth_year: null, gender: null },
+    ]);
+    await d.close();
+  });
+});

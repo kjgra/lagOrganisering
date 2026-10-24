@@ -79,6 +79,8 @@ test("admin: save the team's pitches, and choose among them for a session", asyn
   await openNextTraining(page);
   const eventUrl = page.url().split("?")[0];
   await page.goto("/innstillinger/standard?lag=G-FOTBALL");
+  await expect(page.getByLabel("Fødselsår")).toHaveValue("2016");
+  await expect(page.getByText(/^G\d+ \(født 2016\) · NFF-bånd/)).toBeVisible();
   // The group is folded unless the team already has one of its pitches (mobile runs first).
   const box = page.getByRole("checkbox", { name: /^Nymark Kunstgress 03 7er A/ });
   if (!(await box.isVisible())) await page.locator("summary", { hasText: /^Nymark Kunstgress 03/ }).click();

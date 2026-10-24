@@ -135,6 +135,10 @@ describe("pitches and team settings", () => {
       "Nymark idrettsanlegg, Nymark Kunstgress 04 7er A (7er · Kunstgress m/plastholdig innfyll · 48 × 30 m · lys 150 lux). Deler med G11",
     );
     expect(pitchText(mine, "")).toContain("lys 150 lux); Nymark idrettsanlegg, Nymark gress 01 (11er · Naturgress · 100 × 60 m · uten lys)");
+    await saveTeamSettings(d, me, sa, "G1", { birth_year: "2016", gender: "gutter" });
+    expect(await getTeamSettings(d, me, "G1")).toMatchObject({ age_group: "", birth_year: 2016, gender: "gutter" });
+    await expect(saveTeamSettings(d, me, sa, "G1", { birth_year: "1990" })).rejects.toThrow(/Fødselsår/);
+    await expect(saveTeamSettings(d, me, sa, "G1", { gender: "x" })).rejects.toThrow(/kjønn/);
     await expect(saveTeamSettings(d, me, sa, "G1", { pitch_ids: [999] })).rejects.toThrow(/Ukjent bane/);
     await expect(saveTeamSettings(d, me, sa, "G1", { pitch_ids: "x" })).rejects.toThrow(/Ukjent bane/);
     await expect(teamPitches(d, me, "G2")).rejects.toThrow();

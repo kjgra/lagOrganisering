@@ -91,7 +91,7 @@ export async function getTeamSettings(d: Db, access: Access, groupId: string): P
   assertGroup(access, groupId);
   const [rows, pitches] = await Promise.all([
     d.query<Omit<StoredTeamSettings, "pitch_ids">>(
-      `SELECT coalesce(age_group, '') AS age_group, session_minutes, coalesce(pitch, '') AS pitch,
+      `SELECT coalesce(age_group, '') AS age_group, birth_year, gender, session_minutes, coalesce(pitch, '') AS pitch,
               coalesce(equipment, '') AS equipment, coalesce(principles, '') AS principles, updated_by, updated_at
          FROM team_settings WHERE spond_group_id = $1`,
       [groupId],
@@ -99,7 +99,7 @@ export async function getTeamSettings(d: Db, access: Access, groupId: string): P
     d.query<{ pitch_id: number }>("SELECT pitch_id FROM team_pitches WHERE spond_group_id = $1 ORDER BY pitch_id", [groupId]),
   ]);
   const pitch_ids = pitches.map((p) => p.pitch_id);
-  return rows[0] ? { ...rows[0], pitch_ids } : { age_group: "", session_minutes: null, pitch_ids, pitch: "", equipment: "", principles: "", updated_by: null, updated_at: null };
+  return rows[0] ? { ...rows[0], pitch_ids } : { age_group: "", birth_year: null, gender: null, session_minutes: null, pitch_ids, pitch: "", equipment: "", principles: "", updated_by: null, updated_at: null };
 }
 
 export async function saveTeamSettings(d: Db, access: Access, rights: Rights, groupId: string, input: Record<string, unknown>): Promise<void> {
@@ -110,12 +110,12 @@ export async function saveTeamSettings(d: Db, access: Access, rights: Rights, gr
   if (known.length !== s.pitch_ids.length) throw new UserError("Ukjent bane.");
   await d.tx(async (t) => {
     await t.query(
-      `INSERT INTO team_settings (spond_group_id, age_group, session_minutes, pitch, equipment, principles, updated_by)
-       VALUES ($1, NULLIF($2, ''), $3, NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), $7)
+      `INSERT INTO team_settings (spond_group_id, age_group, birth_year, gender, session_minutes, pitch, equipment, principles, updated_by)
+       VALUES ($1, NULLIF($2, ''), $8, $9, $3, NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), $7)
        ON CONFLICT (spond_group_id) DO UPDATE
-         SET age_group = EXCLUDED.age_group, session_minutes = EXCLUDED.session_minutes, pitch = EXCLUDED.pitch,
+         SET age_group = EXCLUDED.age_group, birth_year = EXCLUDED.birth_year, gender = EXCLUDED.gender, session_minutes = EXCLUDED.session_minutes, pitch = EXCLUDED.pitch,
              equipment = EXCLUDED.equipment, principles = EXCLUDED.principles, updated_by = EXCLUDED.updated_by, updated_at = now()`,
-      [groupId, s.age_group, s.session_minutes, s.pitch, s.equipment, s.principles, access.profileId],
+      [groupId, s.age_group, s.session_minutes, s.pitch, s.equipment, s.principles, access.profileId, s.birth_year, s.gender],
     );
     await t.query("DELETE FROM team_pitches WHERE spond_group_id = $1 AND NOT (pitch_id = ANY($2::int[]))", [groupId, s.pitch_ids]);
     await t.query(

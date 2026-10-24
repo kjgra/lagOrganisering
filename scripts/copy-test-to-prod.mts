@@ -132,7 +132,7 @@ const TABLES: Table[] = [
   },
   {
     name: "team_settings",
-    columns: ["spond_group_id", "age_group", "session_minutes", "pitch", "equipment", "principles", "updated_by", "updated_at"],
+    columns: ["spond_group_id", "age_group", "birth_year", "gender", "session_minutes", "pitch", "equipment", "principles", "updated_by", "updated_at"],
     key: ["spond_group_id"],
     casts: { updated_at: TS },
     group: "spond_group_id",
