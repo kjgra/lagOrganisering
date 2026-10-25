@@ -124,3 +124,36 @@ describe("distribute: Fordeling", () => {
     expect(performance.now() - t).toBeLessThan(1500);
   });
 });
+
+describe("distribute: forrige treninger", () => {
+  const kids = Array.from({ length: 12 }, (_, i) => ({ id: `t${i}`, name: `T${i}`, coach: false }));
+  const ids = kids.map((k) => k.id);
+  const labels = ["A", "B", "C"];
+  const last = [ids.slice(0, 4), ids.slice(4, 8), ids.slice(8, 12)];
+  const together = (a: Record<string, string>, teams: string[][]) =>
+    teams.reduce((n, t) => n + t.filter((x, i) => t.slice(i + 1).some((y) => a[x] === a[y])).length, 0);
+
+  it("«Som sist» puts last training's teammates together again", () => {
+    for (const seed of [1, 2, 3]) {
+      const a = distribute(kids, labels, seed, { history: "same", previous: [last] });
+      for (const t of last) expect(new Set(t.map((id) => a[id])).size).toBe(1);
+    }
+  });
+
+  it("«Rullér» gives new teammates, and is ignored when off", () => {
+    for (const seed of [1, 2, 3]) {
+      const a = distribute(kids, labels, seed, { history: "rotate", previous: [last] });
+      // Four on a team from three old teams: two of them always shared a team, so 3 is the best.
+      expect(together(a, last)).toBe(3);
+    }
+    const off = [1, 2, 3, 4, 5].map((seed) => together(distribute(kids, labels, seed, { previous: [last] }), last));
+    expect(Math.max(...off)).toBeGreaterThan(3);
+  });
+
+  it("«Rullér» still keeps the teams even on level", () => {
+    const lv = kids.map((k, i) => ({ ...k, level: (i % 4) + 2 }));
+    const a = distribute(lv, labels, 1, { history: "rotate", previous: [last, last] });
+    const sums = labels.map((l) => lv.filter((p) => a[p.id] === l).reduce((s, p) => s + p.level, 0));
+    expect(Math.max(...sums) - Math.min(...sums)).toBeLessThanOrEqual(2);
+  });
+});

@@ -58,6 +58,32 @@ test("Fordeling: choose nivådelt, and it is remembered", async ({ page }) => {
   await reset;
 });
 
+test("Fordeling: «Som sist» builds on the teams of the training before", async ({ page }) => {
+  await loginToEvents(page);
+  await openNextTraining(page);
+  await page.getByRole("link", { name: /Lag lag av|Nytt lagforslag/ }).click();
+  await page.getByRole("button", { name: /Lagre forslag/ }).first().click();
+  await expect(page).toHaveURL(/arrangementer\/E-[^/]+$/);
+  await page.goto("/g/G-FOTBALL/S-G2016/arrangementer");
+  await page.locator(".nm-event", { hasNotText: /Seriekamp|Avlyst/ }).nth(1).click();
+  await page.getByRole("link", { name: /Lag lag av|Nytt lagforslag/ }).click();
+  await expect(page).toHaveURL(/\/lag$/);
+  await openFordeling(page);
+  const sheet = page.getByRole("dialog", { name: "Fordeling" });
+  await expect(sheet).toContainText("Bygger på lagforslagene fra");
+  await sheet.getByRole("radio", { name: /Som sist/ }).check();
+  const saved = page.waitForResponse((r) => r.request().method() === "POST" && (r.request().postData() ?? "").includes("same"));
+  await sheet.getByRole("button", { name: "Bruk og fordel på nytt" }).click();
+  await saved;
+  await expect(page.locator(".nm-toast")).toContainText("fordelt på nytt");
+  // Back to the default for the other tests.
+  await openFordeling(page);
+  await page.getByRole("dialog", { name: "Fordeling" }).getByRole("radio", { name: /Ikke bruk/ }).check();
+  const reset = page.waitForResponse((r) => r.request().method() === "POST" && (r.request().postData() ?? "").includes("off"));
+  await page.getByRole("button", { name: "Bruk og fordel på nytt" }).click();
+  await reset;
+});
+
 test("training plan: from the bank, approve, adjust with KI, PDF", async ({ page }) => {
   await loginToEvents(page);
   await openNextTraining(page);

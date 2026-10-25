@@ -30,6 +30,7 @@ import {
   parentNotes,
   type Assignments,
   type BoardSettings,
+  type DistributeOptions,
   type ParentLink,
 } from "@/lib/board";
 import { teamTitle, vestOf } from "@/lib/proposal-view";
@@ -65,6 +66,8 @@ export interface BoardProps {
   settings: BoardSettings | null;
   /** Where «Fordeling» is saved: the page's subgroup, '' for the main group. */
   settingsScope: string;
+  /** For «Som sist» / «Rullér»: teams of the last trainings (member ids), newest first; null for a gruppeutkast. */
+  previous: string[][][] | null;
   doneHref: string;
   lockedBy: string | null;
 }
@@ -110,8 +113,14 @@ interface BoardDraft extends Snapshot {
   name: string;
 }
 
-/** Pairs count only when «Spiller godt sammen» is on. */
-const optionsOf = (s: BoardSettings, pairs: [string, string][]) => ({ mode: s.mode, roles: s.roles, pairs: s.pairs ? pairs : [] });
+/** Pairs count only when «Spiller godt sammen» is on; history only where there is one. */
+const optionsOf = (s: BoardSettings, p: Pick<BoardProps, "pairs" | "previous">): DistributeOptions => ({
+  mode: s.mode,
+  roles: s.roles,
+  pairs: s.pairs ? p.pairs : [],
+  history: p.previous ? s.history : "off",
+  previous: p.previous ?? [],
+});
 
 const Ctx = createContext<BoardState | null>(null);
 const useBoard = () => useContext(Ctx)!;
@@ -130,7 +139,7 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
   const byId = useMemo(() => new Map(props.members.map((m) => [m.id, m])), [props.members]);
   const allowed = useMemo(() => new Set(props.members.map((m) => m.id)), [props.members]);
   const [assignments, setAssignments] = useState<Assignments>(() =>
-    props.autoStart ? { ...props.assignments, ...distribute(props.members, props.labels, 1, optionsOf(rules, props.pairs)) } : props.assignments,
+    props.autoStart ? { ...props.assignments, ...distribute(props.members, props.labels, 1, optionsOf(rules, props)) } : props.assignments,
   );
   const [selected, setSelected] = useState<string | null>(null);
   const [live, setLive] = useState("");
@@ -193,7 +202,7 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
   /** Coaches keep their place (gruppeutkast); the players are spread on `ls`. */
   const spread = (ls: string[], s: number, using = rules): Assignments => {
     const keep = Object.fromEntries(Object.entries(cur.current.assignments).filter(([id, l]) => byId.get(id)?.coach && ls.includes(l)));
-    return { ...keep, ...distribute(props.members, ls, s, optionsOf(using, props.pairs)) };
+    return { ...keep, ...distribute(props.members, ls, s, optionsOf(using, props)) };
   };
 
   const reshuffle = () => {
@@ -557,6 +566,7 @@ export function TeamBoard() {
             rules={b.rules}
             players={b.members.filter((m) => !m.coach)}
             pairs={b.pairs}
+            previous={b.previous}
             onApply={(next) => {
               setRulesOpen(false);
               b.applyRules(next);

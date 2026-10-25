@@ -36,7 +36,14 @@ export interface DistributeOptions {
   roles?: string[];
   /** Pairs to keep together; leave out to ignore them. */
   pairs?: [string, string][];
+  /** «Som sist» or «Rullér», with the teams of the last trainings (newest first, member ids). */
+  history?: HistoryMode;
+  previous?: string[][][];
 }
+
+/** How many earlier trainings «Rullér» looks at, and how much each counts (newest first). */
+export const HISTORY_TRAININGS = 3;
+const RECENCY = [1, 0.6, 0.3];
 
 /** Small deterministic random generator, so «Fordel på nytt» can be tested. */
 export function rng(seed: number) {
@@ -63,7 +70,7 @@ function shuffle<T>(list: T[], r: () => number): T[] {
  * (sum or bands), then pairs. A pair is split when keeping it would make the
  * teams clearly uneven, or (nivådelt) put a player more than a level off.
  */
-const WEIGHT = { role: 1000, level: 10, pair: { even: 50, levels: 20 } };
+const WEIGHT = { role: 1000, level: 10, pair: { even: 50, levels: 20 }, history: 4 };
 const STARTS = 4;
 const MAX_PASSES = 60;
 
@@ -72,7 +79,9 @@ const MAX_PASSES = 60;
  * same size (at most one apart). Within that, the chosen roles are spread,
  * then «Jevne lag» evens out the level sum (a player without a level counts
  * as the average) or «Nivådelt» puts players of the same level together,
- * then pairs are kept together. Without levels, roles or pairs it is random.
+ * then pairs are kept together, then «Som sist» keeps last training's
+ * teammates together or «Rullér» gives everyone new teammates. Without any of
+ * this it is random.
  * Which team gets which players is random, so a team number never tells the level.
  */
 export function distribute(players: BoardMember[], labels: string[], seed: number, opts: DistributeOptions = {}): Assignments {
@@ -91,6 +100,22 @@ export function distribute(players: BoardMember[], labels: string[], seed: numbe
   const avg = known.length ? known.reduce((s, x) => s + x, 0) / known.length : 0;
   const index = new Map(list.map((p, i) => [p.id, i]));
   const pairs = (opts.pairs ?? []).flatMap(([a, b]) => (index.has(a) && index.has(b) && a !== b ? [[index.get(a)!, index.get(b)!]] : []));
+  // Teammates before, as [i, j, weight]: kept together for «Som sist», kept apart for «Rullér».
+  const history = opts.history ?? "off";
+  const before = new Map<string, [number, number, number]>();
+  const trainings = history === "same" ? (opts.previous ?? []).slice(0, 1) : history === "rotate" ? (opts.previous ?? []).slice(0, HISTORY_TRAININGS) : [];
+  trainings.forEach((teams, age) => {
+    for (const ids of teams) {
+      const here = ids.filter((id) => index.has(id)).map((id) => index.get(id)!);
+      for (let x = 0; x < here.length; x++)
+        for (let y = x + 1; y < here.length; y++) {
+          const [i, j] = here[x] < here[y] ? [here[x], here[y]] : [here[y], here[x]];
+          const k = `${i}:${j}`;
+          before.set(k, [i, j, (before.get(k)?.[2] ?? 0) + WEIGHT.history * RECENCY[age]]);
+        }
+    }
+  });
+  const teammates = [...before.values()];
 
   const cost = (team: number[]): number => {
     let c = 0;
@@ -116,6 +141,8 @@ export function distribute(players: BoardMember[], labels: string[], seed: numbe
       else for (let i = 0; i < m; i++) if (level[i]) c += WEIGHT.level * (level[i] - sum[team[i]] / size[team[i]]) ** 2;
     }
     for (const [a, b] of pairs) if (team[a] !== team[b]) c += WEIGHT.pair[mode];
+    if (history === "same") for (const [a, b, w] of teammates) c += team[a] !== team[b] ? w : 0;
+    else for (const [a, b, w] of teammates) c += team[a] === team[b] ? w : 0;
     return c;
   };
 

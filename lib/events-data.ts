@@ -91,3 +91,19 @@ export async function findEvent(user: CurrentUser, groupId: string, eventId: str
   }
   return null;
 }
+
+/**
+ * For «Forrige treninger»: trainings (not matches or cancelled) of the
+ * subgroup that start before this event, newest first. Includes earlier
+ * upcoming trainings, so Thursday can build on Tuesday's teams.
+ */
+export async function trainingsBefore(user: CurrentUser, groupId: string, subgroupId: string | null, event: SpondEvent, days = 60): Promise<string[]> {
+  const start = event.start;
+  if (!start) return [];
+  const [past, upcoming] = await Promise.all([pastEvents(user, groupId, days), upcomingEvents(user, groupId)]);
+  const seen = new Set<string>([event.id]);
+  return forSubgroup([...past, ...upcoming], subgroupId)
+    .filter((e) => !e.match && !e.cancelled && !!e.start && e.start < start && !seen.has(e.id) && !!seen.add(e.id))
+    .sort((a, b) => b.start!.localeCompare(a.start!))
+    .map((e) => e.id);
+}

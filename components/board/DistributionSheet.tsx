@@ -4,7 +4,7 @@ import { Shuffle } from "lucide-react";
 import { useState } from "react";
 import { Icon } from "@/components/ui/icon";
 import { Sheet } from "@/components/ui/Sheet";
-import type { BoardSettings, Mode } from "@/lib/board";
+import { HISTORY_TRAININGS, type BoardSettings, type HistoryMode, type Mode } from "@/lib/board";
 
 interface SheetPlayer {
   id: string;
@@ -15,6 +15,12 @@ interface SheetPlayer {
 const MODES: { mode: Mode; label: string; hint: string }[] = [
   { mode: "even", label: "Jevne lag", hint: "Lagene blir omtrent like sterke." },
   { mode: "levels", label: "Nivådelt", hint: "Spillere på samme nivå havner sammen. Lagnummeret sier ikke noe om nivået." },
+];
+
+const HISTORY: { history: HistoryMode; label: string; hint: string }[] = [
+  { history: "off", label: "Ikke bruk", hint: "Lagene settes uten å se på tidligere treninger." },
+  { history: "same", label: "Som sist", hint: "Spillerne får de samme lagkameratene som på forrige trening, så langt det går." },
+  { history: "rotate", label: "Rullér", hint: `Spillerne får nye lagkamerater, sett mot de ${HISTORY_TRAININGS} siste treningene.` },
 ];
 
 /** Tags in use among the players, and those already chosen, once each (any case). */
@@ -36,18 +42,22 @@ export function DistributionSheet({
   rules,
   players,
   pairs,
+  previous,
   onApply,
   onClose,
 }: {
   rules: BoardSettings;
   players: SheetPlayer[];
   pairs: [string, string][];
+  /** Teams of the last trainings; null for a gruppeutkast (no history). */
+  previous: string[][][] | null;
   onApply: (next: BoardSettings) => void;
   onClose: () => void;
 }) {
   const [mode, setMode] = useState(rules.mode);
   const [roles, setRoles] = useState(rules.roles);
   const [keepPairs, setKeepPairs] = useState(rules.pairs);
+  const [history, setHistory] = useState(rules.history);
   const choices = roleChoices(players, rules.roles);
   const here = new Set(players.map((p) => p.id));
   const pairsHere = pairs.filter(([a, b]) => here.has(a) && here.has(b)).length;
@@ -118,10 +128,31 @@ export function DistributionSheet({
             </span>
           </label>
         </fieldset>
+        {previous ? (
+          <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+            <legend style={{ fontWeight: 700, fontSize: "var(--fs-body-lg)" }}>Forrige treninger</legend>
+            {HISTORY.map((h) => (
+              <label key={h.history} className="nm-check">
+                <input type="radio" name="fordeling-historikk" checked={history === h.history} onChange={() => setHistory(h.history)} />
+                <span>
+                  {h.label}
+                  <span className="nm-hint" style={{ display: "block" }}>
+                    {h.hint}
+                  </span>
+                </span>
+              </label>
+            ))}
+            <p className="nm-hint" style={{ margin: "var(--space-1) 0 0" }}>
+              {previous.length
+                ? `Bygger på lagforslagene fra ${previous.length === 1 ? "forrige trening" : `de ${previous.length} siste treningene`} (godkjent forslag, ellers det sist lagrede).`
+                : "Ingen lagforslag fra tidligere treninger i gruppa ennå."}
+            </p>
+          </fieldset>
+        ) : null}
         <p className="nm-hint" style={{ margin: 0 }}>
           Valgene gjelder for alle trenerne i gruppa.
         </p>
-        <button type="button" className="nm-btn nm-btn--primary nm-btn--block" onClick={() => onApply({ ...rules, mode, roles, pairs: keepPairs })}>
+        <button type="button" className="nm-btn nm-btn--primary nm-btn--block" onClick={() => onApply({ ...rules, mode, roles, pairs: keepPairs, history })}>
           <Icon icon={Shuffle} />
           Bruk og fordel på nytt
         </button>
