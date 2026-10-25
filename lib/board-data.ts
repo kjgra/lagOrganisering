@@ -1,13 +1,13 @@
 import "server-only";
 import type { BoardPlayer, BoardProps } from "@/components/board/TeamBoard";
 import type { GroupContext } from "@/lib/context";
-import { nextName } from "@/lib/board";
+import { nextName, type BoardSettings } from "@/lib/board";
 import { tagAbbrev } from "@/lib/proposal-view";
 import { isPlayerKind, membersInContext } from "@/lib/spond/data";
 import { eventParticipants, placeable, statusLabel } from "@/lib/spond/events";
 import type { SpondEvent } from "@/lib/spond/types";
 import type { Lock, Proposal } from "@/lib/store/proposals";
-import { isKeeper, type PlayerTags } from "@/lib/store/tags";
+import type { PlayerTags } from "@/lib/store/tags";
 import { profileName } from "@/lib/proposal-view";
 
 /**
@@ -22,7 +22,7 @@ export function boardMembers(ctx: GroupContext, info: PlayerTags, event: SpondEv
   const byId = new Map(ctx.group.members.map((m) => [m.id, m]));
   const make = (id: string, name: string, coach: boolean, note: string | null): BoardPlayer => {
     const t = coach ? [] : (tags.get(id) ?? []);
-    return { id, name, coach, keeper: isKeeper(t), tags: t, short: tagAbbrev(t, universe), level: coach ? null : (levels.get(id) ?? null), note };
+    return { id, name, coach, tags: t, short: tagAbbrev(t, universe), level: coach ? null : (levels.get(id) ?? null), note };
   };
   const out: BoardPlayer[] = [];
   const seen = new Set<string>();
@@ -58,6 +58,8 @@ export function boardProps(
     locks: Lock[];
     doneHref: string;
     subgroupId: string | null;
+    /** «Fordeling» for the page's (sub)group; null without the tags right. */
+    settings: BoardSettings | null;
   },
 ): BoardProps {
   const { proposal, event } = opts;
@@ -79,6 +81,8 @@ export function boardProps(
     poolLabel: event ? (event.notSent ? "Inviteres, ikke fordelt" : "Kommer, ikke fordelt") : "Ikke fordelt",
     links: event ? [] : ctx.group.parentLinks,
     pairs: opts.tags.pairs,
+    settings: opts.settings,
+    settingsScope: ctx.subgroup?.id ?? "",
     doneHref: opts.doneHref,
     lockedBy: lock ? profileName(ctx.group, lock.editor) : null,
   };

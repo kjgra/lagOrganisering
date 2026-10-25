@@ -33,6 +33,31 @@ test("make teams with tap-to-move and save the proposal", async ({ page }) => {
   await expect(page.locator(".nm-proposal").first()).toBeVisible();
 });
 
+test("Fordeling: choose nivådelt, and it is remembered", async ({ page }) => {
+  await loginToEvents(page);
+  await openNextTraining(page);
+  await page.getByRole("link", { name: /Lag lag av|Nytt lagforslag/ }).click();
+  await expect(page).toHaveURL(/\/lag$/);
+  await page.getByRole("button", { name: "Fordeling" }).click();
+  const sheet = page.getByRole("dialog", { name: "Fordeling" });
+  await expect(sheet.getByRole("radio", { name: /Jevne lag/ })).toBeChecked();
+  await sheet.getByRole("radio", { name: /Nivådelt/ }).check();
+  const saved = page.waitForResponse((r) => r.request().method() === "POST" && (r.request().postData() ?? "").includes("levels"));
+  await sheet.getByRole("button", { name: "Bruk og fordel på nytt" }).click();
+  await saved;
+  await expect(sheet).toBeHidden();
+  await expect(page.locator(".nm-toast")).toContainText("fordelt på nytt");
+  await expect(page.locator(".nm-chip").first()).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Fordeling" }).click();
+  await expect(page.getByRole("dialog", { name: "Fordeling" }).getByRole("radio", { name: /Nivådelt/ })).toBeChecked();
+  // Back to the default, so the other tests (and the desktop run) start the same way.
+  await page.getByRole("dialog", { name: "Fordeling" }).getByRole("radio", { name: /Jevne lag/ }).check();
+  const reset = page.waitForResponse((r) => r.request().method() === "POST" && (r.request().postData() ?? "").includes("even"));
+  await page.getByRole("button", { name: "Bruk og fordel på nytt" }).click();
+  await reset;
+});
+
 test("training plan: from the bank, approve, adjust with KI, PDF", async ({ page }) => {
   await loginToEvents(page);
   await openNextTraining(page);

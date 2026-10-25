@@ -12,20 +12,31 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { ArrowDown, Bookmark, GripVertical, Minus, Pencil, Plus, Send, Shuffle, Trash2, Undo2, X } from "lucide-react";
+import { ArrowDown, Bookmark, GripVertical, Minus, Pencil, Plus, Send, Shuffle, SlidersHorizontal, Trash2, Undo2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { saveBoardSettingsAction } from "@/app/actions/board";
 import { lockAction, saveProposalAction, unlockAction } from "@/app/actions/proposals";
+import { DistributionSheet } from "@/components/board/DistributionSheet";
 import { Icon } from "@/components/ui/icon";
 import { DraftNote, LeaveGuard, useLocalDraft } from "@/components/ui/draft";
 import { useToast } from "@/components/ui/toast";
-import { distribute, labelProblem, moveFollow, nextLabel, parentNotes, type Assignments, type ParentLink } from "@/lib/board";
+import {
+  DEFAULT_SETTINGS,
+  distribute,
+  labelProblem,
+  moveFollow,
+  nextLabel,
+  parentNotes,
+  type Assignments,
+  type BoardSettings,
+  type ParentLink,
+} from "@/lib/board";
 import { teamTitle, vestOf } from "@/lib/proposal-view";
 
 export interface BoardPlayer {
   id: string;
   name: string;
-  keeper: boolean;
   coach: boolean;
   tags: string[];
   short: string[];
@@ -50,6 +61,10 @@ export interface BoardProps {
   links: ParentLink[];
   /** Players who play well together; the automatic distribution keeps them on one team. */
   pairs: [string, string][];
+  /** «Fordeling»; null without the tags right (then: random, nothing to choose). */
+  settings: BoardSettings | null;
+  /** Where «Fordeling» is saved: the page's subgroup, '' for the main group. */
+  settingsScope: string;
   doneHref: string;
   lockedBy: string | null;
 }
@@ -69,6 +84,9 @@ interface BoardState extends BoardProps {
   removeLabel: (l: string) => void;
   renameTeam: (from: string, to: string) => string | null;
   reshuffle: () => void;
+  /** The «Fordeling» in use. */
+  rules: BoardSettings;
+  applyRules: (next: BoardSettings) => void;
   undo: () => void;
   canUndo: boolean;
   submit: boolean;
@@ -92,6 +110,9 @@ interface BoardDraft extends Snapshot {
   name: string;
 }
 
+/** Pairs count only when «Spiller godt sammen» is on. */
+const optionsOf = (s: BoardSettings, pairs: [string, string][]) => ({ mode: s.mode, roles: s.roles, pairs: s.pairs ? pairs : [] });
+
 const Ctx = createContext<BoardState | null>(null);
 const useBoard = () => useContext(Ctx)!;
 
@@ -105,10 +126,11 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
   const [name, setNameState] = useState(props.name);
   const [labels, setLabels] = useState(props.labels);
   const seed = useRef(1);
+  const [rules, setRules] = useState<BoardSettings>(props.settings ?? DEFAULT_SETTINGS);
   const byId = useMemo(() => new Map(props.members.map((m) => [m.id, m])), [props.members]);
   const allowed = useMemo(() => new Set(props.members.map((m) => m.id)), [props.members]);
   const [assignments, setAssignments] = useState<Assignments>(() =>
-    props.autoStart ? { ...props.assignments, ...distribute(props.members, props.labels, 1, props.pairs) } : props.assignments,
+    props.autoStart ? { ...props.assignments, ...distribute(props.members, props.labels, 1, optionsOf(rules, props.pairs)) } : props.assignments,
   );
   const [selected, setSelected] = useState<string | null>(null);
   const [live, setLive] = useState("");
@@ -169,9 +191,9 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
   };
 
   /** Coaches keep their place (gruppeutkast); the players are spread on `ls`. */
-  const spread = (ls: string[], s: number): Assignments => {
+  const spread = (ls: string[], s: number, using = rules): Assignments => {
     const keep = Object.fromEntries(Object.entries(cur.current.assignments).filter(([id, l]) => byId.get(id)?.coach && ls.includes(l)));
-    return { ...keep, ...distribute(props.members, ls, s, props.pairs) };
+    return { ...keep, ...distribute(props.members, ls, s, optionsOf(using, props.pairs)) };
   };
 
   const reshuffle = () => {
@@ -181,6 +203,20 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
     setSelected(null);
     setLive("Spillerne er fordelt på nytt.");
     toast("Spillerne er fordelt på nytt", { label: "Angre", run: undo });
+  };
+
+  /** New «Fordeling»: distribute again with it, and save it for the other trainers. */
+  const applyRules = (next: BoardSettings) => {
+    setRules(next);
+    seed.current += 1;
+    change(cur.current.labels, spread(cur.current.labels, seed.current, next));
+    setManual(false);
+    setSelected(null);
+    setLive("Spillerne er fordelt på nytt.");
+    toast("Spillerne er fordelt på nytt", { label: "Angre", run: undo });
+    void saveBoardSettingsAction(props.groupId, props.settingsScope, next).then((r) => {
+      if (!r.ok) toast(`Fordelingen ble ikke lagret til neste gang: ${r.error}`);
+    });
   };
 
   const moveTo = (id: string, label: string) => {
@@ -253,6 +289,8 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
       return null;
     },
     reshuffle,
+    rules,
+    applyRules,
     undo,
     canUndo: undoCount > 0,
     submit,
@@ -447,6 +485,7 @@ function Column({ label, index, members, pool }: { label: string; index: number;
 export function TeamBoard() {
   const b = useBoard();
   const [dragging, setDragging] = useState<string | null>(null);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const dndId = useId();
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
@@ -504,6 +543,28 @@ export function TeamBoard() {
           </button>
         </div>
       </div>
+      {b.settings ? (
+        <div style={{ marginBottom: "var(--space-3)" }} onClick={(e) => e.stopPropagation()}>
+          <button type="button" className="nm-btn nm-btn--secondary" onClick={() => setRulesOpen(true)}>
+            <Icon icon={SlidersHorizontal} />
+            Fordeling
+          </button>
+        </div>
+      ) : null}
+      {rulesOpen ? (
+        <div onClick={(e) => e.stopPropagation()}>
+          <DistributionSheet
+            rules={b.rules}
+            players={b.members.filter((m) => !m.coach)}
+            pairs={b.pairs}
+            onApply={(next) => {
+              setRulesOpen(false);
+              b.applyRules(next);
+            }}
+            onClose={() => setRulesOpen(false)}
+          />
+        </div>
+      ) : null}
       {selP ? (
         <div className="nm-movebar" style={{ marginBottom: "var(--space-3)" }} onClick={(e) => e.stopPropagation()}>
           {selP.name} er valgt. Trykk på laget spilleren skal til, her eller nederst.

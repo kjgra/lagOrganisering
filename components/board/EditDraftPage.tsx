@@ -5,6 +5,7 @@ import { boardProps } from "@/lib/board-data";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
 import { activeLocks, getProposal, listProposals } from "@/lib/store/proposals";
+import { getBoardSettings } from "@/lib/store/board-settings";
 import { listPlayerTags } from "@/lib/store/tags";
 
 /**
@@ -19,10 +20,11 @@ export async function EditDraftPage({ params, id }: { params: Promise<{ groupId:
   if (id && (!proposal || proposal.eventId || proposal.groupId !== ctx.group.id)) notFound();
   if (proposal && !["draft", "rejected", "rolled_back"].includes(proposal.status)) redirect(back);
   const subgroupId = proposal ? proposal.subgroupId : (ctx.subgroup?.id ?? null);
-  const [tags, existing, locks] = await Promise.all([
+  const [tags, existing, locks, settings] = await Promise.all([
     listPlayerTags(d, ctx.user.access, ctx.user.rights, ctx.group.id),
     listProposals(d, ctx.user.access, ctx.group.id, { subgroupId }),
     activeLocks(d, ctx.user.access, ctx.group.id),
+    getBoardSettings(d, ctx.user.access, ctx.user.rights, ctx.group.id, ctx.subgroup?.id ?? ""),
   ]);
   const props = boardProps(ctx, {
     tags,
@@ -32,6 +34,7 @@ export async function EditDraftPage({ params, id }: { params: Promise<{ groupId:
     locks,
     doneHref: back,
     subgroupId,
+    settings,
   });
   return (
     <BoardProvider props={props}>
