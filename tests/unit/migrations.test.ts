@@ -71,3 +71,23 @@ describe("team birth year migration", () => {
     await d.close();
   });
 });
+
+describe("training per subgroup migration", () => {
+  it("moves the principles to their own table, for the main group", async () => {
+    const d = await testDb();
+    // Put the old column back, and re-run the move from the migration.
+    await d.query("ALTER TABLE team_settings ADD COLUMN principles text");
+    await d.query(
+      `INSERT INTO team_settings (spond_group_id, principles, updated_by, updated_at)
+       VALUES ('G1', '  Alle har ball ', 'P-1', '2026-05-01'), ('G2', '', 'P-1', '2026-05-01'), ('G3', NULL, 'P-1', '2026-05-01')`,
+    );
+    const sql = (await migrationFiles()).find((m) => m.name.endsWith("_training_per_subgroup.sql"))!.sql;
+    const from = sql.indexOf("INSERT INTO team_principles");
+    await d.query(sql.slice(from, sql.indexOf("\n", sql.indexOf("DROP COLUMN principles", from))));
+    expect(await d.query("SELECT spond_group_id, spond_subgroup_id, body, created_by FROM team_principles")).toEqual([
+      { spond_group_id: "G1", spond_subgroup_id: "", body: "Alle har ball", created_by: "P-1" },
+    ]);
+    expect(await d.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'team_settings' AND column_name = 'principles'")).toEqual([]);
+    await d.close();
+  });
+});

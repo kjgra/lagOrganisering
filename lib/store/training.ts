@@ -38,6 +38,34 @@ const wrap = <T>(f: () => T): T => {
   }
 };
 
+// Scopes: a main group, or one of its subgroups ------------------------------------------
+
+/**
+ * The season plan, the team settings, the principles and the learnings belong
+ * to a scope: the main group (sub '') or one of its subgroups. A subgroup
+ * without its own uses the main group's («inherited»). The exercise bank is
+ * the main group's.
+ */
+export type Part = "season" | "team" | "principles" | "learnings";
+
+/** Evaluations that count for a scope: all for the main group; for a subgroup, its own and those for the whole group. */
+const FEEDBACK_IN_SCOPE = "($2 = '' OR cardinality(f.spond_subgroup_ids) = 0 OR $2 = ANY(f.spond_subgroup_ids))";
+
+/** Make a subgroup use the main group's again: its own rows for that part are deleted. */
+export async function followMainGroup(d: Db, access: Access, groupId: string, sub: string, part: Part, year?: number): Promise<void> {
+  assertGroup(access, groupId);
+  if (!sub) throw new UserError("Hovedgruppa har ikke noe å arve fra.");
+  await d.tx(async (t) => {
+    if (part === "season") await t.query("DELETE FROM season_themes WHERE spond_group_id = $1 AND spond_subgroup_id = $2 AND year = $3", [groupId, sub, year ?? 0]);
+    if (part === "team") {
+      await t.query("DELETE FROM team_settings WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
+      await t.query("DELETE FROM team_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
+    }
+    if (part === "principles") await t.query("DELETE FROM team_principles WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
+    if (part === "learnings") await t.query("DELETE FROM team_learnings WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
+  });
+}
+
 // Season plan (årshjul) -----------------------------------------------------------------
 
 export interface SeasonRow {
@@ -48,36 +76,45 @@ export interface SeasonRow {
   updated_at: Date;
 }
 
-export async function listSeason(d: Db, access: Access, groupId: string, year: number): Promise<SeasonRow[]> {
+/** A year of the season plan: the subgroup's own if it has one that year, else the main group's. */
+export async function listSeason(d: Db, access: Access, groupId: string, sub: string, year: number): Promise<{ rows: SeasonRow[]; inherited: boolean }> {
   assertGroup(access, groupId);
-  return d.query<SeasonRow>(
-    `SELECT month, theme, coalesce(description, '') AS description, updated_by, updated_at
-       FROM season_themes WHERE spond_group_id = $1 AND year = $2 ORDER BY month`,
-    [groupId, year],
+  const rows = await d.query<SeasonRow & { spond_subgroup_id: string }>(
+    `SELECT spond_subgroup_id, month, theme, coalesce(description, '') AS description, updated_by, updated_at
+       FROM season_themes WHERE spond_group_id = $1 AND spond_subgroup_id IN ($2, '') AND year = $3 ORDER BY month`,
+    [groupId, sub, year],
   );
+  const inherited = !!sub && !rows.some((r) => r.spond_subgroup_id === sub);
+  const scope = inherited ? "" : sub;
+  const own = rows.filter((r) => r.spond_subgroup_id === scope);
+  return { rows: own.map((r) => ({ month: r.month, theme: r.theme, description: r.description, updated_by: r.updated_by, updated_at: r.updated_at })), inherited };
 }
 
-export async function saveSeason(d: Db, access: Access, groupId: string, year: number, themes: string[], descriptions: string[]): Promise<void> {
+/** Save a year of the season plan for the scope. A subgroup with no themes left uses the main group's again. */
+export async function saveSeason(d: Db, access: Access, groupId: string, sub: string, year: number, themes: string[], descriptions: string[]): Promise<void> {
   assertGroup(access, groupId);
   const rows = wrap(() => validateSeason(year, themes, descriptions));
   await d.tx(async (t) => {
-    await t.query("DELETE FROM season_themes WHERE spond_group_id = $1 AND year = $2 AND NOT (month = ANY($3::int[]))", [groupId, year, rows.map((r) => r.month)]);
+    await t.query(
+      "DELETE FROM season_themes WHERE spond_group_id = $1 AND spond_subgroup_id = $2 AND year = $3 AND NOT (month = ANY($4::int[]))",
+      [groupId, sub, year, rows.map((r) => r.month)],
+    );
     for (const r of rows) {
       await t.query(
-        `INSERT INTO season_themes (spond_group_id, year, month, theme, description, updated_by)
-         VALUES ($1, $2, $3, $4, NULLIF($5, ''), $6)
-         ON CONFLICT (spond_group_id, year, month) DO UPDATE
+        `INSERT INTO season_themes (spond_group_id, spond_subgroup_id, year, month, theme, description, updated_by)
+         VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), $7)
+         ON CONFLICT (spond_group_id, spond_subgroup_id, year, month) DO UPDATE
            SET theme = EXCLUDED.theme, description = EXCLUDED.description, updated_by = EXCLUDED.updated_by, updated_at = now()
            WHERE season_themes.theme IS DISTINCT FROM EXCLUDED.theme OR season_themes.description IS DISTINCT FROM EXCLUDED.description`,
-        [groupId, year, r.month, r.theme, r.description, access.profileId],
+        [groupId, sub, year, r.month, r.theme, r.description, access.profileId],
       );
     }
   });
 }
 
-/** The theme for the month of `date` (Oslo), or null. */
-export async function seasonTheme(d: Db, access: Access, groupId: string, year: number, month: number) {
-  const rows = await listSeason(d, access, groupId, year);
+/** The theme for a month (Oslo), or null. */
+export async function seasonTheme(d: Db, access: Access, groupId: string, sub: string, year: number, month: number) {
+  const { rows } = await listSeason(d, access, groupId, sub, year);
   const hit = rows.find((r) => r.month === month);
   return hit ? { theme: hit.theme, description: hit.description } : null;
 }
@@ -87,55 +124,100 @@ export async function seasonTheme(d: Db, access: Access, groupId: string, year: 
 export interface StoredTeamSettings extends TeamSettings {
   updated_by: string | null;
   updated_at: Date | null;
+  /** A subgroup without its own settings: these are the main group's. */
+  inherited: boolean;
 }
 
-export async function getTeamSettings(d: Db, access: Access, groupId: string): Promise<StoredTeamSettings> {
+export async function getTeamSettings(d: Db, access: Access, groupId: string, sub: string): Promise<StoredTeamSettings> {
   assertGroup(access, groupId);
-  const [rows, pitches] = await Promise.all([
-    d.query<Omit<StoredTeamSettings, "pitch_ids">>(
-      `SELECT coalesce(age_group, '') AS age_group, birth_year, gender, session_minutes, coalesce(pitch, '') AS pitch,
-              coalesce(equipment, '') AS equipment, coalesce(principles, '') AS principles, updated_by, updated_at
-         FROM team_settings WHERE spond_group_id = $1`,
-      [groupId],
-    ),
-    d.query<{ pitch_id: number }>("SELECT pitch_id FROM team_pitches WHERE spond_group_id = $1 ORDER BY pitch_id", [groupId]),
-  ]);
+  const rows = await d.query<Omit<StoredTeamSettings, "pitch_ids" | "inherited"> & { spond_subgroup_id: string }>(
+    `SELECT spond_subgroup_id, coalesce(age_group, '') AS age_group, birth_year, gender, session_minutes, coalesce(pitch, '') AS pitch,
+            coalesce(equipment, '') AS equipment, updated_by, updated_at
+       FROM team_settings WHERE spond_group_id = $1 AND spond_subgroup_id IN ($2, '')`,
+    [groupId, sub],
+  );
+  const inherited = !!sub && !rows.some((r) => r.spond_subgroup_id === sub);
+  const scope = inherited ? "" : sub;
+  const pitches = await d.query<{ pitch_id: number }>(
+    "SELECT pitch_id FROM team_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = $2 ORDER BY pitch_id",
+    [groupId, scope],
+  );
   const pitch_ids = pitches.map((p) => p.pitch_id);
-  return rows[0] ? { ...rows[0], pitch_ids } : { age_group: "", birth_year: null, gender: null, session_minutes: null, pitch_ids, pitch: "", equipment: "", principles: "", updated_by: null, updated_at: null };
+  const row = rows.find((r) => r.spond_subgroup_id === scope);
+  if (!row) return { age_group: "", birth_year: null, gender: null, session_minutes: null, pitch_ids, pitch: "", equipment: "", updated_by: null, updated_at: null, inherited };
+  const { age_group, birth_year, gender, session_minutes, pitch, equipment, updated_by, updated_at } = row;
+  return { age_group, birth_year, gender, session_minutes, pitch, equipment, updated_by, updated_at, pitch_ids, inherited };
 }
 
-/** «Laget»: age, session length, pitches and equipment. The principles are saved on their own (savePrinciples). */
-export async function saveTeamSettings(d: Db, access: Access, groupId: string, input: Record<string, unknown>): Promise<void> {
+/** «Laget»: age, session length, pitches and equipment for the scope. */
+export async function saveTeamSettings(d: Db, access: Access, groupId: string, sub: string, input: Record<string, unknown>): Promise<void> {
   assertGroup(access, groupId);
   const s = wrap(() => validateTeamSettings(input));
   const known = await d.query<{ id: number }>("SELECT id FROM pitches WHERE id = ANY($1::int[])", [s.pitch_ids]);
   if (known.length !== s.pitch_ids.length) throw new UserError("Ukjent bane.");
   await d.tx(async (t) => {
     await t.query(
-      `INSERT INTO team_settings (spond_group_id, age_group, birth_year, gender, session_minutes, pitch, equipment, principles, updated_by)
-       VALUES ($1, NULLIF($2, ''), $8, $9, $3, NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), $7)
-       ON CONFLICT (spond_group_id) DO UPDATE
+      `INSERT INTO team_settings (spond_group_id, spond_subgroup_id, age_group, birth_year, gender, session_minutes, pitch, equipment, updated_by)
+       VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, NULLIF($7, ''), NULLIF($8, ''), $9)
+       ON CONFLICT (spond_group_id, spond_subgroup_id) DO UPDATE
          SET age_group = EXCLUDED.age_group, birth_year = EXCLUDED.birth_year, gender = EXCLUDED.gender, session_minutes = EXCLUDED.session_minutes, pitch = EXCLUDED.pitch,
              equipment = EXCLUDED.equipment, updated_by = EXCLUDED.updated_by, updated_at = now()`,
-      [groupId, s.age_group, s.session_minutes, s.pitch, s.equipment, null, access.profileId, s.birth_year, s.gender],
+      [groupId, sub, s.age_group, s.birth_year, s.gender, s.session_minutes, s.pitch, s.equipment, access.profileId],
     );
-    await t.query("DELETE FROM team_pitches WHERE spond_group_id = $1 AND NOT (pitch_id = ANY($2::int[]))", [groupId, s.pitch_ids]);
+    await t.query("DELETE FROM team_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = $2 AND NOT (pitch_id = ANY($3::int[]))", [groupId, sub, s.pitch_ids]);
     await t.query(
-      "INSERT INTO team_pitches (spond_group_id, pitch_id) SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING",
-      [groupId, s.pitch_ids],
+      "INSERT INTO team_pitches (spond_group_id, spond_subgroup_id, pitch_id) SELECT $1, $2, unnest($3::int[]) ON CONFLICT DO NOTHING",
+      [groupId, sub, s.pitch_ids],
     );
   });
 }
 
-/** «Slik trener vi»: the team's principles, kept in team_settings. */
-export async function savePrinciples(d: Db, access: Access, groupId: string, text: string): Promise<void> {
-  assertGroup(access, groupId);
-  const s = wrap(() => validateTeamSettings({ principles: text }));
-  await d.query(
-    `INSERT INTO team_settings (spond_group_id, principles, updated_by) VALUES ($1, NULLIF($2, ''), $3)
-     ON CONFLICT (spond_group_id) DO UPDATE SET principles = EXCLUDED.principles, updated_by = EXCLUDED.updated_by, updated_at = now()`,
-    [groupId, s.principles, access.profileId],
+// Principles («Slik trener vi») ----------------------------------------------------------
+
+export const PRINCIPLES_MAX = 2000;
+
+interface Version {
+  id: number;
+  body: string;
+  created_by: string;
+  created_at: Date;
+}
+
+/** The latest versions in the scope, or the main group's when a subgroup has none. */
+async function versions<T extends Version>(d: Db, table: "team_principles" | "team_learnings", cols: string, groupId: string, sub: string, n: number) {
+  const own = await d.query<T>(
+    `SELECT ${cols} FROM ${table} WHERE spond_group_id = $1 AND spond_subgroup_id = $2 ORDER BY created_at DESC, id DESC LIMIT $3`,
+    [groupId, sub, n],
   );
+  if (own.length || !sub) return { versions: own, inherited: false };
+  const main = await d.query<T>(
+    `SELECT ${cols} FROM ${table} WHERE spond_group_id = $1 AND spond_subgroup_id = '' ORDER BY created_at DESC, id DESC LIMIT $2`,
+    [groupId, n],
+  );
+  return { versions: main, inherited: true };
+}
+
+export async function principlesState(d: Db, access: Access, groupId: string, sub: string, n = 6) {
+  assertGroup(access, groupId);
+  return versions<Version>(d, "team_principles", "id, body, created_by, created_at", groupId, sub, n);
+}
+
+export async function latestPrinciples(d: Db, access: Access, groupId: string, sub: string): Promise<string> {
+  return (await principlesState(d, access, groupId, sub, 1)).versions[0]?.body ?? "";
+}
+
+/** A new version of the principles for the scope (also when emptied). Unchanged text saves nothing. */
+export async function savePrinciples(d: Db, access: Access, groupId: string, sub: string, text: string): Promise<void> {
+  assertGroup(access, groupId);
+  const b = text.trim();
+  if (b.length > PRINCIPLES_MAX) throw new UserError(`Prinsippene kan ha maks ${PRINCIPLES_MAX} tegn.`);
+  if (isSensitive(b)) throw new UserError("Prinsippene skal ikke inneholde helseopplysninger eller andre sensitive opplysninger.");
+  const last = await d.query<{ body: string }>(
+    "SELECT body FROM team_principles WHERE spond_group_id = $1 AND spond_subgroup_id = $2 ORDER BY created_at DESC, id DESC LIMIT 1",
+    [groupId, sub],
+  );
+  if (last[0]?.body === b) return;
+  await d.query("INSERT INTO team_principles (spond_group_id, spond_subgroup_id, body, created_by) VALUES ($1, $2, $3, $4)", [groupId, sub, b, access.profileId]);
 }
 
 // Pitches (shared by all groups) ------------------------------------------------------------
@@ -147,13 +229,16 @@ export async function listPitches(d: Db): Promise<Pitch[]> {
 }
 
 /** The team's pitches, in list order. */
-export async function teamPitches(d: Db, access: Access, groupId: string): Promise<Pitch[]> {
+/** The scope's pitches; a subgroup without its own team settings has the main group's. */
+export async function teamPitches(d: Db, access: Access, groupId: string, sub: string): Promise<Pitch[]> {
   assertGroup(access, groupId);
   return d.query<Pitch>(
     `SELECT ${PITCH_COLUMNS.split(", ").map((c) => `p.${c}`).join(", ")}
        FROM team_pitches tp JOIN pitches p ON p.id = tp.pitch_id
-      WHERE tp.spond_group_id = $1 ORDER BY p.facility, p.sort, p.id`,
-    [groupId],
+      WHERE tp.spond_group_id = $1
+        AND tp.spond_subgroup_id = CASE WHEN EXISTS (SELECT 1 FROM team_settings WHERE spond_group_id = $1 AND spond_subgroup_id = $2) THEN $2 ELSE '' END
+      ORDER BY p.facility, p.sort, p.id`,
+    [groupId, sub],
   );
 }
 
@@ -623,7 +708,15 @@ export interface FeedbackInput {
  * that gets 👍 with «Bruke igjen: Ja» becomes active.
  * @returns codes that became active.
  */
-export async function saveFeedback(d: Db, access: Access, planId: number, rows: FeedbackInput[], registered: number | null): Promise<string[]> {
+export async function saveFeedback(
+  d: Db,
+  access: Access,
+  planId: number,
+  rows: FeedbackInput[],
+  registered: number | null,
+  /** The subgroups the event was sent to in Spond; none is the whole group. */
+  subgroupIds: string[] = [],
+): Promise<string[]> {
   const pl = await getPlan(d, access, planId);
   if (!rows.length) throw new UserError("Vurder minst én øvelse eller hele økta.");
   return d.tx(async (t) => {
@@ -631,9 +724,9 @@ export async function saveFeedback(d: Db, access: Access, planId: number, rows: 
     for (const r of rows) {
       await t.query(
         `INSERT INTO exercise_feedback (spond_group_id, spond_event_id, plan_id, exercise_no, exercise_code, rating, tags,
-                                        actual_minutes, actual_players, body, use_again, author, registered_players)
-         VALUES ($1, $2, $3, $4, NULLIF($5, ''), $6, $7::text[], $8, $9, NULLIF($10, ''), NULLIF($11, ''), $12, $13)`,
-        [pl.groupId, pl.eventId, planId, r.exercise_no, r.exercise_code, r.rating, r.tags, r.actual_minutes, r.actual_players, r.body, r.use_again, access.profileId, r.exercise_no === null ? registered : null],
+                                        actual_minutes, actual_players, body, use_again, author, registered_players, spond_subgroup_ids)
+         VALUES ($1, $2, $3, $4, NULLIF($5, ''), $6, $7::text[], $8, $9, NULLIF($10, ''), NULLIF($11, ''), $12, $13, $14::text[])`,
+        [pl.groupId, pl.eventId, planId, r.exercise_no, r.exercise_code, r.rating, r.tags, r.actual_minutes, r.actual_players, r.body, r.use_again, access.profileId, r.exercise_no === null ? registered : null, subgroupIds],
       );
     }
     const good = [...new Set(rows.filter((r) => r.exercise_no !== null && r.rating === 3 && r.use_again === "yes" && r.exercise_code).map((r) => r.exercise_code))];
@@ -728,42 +821,44 @@ export async function teamExperience(d: Db, access: Access, groupId: string, sin
 
 export const LEARNING_MAX = 3000;
 
-export async function learningState(d: Db, access: Access, groupId: string, n = 6) {
+export async function learningState(d: Db, access: Access, groupId: string, sub: string, n = 6) {
   assertGroup(access, groupId);
-  const versions = await d.query<{ id: number; body: string; source: "manual" | "ai"; created_by: string; created_at: Date }>(
-    "SELECT id, body, source, created_by, created_at FROM team_learnings WHERE spond_group_id = $1 ORDER BY created_at DESC, id DESC LIMIT $2",
-    [groupId, n],
-  );
+  const { versions: v, inherited } = await versions<Version & { source: "manual" | "ai" }>(d, "team_learnings", "id, body, source, created_by, created_at", groupId, sub, n);
   const [{ since }] = await d.query<{ since: Date | null }>(
-    "SELECT max(created_at) AS since FROM team_learnings WHERE spond_group_id = $1 AND source = 'ai'",
-    [groupId],
+    "SELECT max(created_at) AS since FROM team_learnings WHERE spond_group_id = $1 AND spond_subgroup_id = $2 AND source = 'ai'",
+    [groupId, inherited ? "" : sub],
   );
   const [{ n: nNew }] = await d.query<{ n: number }>(
-    "SELECT count(*)::int AS n FROM exercise_feedback WHERE spond_group_id = $1 AND ($2::timestamptz IS NULL OR updated_at > $2::timestamptz)",
-    [groupId, since ? new Date(since).toISOString() : null],
+    `SELECT count(*)::int AS n FROM exercise_feedback f
+      WHERE f.spond_group_id = $1 AND ${FEEDBACK_IN_SCOPE} AND ($3::timestamptz IS NULL OR f.updated_at > $3::timestamptz)`,
+    [groupId, sub, since ? new Date(since).toISOString() : null],
   );
-  return { versions, nNew, since: since ? new Date(since) : null };
+  return { versions: v, inherited, nNew, since: since ? new Date(since) : null };
 }
 
-export async function latestLearning(d: Db, access: Access, groupId: string): Promise<string> {
-  assertGroup(access, groupId);
-  const r = await d.query<{ body: string }>("SELECT body FROM team_learnings WHERE spond_group_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1", [groupId]);
-  return r[0]?.body ?? "";
+export async function latestLearning(d: Db, access: Access, groupId: string, sub: string): Promise<string> {
+  return (await learningState(d, access, groupId, sub, 1)).versions[0]?.body ?? "";
 }
 
-export async function saveLearning(d: Db, access: Access, groupId: string, body: string, source: "manual" | "ai"): Promise<void> {
+export async function saveLearning(d: Db, access: Access, groupId: string, sub: string, body: string, source: "manual" | "ai"): Promise<void> {
   assertGroup(access, groupId);
   const b = body.trim();
   if (!b || b.length > LEARNING_MAX) throw new UserError(`Lærdommene må ha mellom 1 og ${LEARNING_MAX} tegn.`);
   if (isSensitive(b)) throw new UserError("Lærdommene skal ikke inneholde helseopplysninger eller andre sensitive opplysninger.");
-  await d.query("INSERT INTO team_learnings (spond_group_id, body, source, created_by) VALUES ($1, $2, $3, $4)", [groupId, b, source, access.profileId]);
+  await d.query("INSERT INTO team_learnings (spond_group_id, spond_subgroup_id, body, source, created_by) VALUES ($1, $2, $3, $4, $5)", [
+    groupId,
+    sub,
+    b,
+    source,
+    access.profileId,
+  ]);
 }
 
 /**
- * Evaluations saved or changed after `since`, with exercise name, planned minutes and theme. No authors.
+ * Evaluations in the scope saved or changed after `since`, with exercise name, planned minutes and theme. No authors.
  * Evaluations from the bank have an empty event id.
  */
-export async function feedbackSince(d: Db, access: Access, groupId: string, since: Date, max = 150) {
+export async function feedbackSince(d: Db, access: Access, groupId: string, sub: string, since: Date, max = 150) {
   assertGroup(access, groupId);
   return d.query<{
     spond_event_id: string;
@@ -790,10 +885,10 @@ export async function feedbackSince(d: Db, access: Access, groupId: string, sinc
               coalesce(f.body, '') AS body, coalesce(f.use_again, '') AS use_again, f.created_at, f.updated_at, f.id
          FROM exercise_feedback f LEFT JOIN training_plans p ON p.id = f.plan_id
          LEFT JOIN exercises e ON f.plan_id IS NULL AND e.spond_group_id = f.spond_group_id AND e.code = f.exercise_code
-        WHERE f.spond_group_id = $1 AND f.updated_at > $2::timestamptz
-        ORDER BY f.updated_at DESC, f.id DESC LIMIT $3) x
+        WHERE f.spond_group_id = $1 AND ${FEEDBACK_IN_SCOPE} AND f.updated_at > $3::timestamptz
+        ORDER BY f.updated_at DESC, f.id DESC LIMIT $4) x
       ORDER BY created_at, spond_event_id, exercise_no NULLS FIRST, id`,
-    [groupId, since.toISOString(), max],
+    [groupId, sub, since.toISOString(), max],
   );
 }
 

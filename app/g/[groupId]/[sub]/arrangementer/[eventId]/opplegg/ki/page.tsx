@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { aiMode } from "@/lib/env";
 import { findEvent } from "@/lib/events-data";
 import { dayLabel, decimal, osloMonthStart } from "@/lib/format";
-import { themeForEvent } from "@/lib/plan-data";
+import { eventSub, themeForEvent } from "@/lib/plan-data";
 import { pitchFacts } from "@/lib/plans/plan";
 import { eventIsPast } from "@/lib/spond/events";
 import { aiSpend, getAiSettings } from "@/lib/store/ai";
@@ -28,8 +28,8 @@ export default async function KiPage(props: PageProps<"/g/[groupId]/[sub]/arrang
   const fromId = Number(typeof sp.fra === "string" ? sp.fra : "") || null;
   const [settings, team, pitches, season, comments, spend, base] = await Promise.all([
     getAiSettings(d),
-    getTeamSettings(d, ctx.user.access, ctx.group.id),
-    teamPitches(d, ctx.user.access, ctx.group.id),
+    getTeamSettings(d, ctx.user.access, ctx.group.id, eventSub(event)),
+    teamPitches(d, ctx.user.access, ctx.group.id, eventSub(event)),
     themeForEvent(d, ctx.user, ctx.group, event),
     listPlanComments(d, ctx.user.access, ctx.group.id, event.id),
     aiSpend(d, ctx.user.access, ctx.group.id, osloMonthStart(new Date())),

@@ -70,7 +70,7 @@ test("a trainer without admin edits «Trening», but cannot delete exercises or 
   await page.goto("/g/G-FOTBALL/S-G2016/arrangementer");
   await page.getByRole("navigation", { name: "Hovedmeny" }).getByRole("link", { name: "Trening" }).first().click();
   await expect(page).toHaveURL(/\/g\/G-FOTBALL\/S-G2016\/trening\/ovelser$/);
-  await expect(page.getByText("Gjelder hele Nymark IL – Fotball")).toBeVisible();
+  await expect(page.getByText("Øvelsesbanken er felles for hele Nymark IL – Fotball.")).toBeVisible();
 
   await page.getByRole("navigation", { name: "Trening" }).getByRole("link", { name: "Slik trener vi" }).click();
   await page.getByLabel("Prinsipper").fill(`Alle har ball ${Date.now()}`);
@@ -104,4 +104,35 @@ test("an admin deletes an exercise only after «Er du sikker?»", async ({ page 
   await page.getByRole("button", { name: "Ja, slett" }).click();
   await expect(page.locator(".nm-toast")).toContainText("Øvelsen er slettet");
   await expect(page.getByRole("link", { name: `Endre ${name}` })).toHaveCount(0);
+});
+
+test("a team has the main group's «Laget» until it saves its own, and can follow the main group again", async ({ page }) => {
+  await login(page, "ann@demo.no");
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/g/G-FOTBALL/S-G2016/trening/laget");
+  const back = page.getByRole("button", { name: "Følg Nymark IL – Fotball igjen" });
+  // An earlier run (mobile first) may have left the team with its own.
+  if (await back.isVisible()) {
+    await back.click();
+    await page.getByRole("button", { name: "Ja, følg Nymark IL – Fotball" }).click();
+  }
+  await expect(page.getByText("Gutter 2016 følger Nymark IL – Fotball. Lagrer du, får Gutter 2016 sitt eget.")).toBeVisible();
+  await expect(page.getByLabel("Øktlengde (min)")).toHaveValue("75");
+
+  await page.getByLabel("Øktlengde (min)").fill("60");
+  await page.getByRole("button", { name: "Lagre" }).click();
+  await expect(page.locator(".nm-toast")).toContainText("Laget er lagret");
+  await expect(page.getByText("Eget for Gutter 2016.")).toBeVisible();
+
+  // The main group keeps its own.
+  await page.goto("/g/G-FOTBALL/alle/trening/laget");
+  await expect(page.getByLabel("Øktlengde (min)")).toHaveValue("75");
+
+  await page.goto("/g/G-FOTBALL/S-G2016/trening/laget");
+  await expect(page.getByLabel("Øktlengde (min)")).toHaveValue("60");
+  await page.getByRole("button", { name: "Følg Nymark IL – Fotball igjen" }).click();
+  await expect(page.getByText("Er du sikker? Det Gutter 2016 har skrevet her, slettes.")).toBeVisible();
+  await page.getByRole("button", { name: "Ja, følg Nymark IL – Fotball" }).click();
+  await expect(page.locator(".nm-toast")).toContainText("Laget følger Nymark IL – Fotball igjen.");
+  await expect(page.getByLabel("Øktlengde (min)")).toHaveValue("75");
 });

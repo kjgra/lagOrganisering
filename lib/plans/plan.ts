@@ -544,7 +544,6 @@ export interface TeamSettings {
   /** Free-text note about the pitches, e.g. «deler med G12». */
   pitch: string;
   equipment: string;
-  principles: string;
 }
 
 /** Pitch ids from a list or «1,2,3»: whole numbers, no duplicates, at most 50. */
@@ -571,14 +570,13 @@ export function validateTeamSettings(s: Record<string, unknown>): TeamSettings {
     pitch_ids: pitchIds(s.pitch_ids),
     pitch: txt(s.pitch),
     equipment: txt(s.equipment),
-    principles: txt(s.principles),
   };
-  const max = { age_group: 40, pitch: 200, equipment: 1000, principles: 2000 };
+  const max = { age_group: 40, pitch: 200, equipment: 1000 };
   for (const [k, m] of Object.entries(max)) {
     if (out[k as keyof typeof max].length > m) throw new PlanError(`Feltet «${k}» kan ha maks ${m} tegn.`);
   }
-  if (isSensitive(out.age_group, out.pitch, out.equipment, out.principles)) {
-    throw new PlanError("Lagets standard skal ikke inneholde helseopplysninger eller andre sensitive opplysninger.");
+  if (isSensitive(out.age_group, out.pitch, out.equipment)) {
+    throw new PlanError("Laget skal ikke inneholde helseopplysninger eller andre sensitive opplysninger.");
   }
   return out;
 }

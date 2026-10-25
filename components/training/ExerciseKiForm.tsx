@@ -10,6 +10,8 @@ import { useToast } from "@/components/ui/toast";
 
 export interface ExerciseKiFormProps {
   groupId: string;
+  /** The subgroup whose «Trening» is used, or '' for the main group. */
+  sub: string;
   theme: string;
   themeNote: string;
   categories: Record<string, string>;
@@ -44,7 +46,7 @@ export function ExerciseKiForm(p: ExerciseKiFormProps) {
   const [running, setRunning] = useState(false);
 
   const num = (x: string) => (x.trim() ? Math.round(Number(x)) : null);
-  const input = () => ({ groupId: p.groupId, theme, category, players: num(players), minutes: num(minutes), wish, link, pitchIds, model });
+  const input = () => ({ groupId: p.groupId, sub: p.sub, theme, category, players: num(players), minutes: num(minutes), wish, link, pitchIds, model });
   const estimate = () =>
     start(async () => {
       setError(null);

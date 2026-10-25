@@ -127,13 +127,17 @@ const TABLES: Table[] = [
     name: "season_themes",
     columns: ["spond_group_id", "year", "month", "theme", "description", "updated_by", "updated_at"],
     key: ["spond_group_id", "year", "month"],
+    // Test has no subgroups: everything is the main group's (spond_subgroup_id '').
+    conflict: "spond_group_id, spond_subgroup_id, year, month",
     casts: { updated_at: TS },
     group: "spond_group_id",
   },
   {
     name: "team_settings",
-    columns: ["spond_group_id", "age_group", "birth_year", "gender", "session_minutes", "pitch", "equipment", "principles", "updated_by", "updated_at"],
+    // The principles moved to team_principles (migration 20261025000000_training_per_subgroup).
+    columns: ["spond_group_id", "age_group", "birth_year", "gender", "session_minutes", "pitch", "equipment", "updated_by", "updated_at"],
     key: ["spond_group_id"],
+    conflict: "spond_group_id, spond_subgroup_id",
     casts: { updated_at: TS },
     group: "spond_group_id",
   },

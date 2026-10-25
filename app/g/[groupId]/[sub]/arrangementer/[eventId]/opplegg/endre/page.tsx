@@ -5,7 +5,7 @@ import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
 import { findEvent } from "@/lib/events-data";
 import { dayLabel } from "@/lib/format";
-import { themeForEvent } from "@/lib/plan-data";
+import { eventSub, themeForEvent } from "@/lib/plan-data";
 import { CATEGORIES, defaultSettings, settingsFromPlan } from "@/lib/plans/plan";
 import { meanText } from "@/lib/plans/feedback";
 import { eventIsPast } from "@/lib/spond/events";
@@ -24,7 +24,7 @@ export default async function EditPlanPage(props: PageProps<"/g/[groupId]/[sub]/
   const fromId = Number(typeof sp.fra === "string" ? sp.fra : "") || null;
   const [bank, team, season, base] = await Promise.all([
     listExercises(d, ctx.user.access, ctx.group.id),
-    getTeamSettings(d, ctx.user.access, ctx.group.id),
+    getTeamSettings(d, ctx.user.access, ctx.group.id, eventSub(event)),
     themeForEvent(d, ctx.user, ctx.group, event),
     fromId ? getPlan(d, ctx.user.access, fromId).catch(() => null) : Promise.resolve(null),
   ]);

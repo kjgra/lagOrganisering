@@ -59,7 +59,7 @@ export interface KiPrep {
 }
 
 /** Rights, budget, the bank and the team's experience: what every KI call for exercises needs. */
-async function kiBasis(d: Db, user: CurrentUser, rights: Rights, group: Group, wanted: string | undefined, now: Date, theme: string) {
+async function kiBasis(d: Db, user: CurrentUser, rights: Rights, group: Group, sub: string, wanted: string | undefined, now: Date, theme: string) {
   if (!rights.ai) throw new AiError("Du har ikke tilgang til KI. Spør en administrator.");
   const settings = await getAiSettings(d);
   const model = wanted && wanted in AI_MODELS ? wanted : settings.model;
@@ -67,7 +67,7 @@ async function kiBasis(d: Db, user: CurrentUser, rights: Rights, group: Group, w
   if (!budget.ok) throw new AiError(budget.message);
   const bank = await listExercises(d, user.access, group.id);
   const exp = await teamExperience(d, user.access, group.id, new Date(now.getTime() - 365 * 86_400_000));
-  const experience = experienceText(exp, bank, await latestLearning(d, user.access, group.id));
+  const experience = experienceText(exp, bank, await latestLearning(d, user.access, group.id, sub));
   let cat = catalogue(bank, theme);
   if (experience) cat = `${cat}\n\n${experience}`;
   return { settings, model, budget, bank, system: [systemText(), cat] };
@@ -85,7 +85,7 @@ export async function prepareKi(
   order: OrderContext,
   opts: { base?: Plan | null; model?: string; now?: Date } = {},
 ): Promise<KiPrep> {
-  const { settings, model, budget, bank, system } = await kiBasis(d, user, rights, group, opts.model, opts.now ?? new Date(), order.theme);
+  const { settings, model, budget, bank, system } = await kiBasis(d, user, rights, group, order.sub ?? "", opts.model, opts.now ?? new Date(), order.theme);
   const ctx: OrderContext = { ...order, maxNew: settings.max_new_exercises };
   const base = opts.base ?? null;
   const userText = base ? revisionText(base, ctx) : orderText(ctx);
@@ -151,7 +151,7 @@ export interface ExerciseKiPrep extends Omit<KiPrep, "answerCtx"> {
 }
 
 export async function prepareExerciseKi(d: Db, user: CurrentUser, rights: Rights, group: Group, order: ExerciseOrderContext, opts: { model?: string; now?: Date } = {}): Promise<ExerciseKiPrep> {
-  const { settings, model, budget, bank, system } = await kiBasis(d, user, rights, group, opts.model, opts.now ?? new Date(), order.theme);
+  const { settings, model, budget, bank, system } = await kiBasis(d, user, rights, group, order.sub ?? "", opts.model, opts.now ?? new Date(), order.theme);
   return {
     groupId: group.id,
     kind: "exercise",
@@ -226,15 +226,15 @@ function learningOrder(rows: Awaited<ReturnType<typeof feedbackSince>>, old: str
 }
 
 /** «Oppdater med KI» for the team's learnings (trainers with KI). Saves a new version. */
-export async function updateLearningsWithKi(d: Db, user: CurrentUser, rights: Rights, group: Group, baseText: string | null, now = new Date()) {
+export async function updateLearningsWithKi(d: Db, user: CurrentUser, rights: Rights, group: Group, sub: string, baseText: string | null, now = new Date()) {
   if (!rights.ai) throw new AiError("Du har ikke tilgang til KI. Spør en administrator.");
   const settings = await getAiSettings(d);
   const budget = budgetCheck(await aiSpend(d, user.access, group.id, osloMonthStart(now)), settings);
   if (!budget.ok) throw new AiError(budget.message);
   const names = memberNames(group.members);
-  const state = await learningState(d, user.access, group.id, 1);
+  const state = await learningState(d, user.access, group.id, sub, 1);
   const old = checkLearning(baseText ?? state.versions[0]?.body ?? "", names, true);
-  const rows = await feedbackSince(d, user.access, group.id, state.since ?? new Date(now.getTime() - 365 * 86_400_000));
+  const rows = await feedbackSince(d, user.access, group.id, sub, state.since ?? new Date(now.getTime() - 365 * 86_400_000));
   if (!rows.length) throw new AiError("Ingen nye evalueringer siden lærdommene sist ble oppdatert med KI.");
   const r = await callClaude({ model: LEARNING_MODEL, system: [LEARNING_INSTRUCTIONS], user: learningOrder(rows, old, names), maxTokens: 1500, kind: "learning" });
   let text: string | null = null;
@@ -252,7 +252,7 @@ export async function updateLearningsWithKi(d: Db, user: CurrentUser, rights: Ri
   await logAiUsage(d, user.access, group.id, { kind: "learning", model: LEARNING_MODEL, ...r.usage, cost_usd: cost, duration_ms: r.durationMs, status: text ? "ok" : "error", error_code: errorCode }, null);
   if (!text) throw new AiError(message);
   try {
-    await saveLearning(d, user.access, group.id, text, "ai");
+    await saveLearning(d, user.access, group.id, sub, text, "ai");
   } catch (err) {
     if (err instanceof UserError) throw new AiError(err.message);
     throw err;
