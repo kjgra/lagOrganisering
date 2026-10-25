@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Db } from "@/lib/db";
 import { NO_RIGHTS, type Access, type Rights } from "@/lib/store/access";
-import { acquireLock, activeLocks, addComment, getProposal, listProposals, releaseLock, saveProposal, transition } from "@/lib/store/proposals";
+import { acquireLock, activeLocks, addComment, getProposal, listProposals, releaseLock, saveProposal, teamsOfEvents, transition } from "@/lib/store/proposals";
 import { addPair, addTag, listPlayerTags, listTags, removePair, removeTag, setLevel } from "@/lib/store/tags";
 import { testDb } from "../helpers/db";
 
@@ -105,5 +105,24 @@ describe("tags", () => {
     await expect(addTag(d, me, none, "G1", "m3", "Kaptein")).rejects.toThrow(/tagger/);
     await expect(setLevel(d, me, none, "G1", "m3", 1)).rejects.toThrow(/tagger/);
     await expect(addPair(d, me, none, "G1", "m3", "m1")).rejects.toThrow(/tagger/);
+  });
+});
+
+describe("teams of earlier trainings", () => {
+  it("uses the approved proposal, else the last saved, newest event first", async () => {
+    const two = { labels: ["A", "B"], assignments: { h1: "A", h2: "A", h3: "B", h4: "B" } };
+    const ok = await saveProposal(d, me, { groupId: "G1", eventId: "H1", name: "Godkjent", ...two, submit: true });
+    await transition(d, me, ok, "approve");
+    await saveProposal(d, me, { groupId: "G1", eventId: "H1", name: "Nyere utkast", labels: ["A"], assignments: { h1: "A", h3: "A" } });
+    await saveProposal(d, me, { groupId: "G1", eventId: "H2", name: "Eldre", labels: ["A"], assignments: { h1: "A" } });
+    await saveProposal(d, me, { groupId: "G1", eventId: "H2", name: "Sist lagret", labels: ["A", "B", "C"], assignments: { h1: "A", h4: "B" } });
+    expect(await teamsOfEvents(d, me, "G1", ["H2", "H0", "H1"])).toEqual([
+      [["h1"], ["h4"]],
+      [
+        ["h1", "h2"],
+        ["h3", "h4"],
+      ],
+    ]);
+    await expect(teamsOfEvents(d, other, "G1", ["H1"])).rejects.toThrow();
   });
 });

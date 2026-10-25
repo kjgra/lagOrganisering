@@ -4,10 +4,11 @@ import { AppShell } from "@/components/shell/AppShell";
 import { boardProps } from "@/lib/board-data";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
-import { findEvent } from "@/lib/events-data";
+import { findEvent, trainingsBefore } from "@/lib/events-data";
 import { dayLabel } from "@/lib/format";
 import { eventIsPast } from "@/lib/spond/events";
-import { activeLocks, getProposal, listProposals } from "@/lib/store/proposals";
+import { HISTORY_TRAININGS } from "@/lib/board";
+import { activeLocks, getProposal, listProposals, teamsOfEvents } from "@/lib/store/proposals";
 import { getBoardSettings } from "@/lib/store/board-settings";
 import { listPlayerTags } from "@/lib/store/tags";
 
@@ -29,7 +30,10 @@ export async function EditBoardPage({ params, proposalId }: { params: Promise<{ 
   const proposal = proposalId ? await getProposal(d, ctx.user.access, proposalId).catch(() => null) : null;
   if (proposalId && (!proposal || proposal.eventId !== event.id)) notFound();
   if (proposal && !["draft", "rejected", "rolled_back"].includes(proposal.status)) redirect(eventPath);
-  const props = boardProps(ctx, { tags, event, proposal, existingNames: existing.map((p) => p.name), locks, doneHref: eventPath, subgroupId: null, settings });
+  // «Forrige treninger» works on teams; it belongs to «Fordeling», so only with the tags right.
+  const earlier = settings ? await trainingsBefore(ctx.user, ctx.group.id, ctx.subgroup?.id ?? null, event).catch(() => []) : [];
+  const previous = settings ? (await teamsOfEvents(d, ctx.user.access, ctx.group.id, earlier.slice(0, 12))).slice(0, HISTORY_TRAININGS) : null;
+  const props = boardProps(ctx, { tags, event, proposal, existingNames: existing.map((p) => p.name), locks, doneHref: eventPath, subgroupId: null, settings, previous });
   return (
     <BoardProvider props={props}>
       <AppShell ctx={ctx} title={`Lag · ${event.start ? dayLabel(event.start) : event.heading}`} section="events" back={eventPath} wide actions={<BoardActions />}>

@@ -158,6 +158,28 @@ export async function listProposals(
   return hydrate(d, headers);
 }
 
+/** The proposal that counts for an event: the approved one, else the last saved. */
+export function chosenProposal<T extends { status: ProposalStatus; updatedAt: Date; id: number }>(list: T[]): T | null {
+  const live = list.filter((p) => p.status !== "deleted");
+  const approved = live.find((p) => p.status === "approved");
+  return approved ?? live.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime() || b.id - a.id)[0] ?? null;
+}
+
+/**
+ * «Forrige treninger»: the teams (member ids) of each event that has a
+ * proposal, in the order given (newest first). Events without one are left out.
+ */
+export async function teamsOfEvents(d: Db, access: Access, groupId: string, eventIds: string[]): Promise<string[][][]> {
+  if (!eventIds.length) return [];
+  const all = await listProposals(d, access, groupId, { eventIds, drafts: false });
+  return eventIds.flatMap((e) => {
+    const p = chosenProposal(all.filter((x) => x.eventId === e));
+    if (!p) return [];
+    const teams = p.labels.map((l) => Object.entries(p.assignments).filter(([, x]) => x === l).map(([id]) => id)).filter((t) => t.length);
+    return teams.length ? [teams] : [];
+  });
+}
+
 /** All proposals waiting for approval in a main group. */
 export async function pendingProposals(d: Db, access: Access, groupId: string): Promise<Proposal[]> {
   assertGroup(access, groupId);

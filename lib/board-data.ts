@@ -60,6 +60,8 @@ export function boardProps(
     subgroupId: string | null;
     /** «Fordeling» for the page's (sub)group; null without the tags right. */
     settings: BoardSettings | null;
+    /** Teams of the last trainings, newest first; null for a gruppeutkast. */
+    previous: string[][][] | null;
   },
 ): BoardProps {
   const { proposal, event } = opts;
@@ -83,6 +85,7 @@ export function boardProps(
     pairs: opts.tags.pairs,
     settings: opts.settings,
     settingsScope: ctx.subgroup?.id ?? "",
+    previous: opts.previous,
     doneHref: opts.doneHref,
     lockedBy: lock ? profileName(ctx.group, lock.editor) : null,
   };

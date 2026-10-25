@@ -35,6 +35,7 @@ export async function EditDraftPage({ params, id }: { params: Promise<{ groupId:
     doneHref: back,
     subgroupId,
     settings,
+    previous: null,
   });
   return (
     <BoardProvider props={props}>
