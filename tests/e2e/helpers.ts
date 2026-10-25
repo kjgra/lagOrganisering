@@ -32,3 +32,16 @@ export async function openNextTraining(page: Page) {
   await page.locator(".nm-event", { hasNotText: /Seriekamp|Avlyst/ }).first().click();
   await expect(page).toHaveURL(/arrangementer\/E-/);
 }
+
+/**
+ * Opens «Fordeling» on the team board. Retries the click: right after a
+ * (re)load the button can be there before React has hydrated it.
+ */
+export async function openFordeling(page: Page) {
+  const sheet = page.getByRole("dialog", { name: "Fordeling" });
+  await expect(async () => {
+    await page.getByRole("button", { name: "Fordeling" }).click();
+    await expect(sheet).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  return sheet;
+}

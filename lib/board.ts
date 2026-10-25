@@ -7,10 +7,35 @@ export type Assignments = Record<string, string>;
 export interface BoardMember {
   id: string;
   name: string;
-  keeper: boolean;
   coach: boolean;
+  /** Free tags such as «Keeper»; those chosen as roles are spread over the teams. */
+  tags?: string[];
   /** 1–5, or null when not set. */
   level?: number | null;
+}
+
+/** «Jevne lag»: about equally strong teams. «Nivådelt»: players on the same level together. */
+export type Mode = "even" | "levels";
+export type HistoryMode = "off" | "same" | "rotate";
+
+/** How the automatic distribution works, chosen per subgroup in «Fordeling». */
+export interface BoardSettings {
+  mode: Mode;
+  /** Tags spread over the teams, one per team as far as it goes. */
+  roles: string[];
+  /** Keep players who play well together on one team. */
+  pairs: boolean;
+  history: HistoryMode;
+}
+
+export const DEFAULT_SETTINGS: BoardSettings = { mode: "even", roles: ["Keeper"], pairs: true, history: "off" };
+
+export interface DistributeOptions {
+  mode?: Mode;
+  /** Tags to spread (any case). Default «Keeper». */
+  roles?: string[];
+  /** Pairs to keep together; leave out to ignore them. */
+  pairs?: [string, string][];
 }
 
 /** Small deterministic random generator, so «Fordel på nytt» can be tested. */
@@ -24,77 +49,111 @@ export function rng(seed: number) {
   };
 }
 
-/**
- * Keepers are spread first (one per team), the rest are shuffled and
- * snake-distributed, so the teams differ by at most one. Trainers are not
- * distributed automatically. With levels or pairs, see `balance`.
- */
-export function distribute(players: BoardMember[], labels: string[], seed: number, pairs: [string, string][] = []): Assignments {
-  if (!labels.length) return {};
-  const r = rng(seed);
-  const list = players.filter((p) => !p.coach);
-  for (let i = list.length - 1; i > 0; i--) {
+function shuffle<T>(list: T[], r: () => number): T[] {
+  const out = [...list];
+  for (let i = out.length - 1; i > 0; i--) {
     const j = Math.floor(r() * (i + 1));
-    [list[i], list[j]] = [list[j], list[i]];
+    [out[i], out[j]] = [out[j], out[i]];
   }
-  if (list.some((p) => p.level) || pairs.length) return balance(list, labels, pairs);
-  list.sort((a, b) => Number(b.keeper) - Number(a.keeper));
-  const n = labels.length;
-  const out: Assignments = {};
-  list.forEach((p, idx) => {
-    const round = Math.floor(idx / n);
-    const pos = idx % n;
-    out[p.id] = labels[round % 2 ? n - 1 - pos : pos];
-  });
   return out;
 }
 
 /**
- * Players who play well together go to the same team, as long as it fits
- * (no team gets more than its share, rounded up). Then keepers are spread,
- * and each group goes to the smallest team, the one with the lowest level sum
- * first. A player without a level counts as the average.
+ * Weights, in the order of what matters most: roles spread, then the level
+ * (sum or bands), then pairs. A pair is split when keeping it would make the
+ * teams clearly uneven, or (nivådelt) put a player more than a level off.
  */
-function balance(list: BoardMember[], labels: string[], pairs: [string, string][]): Assignments {
+const WEIGHT = { role: 1000, level: 10, pair: { even: 50, levels: 20 } };
+const STARTS = 4;
+const MAX_PASSES = 60;
+
+/**
+ * Spread the players (not trainers) on the teams. The teams are always the
+ * same size (at most one apart). Within that, the chosen roles are spread,
+ * then «Jevne lag» evens out the level sum (a player without a level counts
+ * as the average) or «Nivådelt» puts players of the same level together,
+ * then pairs are kept together. Without levels, roles or pairs it is random.
+ * Which team gets which players is random, so a team number never tells the level.
+ */
+export function distribute(players: BoardMember[], labels: string[], seed: number, opts: DistributeOptions = {}): Assignments {
   const n = labels.length;
-  const cap = Math.ceil(list.length / n);
-  const known = list.filter((p) => p.level);
-  const avg = known.length ? known.reduce((s, p) => s + p.level!, 0) / known.length : 0;
-  const lvl = (p: BoardMember) => p.level || avg;
+  if (!n) return {};
+  const r = rng(seed);
+  const list = players.filter((p) => !p.coach);
+  const m = list.length;
+  if (!m) return {};
+  const mode = opts.mode ?? "even";
+  const roles = (opts.roles ?? DEFAULT_SETTINGS.roles).map((t) => t.toLowerCase());
+  const roleOf = list.map((p) => roles.map((role) => (p.tags ?? []).some((t) => t.toLowerCase() === role)));
+  const usedRoles = roles.map((_, k) => roleOf.some((x) => x[k])).flatMap((on, k) => (on ? [k] : []));
+  const level = list.map((p) => p.level || 0);
+  const known = level.filter(Boolean);
+  const avg = known.length ? known.reduce((s, x) => s + x, 0) / known.length : 0;
+  const index = new Map(list.map((p, i) => [p.id, i]));
+  const pairs = (opts.pairs ?? []).flatMap(([a, b]) => (index.has(a) && index.has(b) && a !== b ? [[index.get(a)!, index.get(b)!]] : []));
 
-  // Pairs among the players here, joined into groups.
-  const root = new Map(list.map((p) => [p.id, p.id]));
-  const find = (id: string): string => (root.get(id) === id ? id : find(root.get(id)!));
-  for (const [a, b] of pairs) if (root.has(a) && root.has(b)) root.set(find(a), find(b));
-  const groups = new Map<string, BoardMember[]>();
-  for (const p of list) groups.set(find(p.id), [...(groups.get(find(p.id)) ?? []), p]);
-  const units = [...groups.values()].flatMap((g) => (g.length > cap ? g.map((p) => [p]) : [g]));
-  const sum = (u: BoardMember[]) => u.reduce((s, p) => s + lvl(p), 0);
-  const keepers = (u: BoardMember[]) => u.filter((p) => p.keeper).length;
-  // Stable sort keeps the shuffle as tie-break.
-  units.sort((a, b) => keepers(b) - keepers(a) || b.length - a.length || sum(b) - sum(a));
-
-  const teams = labels.map(() => ({ size: 0, level: 0, keepers: 0 }));
-  const out: Assignments = {};
-  const place = (u: BoardMember[], i: number) => {
-    for (const p of u) out[p.id] = labels[i];
-    teams[i].size += u.length;
-    teams[i].level += sum(u);
-    teams[i].keepers += keepers(u);
-  };
-  const queue = [...units];
-  while (queue.length) {
-    const u = queue.shift()!;
-    const fits = teams.map((t, i) => i).filter((i) => teams[i].size + u.length <= cap);
-    if (!fits.length) {
-      queue.unshift(...u.map((p) => [p]));
-      continue;
+  const cost = (team: number[]): number => {
+    let c = 0;
+    for (const k of usedRoles) {
+      const count = new Array<number>(n).fill(0);
+      for (let i = 0; i < m; i++) if (roleOf[i][k]) count[team[i]]++;
+      const mean = count.reduce((s, x) => s + x, 0) / n;
+      for (const x of count) c += WEIGHT.role * (x - mean) ** 2;
     }
-    const k = keepers(u) > 0;
-    fits.sort((x, y) => (k ? teams[x].keepers - teams[y].keepers : 0) || teams[x].size - teams[y].size || teams[x].level - teams[y].level);
-    place(u, fits[0]);
+    if (known.length) {
+      const sum = new Array<number>(n).fill(0);
+      const size = new Array<number>(n).fill(0);
+      for (let i = 0; i < m; i++) {
+        if (mode === "even") {
+          sum[team[i]] += level[i] || avg;
+          size[team[i]]++;
+        } else if (level[i]) {
+          sum[team[i]] += level[i];
+          size[team[i]]++;
+        }
+      }
+      if (mode === "even") for (let t = 0; t < n; t++) c += WEIGHT.level * (sum[t] - size[t] * avg) ** 2;
+      else for (let i = 0; i < m; i++) if (level[i]) c += WEIGHT.level * (level[i] - sum[team[i]] / size[team[i]]) ** 2;
+    }
+    for (const [a, b] of pairs) if (team[a] !== team[b]) c += WEIGHT.pair[mode];
+    return c;
+  };
+
+  let best: number[] = [];
+  let bestCost = Infinity;
+  for (let s = 0; s < STARTS; s++) {
+    // Equal sizes from the start; swapping two players keeps them.
+    const order = shuffle(
+      list.map((_, i) => i),
+      r,
+    );
+    const team = new Array<number>(m);
+    order.forEach((i, pos) => (team[i] = pos % n));
+    let cur = cost(team);
+    for (let pass = 0; pass < MAX_PASSES && cur > 0; pass++) {
+      let improved = false;
+      for (let a = 0; a < m; a++)
+        for (let b = a + 1; b < m; b++) {
+          const i = order[a];
+          const j = order[b];
+          if (team[i] === team[j]) continue;
+          [team[i], team[j]] = [team[j], team[i]];
+          const c = cost(team);
+          if (c < cur - 1e-9) {
+            cur = c;
+            improved = true;
+          } else [team[i], team[j]] = [team[j], team[i]];
+        }
+      if (!improved) break;
+    }
+    if (cur < bestCost - 1e-9) {
+      best = [...team];
+      bestCost = cur;
+    }
+    // Nothing to weigh: the first random start is as good as any.
+    if (bestCost === 0) break;
   }
-  return out;
+  return Object.fromEntries(list.map((p, i) => [p.id, labels[best[i]]]));
 }
 
 /** Move a member to a team ("" = back to the pool). Unknown members or teams change nothing. */
