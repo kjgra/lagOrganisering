@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, loginToEvents, openNextTraining } from "./helpers";
+import { login, loginToEvents, openFordeling, openNextTraining } from "./helpers";
 
 test("trainer without app access is stopped after Spond login", async ({ page }) => {
   await login(page, "beate@demo.no");
@@ -38,7 +38,7 @@ test("Fordeling: choose nivådelt, and it is remembered", async ({ page }) => {
   await openNextTraining(page);
   await page.getByRole("link", { name: /Lag lag av|Nytt lagforslag/ }).click();
   await expect(page).toHaveURL(/\/lag$/);
-  await page.getByRole("button", { name: "Fordeling" }).click();
+  await openFordeling(page);
   const sheet = page.getByRole("dialog", { name: "Fordeling" });
   await expect(sheet.getByRole("radio", { name: /Jevne lag/ })).toBeChecked();
   await sheet.getByRole("radio", { name: /Nivådelt/ }).check();
@@ -49,7 +49,7 @@ test("Fordeling: choose nivådelt, and it is remembered", async ({ page }) => {
   await expect(page.locator(".nm-toast")).toContainText("fordelt på nytt");
   await expect(page.locator(".nm-chip").first()).toBeVisible();
   await page.reload();
-  await page.getByRole("button", { name: "Fordeling" }).click();
+  await openFordeling(page);
   await expect(page.getByRole("dialog", { name: "Fordeling" }).getByRole("radio", { name: /Nivådelt/ })).toBeChecked();
   // Back to the default, so the other tests (and the desktop run) start the same way.
   await page.getByRole("dialog", { name: "Fordeling" }).getByRole("radio", { name: /Jevne lag/ }).check();
