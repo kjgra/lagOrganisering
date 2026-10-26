@@ -1,0 +1,44 @@
+name: Fast preview-adresse
+
+# Peker lagorganisering-preview.vercel.app til den nyeste ferdige preview-
+# deployen, så den kan ligge på hjemskjermen. Trenger secret VERCEL_TOKEN;
+# uten den hoppes alt over.
+on: deployment_status
+
+concurrency:
+  group: preview-alias
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  alias:
+    name: Pek fast adresse til preview
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      startsWith(github.event.deployment.environment, 'Preview')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ALIAS: lagorganisering-preview.vercel.app
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      DEPLOY_URL: ${{ github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Sett alias
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::notice::VERCEL_TOKEN er ikke satt, hopper over. Se docs/publisering.md."
+            exit 0
+          fi
+          host="${DEPLOY_URL#https://}"
+          host="${host%%/*}"
+          case "$host" in
+            *.vercel.app) ;;
+            *) echo "::error::Uventet deploy-adresse: $host"; exit 1 ;;
+          esac
+          npx -y vercel@63.1.2 alias set "$host" "$ALIAS" --token "$VERCEL_TOKEN" --scope kjgra --non-interactive
+          echo "https://$ALIAS → https://$host" >> "$GITHUB_STEP_SUMMARY"

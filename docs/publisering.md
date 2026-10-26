@@ -98,11 +98,20 @@ pnpm clone:prod-to-preview --apply    # erstatter alt i preview
 ```
 Preview må ha alle migreringene prod har, ellers stopper scriptet. Bruk aldri prod som mål. `copy:test-to-prod` passer ikke her: det er laget for den gamle test-databasen og slår sammen i stedet for å erstatte.
 
+## 6. Fast preview-adresse (valgfritt)
+
+Workflowen «Fast preview-adresse» peker `lagorganisering-preview.vercel.app` til den nyeste ferdige preview-deployen, så den kan legges på hjemskjermen.
+
+1. Vercel → Account Settings → Tokens → Create: et token med tilgang til prosjektet.
+2. GitHub-secret `VERCEL_TOKEN` med tokenet. Uten den hopper workflowen over.
+
+Den gjelder fra neste preview som bygges på en branch laget etter at workflowen kom inn i `main`. Adressen følger den preview-en som sist ble ferdig, så med to åpne PR-er viser den den nyeste. Preview er beskyttet med Vercel-innlogging (Deployment Protection), så logg inn i Vercel i Safari før du legger den på hjemskjermen.
+
 ## Sjekkliste
 
 - [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt
 - [ ] Data API av
 - [ ] Eventuelt `pnpm copy:test-to-prod --apply`
 - [ ] Miljøvariabler i Vercel (Production og Preview)
-- [ ] Eventuelt preview-database (avsnitt 5)
+- [ ] Eventuelt preview-database (avsnitt 5) og fast preview-adresse (avsnitt 6)
 - [ ] Deploy fra `main`, logg inn, sjekk Innstillinger → Generelt (ingen «simulert»)
