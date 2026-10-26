@@ -22,7 +22,7 @@ export function boardMembers(ctx: GroupContext, info: PlayerTags, event: SpondEv
   const byId = new Map(ctx.group.members.map((m) => [m.id, m]));
   const make = (id: string, name: string, coach: boolean, note: string | null): BoardPlayer => {
     const t = coach ? [] : (tags.get(id) ?? []);
-    return { id, name, coach, tags: t, short: tagAbbrev(t, universe), level: coach ? null : (levels.get(id) ?? null), note };
+    return { id, name, coach, tags: t, short: tagAbbrev(t, universe), level: coach ? null : (levels.get(id) ?? null), note, out: !!note };
   };
   const out: BoardPlayer[] = [];
   const seen = new Set<string>();
