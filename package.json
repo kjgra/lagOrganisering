@@ -10,6 +10,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "clone:prod-to-preview": "node scripts/clone-prod-to-preview.mts",
     "copy:test-to-prod": "node scripts/copy-test-to-prod.mts"
   },
   "dependencies": {

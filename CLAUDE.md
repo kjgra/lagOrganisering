@@ -25,7 +25,7 @@ Web app for football coaches in Nymark: sign in with Spond, fetch participants f
 
 ## Environments
 - Local: `.env.local` (not in git). `.env.example` documents the variables.
-- Preview (Vercel branches) → simulated by default (`SPOND_MOCK`, `AI_MOCK`, in-memory database). The Supabase test project belongs to the old app.
+- Preview (Vercel branches) → simulated by default (`SPOND_MOCK`, `AI_MOCK`, in-memory database), or a separate Supabase preview project cloned from prod (`docs/publisering.md` §5, workflow «Preview-database»). The Supabase test project belongs to the old app.
 - Production (`main`) → Supabase prod project.
 
 ## UI

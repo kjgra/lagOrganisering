@@ -30,7 +30,7 @@ Settings → Environment Variables:
 | Variabel | Production | Preview |
 |---|---|---|
 | `SESSION_SECRET` | `openssl rand -base64 48` (egen verdi) | egen verdi |
-| `DATABASE_URL` | prod (pooler, 6543) | tom = simulert, eller en testdatabase |
+| `DATABASE_URL` | prod (pooler, 6543) | preview-databasen (pooler, 6543, se avsnitt 5), eller tom = simulert |
 | `SUPERADMIN_PROFILE_ID` | din Spond-profil-ID | samme (med `SPOND_MOCK` er demokontoen kjetil@demo.no alltid superadmin) |
 | `ANTHROPIC_API_KEY` | nøkkel fra console.anthropic.com | valgfri |
 | `SPOND_MOCK` | (ikke sett) | `true` for demo |
@@ -72,10 +72,37 @@ Kjør prøvekjøringen først og se gjennom tabellen før du kjører med `--appl
 2. Innstillinger → Trenere: gi app-tilgang (og eventuelt KI/admin) til trenerne.
 3. Trening → Øvelser, Årshjul, Slik trener vi og Laget: fyll inn for laget (alle trenere med app-tilgang kan gjøre det).
 
+## 5. Preview-database (valgfritt)
+
+Vercel Preview kan bruke en egen Supabase-database med en kopi av prod i stedet for minnedatabasen. Supabase sin innebygde branching krever Pro, så dette er et eget prosjekt.
+
+1. **Nytt Supabase-prosjekt**, f.eks. `nymark-preview`, samme region som prod. Gratisplanen har plass til to aktive prosjekter. Slå av Data API som i prod.
+2. **Secret i GitHub**: `SUPABASE_PREVIEW_DB_URL` = preview-prosjektets «Session pooler» (port 5432), som for prod.
+3. **Fyll databasen**: Actions → «Preview-database» → «Run workflow» på `main` med «Nullstill fra prod» krysset av. Den sletter alt i preview, kjører migreringene fra `main` og kopierer alle rader fra prod (samme ID-er; redigeringslåser kopieres ikke). Kjør den igjen når du vil ha ferske data, eller når preview har fått migreringer fra en PR som ikke ble merget.
+4. **Vercel** → Environment Variables, bare **Preview**:
+   - `DATABASE_URL`: preview-prosjektets «Transaction pooler» (port 6543)
+   - fjern `SPOND_MOCK`, så logger du inn med ekte Spond
+   - `AI_MOCK=true` for å slippe KI-kostnader, eller fjern den og sett `ANTHROPIC_API_KEY`
+   - `SESSION_SECRET` (egen verdi), `SUPERADMIN_PROFILE_ID`, `APP_ENV=TEST`
+
+   Deploy preview på nytt etterpå; nye variabler gjelder fra neste bygg.
+
+Etter dette kjører workflowen migreringer mot preview automatisk når en PR endrer `supabase/migrations/`, så en ny migrering testes i preview før den når prod. Uten secret hopper den over.
+
+Fra egen maskin:
+```sh
+export SOURCE_DATABASE_URL='postgresql://...prod...'
+export TARGET_DATABASE_URL='postgresql://...preview...'
+pnpm clone:prod-to-preview            # prøvekjøring
+pnpm clone:prod-to-preview --apply    # erstatter alt i preview
+```
+Preview må ha alle migreringene prod har, ellers stopper scriptet. Bruk aldri prod som mål. `copy:test-to-prod` passer ikke her: det er laget for den gamle test-databasen og slår sammen i stedet for å erstatte.
+
 ## Sjekkliste
 
 - [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt
 - [ ] Data API av
 - [ ] Eventuelt `pnpm copy:test-to-prod --apply`
 - [ ] Miljøvariabler i Vercel (Production og Preview)
+- [ ] Eventuelt preview-database (avsnitt 5)
 - [ ] Deploy fra `main`, logg inn, sjekk Innstillinger → Generelt (ingen «simulert»)

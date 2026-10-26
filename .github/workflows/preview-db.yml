@@ -1,0 +1,88 @@
+name: Preview-database
+
+# Holder preview-databasen (Vercel Preview) i takt med migreringene:
+# - en PR som endrer migreringer, kjører dem mot preview før merge
+# - en merge til main som endrer migreringer, gjør det samme
+# - manuelt: «Nullstill fra prod» sletter alt i preview, kjører migreringene
+#   fra main og kopierer alle data fra prod (bare fra main)
+# Uten secret SUPABASE_PREVIEW_DB_URL hoppes alt over.
+on:
+  pull_request:
+    paths: ["supabase/migrations/**"]
+  push:
+    branches: [main]
+    paths: ["supabase/migrations/**"]
+  workflow_dispatch:
+    inputs:
+      reset:
+        description: "Nullstill fra prod (sletter alt i preview og kopierer prod)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: preview-db
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Migreringer til preview
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.reset }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_PREVIEW_DB_URL: ${{ secrets.SUPABASE_PREVIEW_DB_URL }}
+    steps:
+      - name: Sjekk secret
+        id: secret
+        run: |
+          if [ -z "$SUPABASE_PREVIEW_DB_URL" ]; then
+            echo "::notice::SUPABASE_PREVIEW_DB_URL er ikke satt, hopper over. Se docs/publisering.md."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.secret.outputs.skip != 'true'
+      - uses: supabase/setup-cli@v1
+        if: steps.secret.outputs.skip != 'true'
+        with:
+          version: 2.122.0
+      # --include-all: en migrering fra en eldre PR kan komme etter en nyere som alt er kjørt.
+      - name: Kjør migreringer
+        if: steps.secret.outputs.skip != 'true'
+        run: supabase db push --db-url "$SUPABASE_PREVIEW_DB_URL" --yes --include-all
+
+  reset:
+    name: Nullstill preview fra prod
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.reset && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_PREVIEW_DB_URL: ${{ secrets.SUPABASE_PREVIEW_DB_URL }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Sjekk secrets
+        run: |
+          if [ -z "$SUPABASE_PREVIEW_DB_URL" ] || [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::Trenger både SUPABASE_PREVIEW_DB_URL og SUPABASE_DB_URL. Se docs/publisering.md."
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Sletter alt i preview og kjører migreringene fra main på nytt.
+      - name: Nullstill preview
+        run: supabase db reset --db-url "$SUPABASE_PREVIEW_DB_URL" --yes
+      - name: Kopier data fra prod
+        env:
+          SOURCE_DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          TARGET_DATABASE_URL: ${{ secrets.SUPABASE_PREVIEW_DB_URL }}
+        run: pnpm clone:prod-to-preview --apply
