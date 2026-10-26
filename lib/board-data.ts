@@ -12,7 +12,8 @@ import { profileName } from "@/lib/proposal-view";
 
 /**
  * Who can be placed on the board. For an event: players coming (before the
- * invitation is sent: everyone invited), plus anyone already placed. For a
+ * invitation is sent: everyone invited), players who have not answered yet
+ * (shown, but not placed automatically), plus anyone already placed. For a
  * gruppeutkast: the members of its (sub)group, trainers too, plus anyone placed.
  */
 export function boardMembers(ctx: GroupContext, info: PlayerTags, event: SpondEvent | null, proposal: Proposal | null, subgroupId: string | null): BoardPlayer[] {
@@ -20,18 +21,20 @@ export function boardMembers(ctx: GroupContext, info: PlayerTags, event: SpondEv
   const { tags, levels } = info;
   const universe = [...new Set([...tags.values()].flat())];
   const byId = new Map(ctx.group.members.map((m) => [m.id, m]));
-  const make = (id: string, name: string, coach: boolean, note: string | null): BoardPlayer => {
+  const make = (id: string, name: string, coach: boolean, note: string | null, maybe = false): BoardPlayer => {
     const t = coach ? [] : (tags.get(id) ?? []);
-    return { id, name, coach, tags: t, short: tagAbbrev(t, universe), level: coach ? null : (levels.get(id) ?? null), note, out: !!note };
+    return { id, name, coach, tags: t, short: tagAbbrev(t, universe), level: coach ? null : (levels.get(id) ?? null), note, out: !!note && !maybe, maybe };
   };
   const out: BoardPlayer[] = [];
   const seen = new Set<string>();
   if (event) {
     for (const p of eventParticipants(event, ctx.group)) {
       const ok = placeable(p.status, event.notSent) && isPlayerKind(p.kind);
-      if (!ok && !placed.has(p.memberId)) continue;
+      // Not answered yet (or waiting list): can be placed by hand, never automatically.
+      const maybe = !ok && !event.notSent && !!p.status && p.status !== "declined" && p.kind === "player";
+      if (!ok && !maybe && !placed.has(p.memberId)) continue;
       seen.add(p.memberId);
-      out.push(make(p.memberId, p.displayName, p.kind === "coach", ok ? null : statusLabel(p.status)));
+      out.push(make(p.memberId, p.displayName, p.kind === "coach", ok ? null : statusLabel(p.status), maybe));
     }
   } else {
     for (const m of membersInContext(ctx.group, subgroupId)) {
@@ -80,7 +83,7 @@ export function boardProps(
     assignments: proposal?.assignments ?? {},
     autoStart: !proposal && !!event,
     members: boardMembers(ctx, opts.tags, event, proposal, opts.subgroupId),
-    poolLabel: event ? (event.notSent ? "Inviteres, ikke fordelt" : "Kommer, ikke fordelt") : "Ikke fordelt",
+    poolLabel: event ? (event.notSent ? "Inviteres, ikke fordelt" : "Tilgjengelige, ikke fordelt") : "Ikke fordelt",
     links: event ? [] : ctx.group.parentLinks,
     pairs: opts.tags.pairs,
     settings: opts.settings,

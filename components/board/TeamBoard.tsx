@@ -45,8 +45,10 @@ export interface BoardPlayer {
   level: number | null;
   /** «Kommer ikke» for a placed player who no longer comes. */
   note: string | null;
-  /** Has a note: kept out of the teams (moved to the pool when the board opens). */
+  /** No longer coming: kept out of the teams (moved to the pool when the board opens). */
   out: boolean;
+  /** Has not answered: in the pool to be placed by hand, never placed automatically. */
+  maybe: boolean;
 }
 
 export interface BoardProps {
@@ -513,7 +515,8 @@ export function TeamBoard() {
   const byLabel = (l: string) => b.members.filter((m) => b.assignments[m.id] === l);
   const pool = b.members.filter((m) => !b.assignments[m.id] || !b.labels.includes(b.assignments[m.id]));
   const selP = b.members.find((m) => m.id === b.selected);
-  const nPlayers = b.members.filter((m) => !m.coach && !m.out).length;
+  const nPlayers = b.members.filter((m) => !m.coach && !m.out && !m.maybe).length;
+  const nMaybe = b.members.filter((m) => m.maybe).length;
 
   const onEnd = (e: DragEndEvent) => {
     setDragging(null);
@@ -563,6 +566,7 @@ export function TeamBoard() {
           <span style={{ fontSize: "var(--fs-body)", fontWeight: 700 }}>Antall lag</span>
           <span className="nm-muted" style={{ fontSize: "var(--fs-caption)" }}>
             {nPlayers} {nPlayers === 1 ? "spiller" : "spillere"}
+            {nMaybe ? ` · ${nMaybe} har ikke svart` : ""}
           </span>
         </div>
         <div className="nm-stepper" onClick={(e) => e.stopPropagation()}>

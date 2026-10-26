@@ -33,6 +33,19 @@ test("make teams with tap-to-move and save the proposal", async ({ page }) => {
   await expect(page.locator(".nm-proposal").first()).toBeVisible();
 });
 
+test("players who have not answered are available, but not placed automatically", async ({ page }) => {
+  await loginToEvents(page);
+  await openNextTraining(page);
+  await page.getByRole("link", { name: /Lag lag av|Nytt lagforslag/ }).click();
+  await expect(page).toHaveURL(/\/lag$/);
+  const pool = page.locator('section[aria-label="Tilgjengelige, ikke fordelt"]');
+  await expect(pool.locator(".nm-chip", { hasText: "Ikke svart" }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Fordel på nytt" }).first().click();
+  await expect(page.locator(".nm-toast")).toContainText("fordelt på nytt");
+  await expect(page.locator(".nm-team:not(.nm-team--pool) .nm-chip", { hasText: "Ikke svart" })).toHaveCount(0);
+  await expect(pool.locator(".nm-chip", { hasText: "Ikke svart" }).first()).toBeVisible();
+});
+
 test("an approved proposal can be edited from the event, and stays approved", async ({ page }) => {
   await loginToEvents(page);
   await openNextTraining(page);

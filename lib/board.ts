@@ -14,6 +14,8 @@ export interface BoardMember {
   level?: number | null;
   /** No longer coming (or no longer a member): shown, but never placed automatically. */
   out?: boolean;
+  /** Has not answered yet: can be placed by hand, but never automatically. */
+  maybe?: boolean;
 }
 
 /** «Jevne lag»: about equally strong teams. «Nivådelt»: players on the same level together. */
@@ -90,7 +92,7 @@ export function distribute(players: BoardMember[], labels: string[], seed: numbe
   const n = labels.length;
   if (!n) return {};
   const r = rng(seed);
-  const list = players.filter((p) => !p.coach && !p.out);
+  const list = players.filter((p) => !p.coach && !p.out && !p.maybe);
   const m = list.length;
   if (!m) return {};
   const mode = opts.mode ?? "even";
