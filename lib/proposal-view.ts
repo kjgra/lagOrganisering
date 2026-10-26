@@ -2,7 +2,7 @@ import { savedAt } from "@/lib/format";
 import { isPlayerKind, shortName } from "@/lib/spond/data";
 import { eventParticipants, placeable, statusLabel } from "@/lib/spond/events";
 import type { Group, SpondEvent } from "@/lib/spond/types";
-import { actionsFor, DECISION_LABEL, STATUS_LABEL, type Action, type Lock, type Proposal, type ProposalStatus } from "@/lib/store/proposals";
+import { actionsFor, DECISION_LABEL, isEditable, STATUS_LABEL, type Action, type Lock, type Proposal, type ProposalStatus } from "@/lib/store/proposals";
 import type { TagMap } from "@/lib/store/tags";
 
 /** Vest colours, team-1 … team-6. A group's colour follows its position. */
@@ -111,7 +111,7 @@ export function proposalView(
     unplaced: sortChips(eligible.filter((id) => !placed.has(id)).map(chip)),
     unplacedLabel: event?.notSent ? "Inviteres, men ikke fordelt" : "Kommer, men ikke fordelt",
     actions: actionsFor(p.status),
-    editable: ["draft", "rolled_back", "rejected"].includes(p.status),
+    editable: isEditable(p.status),
     lockedBy: lock ? profileName(group, lock.editor) : null,
     comments: p.comments.map((c) => ({ who: profileName(group, c.actor), when: savedAt(c.createdAt, now), text: c.text })),
     history: p.history.map((h) => ({ who: profileName(group, h.actor), when: savedAt(h.createdAt, now), text: DECISION_LABEL[h.text] ?? h.text })),

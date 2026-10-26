@@ -4,7 +4,7 @@ import { AppShell } from "@/components/shell/AppShell";
 import { boardProps } from "@/lib/board-data";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
-import { activeLocks, getProposal, listProposals } from "@/lib/store/proposals";
+import { activeLocks, getProposal, isEditable, listProposals } from "@/lib/store/proposals";
 import { getBoardSettings } from "@/lib/store/board-settings";
 import { listPlayerTags } from "@/lib/store/tags";
 
@@ -18,7 +18,7 @@ export async function EditDraftPage({ params, id }: { params: Promise<{ groupId:
   const back = ctx.path("/lagforslag?vis=utkast");
   const proposal = id ? await getProposal(d, ctx.user.access, id).catch(() => null) : null;
   if (id && (!proposal || proposal.eventId || proposal.groupId !== ctx.group.id)) notFound();
-  if (proposal && !["draft", "rejected", "rolled_back"].includes(proposal.status)) redirect(back);
+  if (proposal && !isEditable(proposal.status)) redirect(back);
   const subgroupId = proposal ? proposal.subgroupId : (ctx.subgroup?.id ?? null);
   const [tags, existing, locks, settings] = await Promise.all([
     listPlayerTags(d, ctx.user.access, ctx.user.rights, ctx.group.id),
