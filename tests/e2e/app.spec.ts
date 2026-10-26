@@ -33,6 +33,28 @@ test("make teams with tap-to-move and save the proposal", async ({ page }) => {
   await expect(page.locator(".nm-proposal").first()).toBeVisible();
 });
 
+test("an approved proposal can be edited from the event, and stays approved", async ({ page }) => {
+  await loginToEvents(page);
+  await openNextTraining(page);
+  await page.getByRole("link", { name: /Lag lag av|Nytt lagforslag/ }).click();
+  await expect(page).toHaveURL(/\/lag$/);
+  await page.getByLabel("Navn på forslaget").fill("Til godkjenning e2e");
+  await page.getByText("Send til godkjenning når jeg lagrer").click();
+  await page.getByRole("button", { name: /Lagre og send/ }).first().click();
+  await expect(page).toHaveURL(/arrangementer\/E-[^/]+$/);
+  const card = page.locator(".nm-proposal", { hasText: "Til godkjenning e2e" });
+  await card.getByRole("button", { name: "Godkjenn" }).click();
+  await expect(card.locator(".nm-badge", { hasText: "Godkjent" })).toBeVisible();
+  await card.getByRole("link", { name: "Åpne og rediger" }).click();
+  await expect(page).toHaveURL(/\/lag\/\d+$/);
+  await expect(page.getByText("Forslaget har status «Godkjent».")).toBeVisible();
+  await page.getByLabel("Navn på forslaget").fill("Godkjent og endret e2e");
+  await page.getByRole("button", { name: /Lagre forslag/ }).first().click();
+  await expect(page).toHaveURL(/arrangementer\/E-[^/]+$/);
+  const edited = page.locator(".nm-proposal", { hasText: "Godkjent og endret e2e" });
+  await expect(edited.locator(".nm-badge", { hasText: "Godkjent" })).toBeVisible();
+});
+
 test("Fordeling: choose nivådelt, and it is remembered", async ({ page }) => {
   await loginToEvents(page);
   await openNextTraining(page);
@@ -94,7 +116,7 @@ test("training plan: from the bank, approve, adjust with KI, PDF", async ({ page
   await expect(page).toHaveURL(/opplegg=/);
   await page.getByRole("button", { name: /Godkjenn versjon \d+/ }).click();
   await expect(page.locator(".nm-toast")).toContainText(/er godkjent/);
-  await expect(page.locator(".nm-badge", { hasText: "Godkjent" })).toBeVisible();
+  await expect(page.getByLabel("Treningsopplegg").locator(".nm-badge", { hasText: "Godkjent" })).toBeVisible();
 
   await page.getByRole("link", { name: "Juster med KI" }).click();
   await page.getByLabel("Hva skal endres?").fill("Mer konkurranse");

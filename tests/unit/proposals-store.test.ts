@@ -34,7 +34,14 @@ describe("proposals", () => {
     expect(rolled).toEqual(["Forslag 1b"]);
     expect((await getProposal(d, me, a)).status).toBe("rolled_back");
     await expect(transition(d, me, b, "approve")).rejects.toThrow(/Godkjent/);
-    await expect(saveProposal(d, me, { groupId: "G1", id: b, name: "x", labels: ["A"], assignments: {} })).rejects.toThrow(/redigeres/);
+    // An approved (or waiting) proposal can be edited at the pitch, and stays approved.
+    await saveProposal(d, me, { groupId: "G1", id: b, name: "Forslag 2", labels: ["A"], assignments: { m1: "A" }, submit: true });
+    p = await getProposal(d, me, b);
+    expect(p.status).toBe("approved");
+    expect(p.assignments).toEqual({ m1: "A" });
+    expect(p.history.map((h) => h.text).slice(-1)).toEqual(["edited"]);
+    await transition(d, me, a, "delete");
+    await expect(saveProposal(d, me, { groupId: "G1", id: a, name: "x", labels: ["A"], assignments: {} })).rejects.toThrow(/Fant ikke/);
   });
 
   it("checks group access and labels", async () => {

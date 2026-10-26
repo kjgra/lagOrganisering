@@ -54,7 +54,13 @@ export interface Proposal {
   history: (ThreadItem & { text: Decision })[];
 }
 
-export const EDITABLE: ProposalStatus[] = ["draft", "rolled_back", "rejected"];
+/**
+ * Every live proposal can be edited. Waiting and approved ones keep their
+ * status (teams change at the pitch); the history shows who changed them.
+ */
+export const EDITABLE: ProposalStatus[] = ["draft", "pending", "approved", "rolled_back", "rejected"];
+/** Statuses an edit keeps; the others go back to «Utkast» (or to approval). */
+export const KEEPS_STATUS: ProposalStatus[] = ["pending", "approved"];
 export const isEditable = (s: ProposalStatus) => EDITABLE.includes(s);
 
 export type Action = "submit" | "approve" | "reject" | "rollback" | "delete";
@@ -271,9 +277,10 @@ export async function saveProposal(
     if (!isEditable(cur[0].status)) {
       throw new UserError(`Forslaget kan ikke redigeres når status er «${STATUS_LABEL[cur[0].status]}».`);
     }
-    await t.query("UPDATE group_proposals SET name = $2, status = $3, updated_at = now() WHERE id = $1", [input.id, v.name, status]);
+    const keep = KEEPS_STATUS.includes(cur[0].status);
+    await t.query("UPDATE group_proposals SET name = $2, status = $3, updated_at = now() WHERE id = $1", [input.id, v.name, keep ? cur[0].status : status]);
     await writeGroups(t, input.id, v.labels, input.assignments);
-    await log(t, input.id, access.profileId, input.submit ? ["edited", "sent_for_approval"] : ["edited"]);
+    await log(t, input.id, access.profileId, input.submit && !keep ? ["edited", "sent_for_approval"] : ["edited"]);
     return input.id;
   });
 }

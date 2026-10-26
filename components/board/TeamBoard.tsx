@@ -68,6 +68,8 @@ export interface BoardProps {
   settingsScope: string;
   /** For «Som sist» / «Rullér»: teams of the last trainings (member ids), newest first; null for a gruppeutkast. */
   previous: string[][][] | null;
+  /** «Godkjent» or «Til godkjenning» when editing such a proposal: saving keeps that status. */
+  keptStatus: string | null;
   doneHref: string;
   lockedBy: string | null;
 }
@@ -523,10 +525,16 @@ export function TeamBoard() {
         <span className="nm-field__label">Navn på forslaget</span>
         <input className="nm-input" value={b.name} maxLength={120} onChange={(e) => b.setName(e.target.value)} />
       </label>
-      <label className="nm-check" style={{ marginBottom: "var(--space-3)" }} onClick={(e) => e.stopPropagation()}>
-        <input type="checkbox" checked={b.submit} onChange={(e) => b.setSubmit(e.target.checked)} />
-        Send til godkjenning når jeg lagrer
-      </label>
+      {b.keptStatus ? (
+        <p className="nm-hint" style={{ margin: "0 0 var(--space-3)" }}>
+          Forslaget har status «{b.keptStatus}». Endringene lagres uten at statusen endres, og historikken viser hvem som endret.
+        </p>
+      ) : (
+        <label className="nm-check" style={{ marginBottom: "var(--space-3)" }} onClick={(e) => e.stopPropagation()}>
+          <input type="checkbox" checked={b.submit} onChange={(e) => b.setSubmit(e.target.checked)} />
+          Send til godkjenning når jeg lagrer
+        </label>
+      )}
       {b.lockedBy ? (
         <div className="nm-note" role="status" style={{ marginBottom: "var(--space-3)" }}>
           <Icon icon={Pencil} />

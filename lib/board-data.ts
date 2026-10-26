@@ -6,7 +6,7 @@ import { tagAbbrev } from "@/lib/proposal-view";
 import { isPlayerKind, membersInContext } from "@/lib/spond/data";
 import { eventParticipants, placeable, statusLabel } from "@/lib/spond/events";
 import type { SpondEvent } from "@/lib/spond/types";
-import type { Lock, Proposal } from "@/lib/store/proposals";
+import { KEEPS_STATUS, STATUS_LABEL, type Lock, type Proposal } from "@/lib/store/proposals";
 import type { PlayerTags } from "@/lib/store/tags";
 import { profileName } from "@/lib/proposal-view";
 
@@ -86,6 +86,7 @@ export function boardProps(
     settings: opts.settings,
     settingsScope: ctx.subgroup?.id ?? "",
     previous: opts.previous,
+    keptStatus: proposal && KEEPS_STATUS.includes(proposal.status) ? STATUS_LABEL[proposal.status] : null,
     doneHref: opts.doneHref,
     lockedBy: lock ? profileName(ctx.group, lock.editor) : null,
   };
