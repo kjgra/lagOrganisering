@@ -1,0 +1,46 @@
+name: Migreringer til prod
+
+# Kjører `supabase db push` mot prod-databasen. Automatisk når en merge til
+# main endrer migreringer, eller manuelt fra Actions-fanen (også i GitHub-appen).
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/migrations/**"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Prøvekjøring (viser hva som ville blitt kjørt)"
+        type: boolean
+        default: false
+
+# Aldri to kjøringer samtidig, og aldri avbryt en som er i gang.
+concurrency:
+  group: migrate-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  push:
+    name: supabase db push
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.0
+      - name: Sjekk secret
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::Mangler secret SUPABASE_DB_URL. Se docs/publisering.md."
+            exit 1
+          fi
+      - name: Kjør migreringer
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          DRY_RUN: ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: supabase db push --db-url "$SUPABASE_DB_URL" --yes $DRY_RUN
