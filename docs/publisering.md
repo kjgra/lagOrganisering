@@ -4,10 +4,16 @@ Appen kjører simulert til alt er satt opp. Slik kobles ekte tjenester på.
 
 ## 1. Supabase (prod-databasen)
 
-1. **Kjør migreringene** fra din maskin:
+1. **Kjør migreringene**. GitHub-workflowen «Migreringer til prod» (`.github/workflows/migrate-prod.yml`) kjører `supabase db push` mot prod:
+   - automatisk når en merge til `main` endrer noe i `supabase/migrations/`
+   - manuelt: Actions → «Migreringer til prod» → «Run workflow» (fungerer i GitHub-appen på mobil). Kryss av «Prøvekjøring» for å se hva som ville blitt kjørt.
+
+   Den trenger én secret i repoet, `SUPABASE_DB_URL` (Settings → Secrets and variables → Actions → New repository secret): tilkoblingsstrengen fra Supabase → Connect → **«Session pooler»** (port **5432**), med passordet satt inn. Spesialtegn i passordet må URL-kodes (f.eks. `@` → `%40`). Ikke bruk den direkte tilkoblingen (bare IPv6, som GitHub ikke har) eller transaction pooler (6543).
+
+   Fra egen maskin går det fortsatt:
    ```sh
-   supabase link --project-ref <prod-ref>
-   supabase db push
+   npx supabase link --project-ref <prod-ref>
+   npx supabase db push
    ```
    Migreringene slår på RLS for alle tabeller og tar bort rettighetene til `anon` og `authenticated`.
 2. **Slå av Data API** (anbefalt): Project Settings → Data API → slå av, eller fjern `public` fra «Exposed schemas». Appen bruker ikke Supabase-klienten, bare direkte Postgres fra serveren.
@@ -68,7 +74,7 @@ Kjør prøvekjøringen først og se gjennom tabellen før du kjører med `--appl
 
 ## Sjekkliste
 
-- [ ] `supabase db push` mot prod
+- [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt
 - [ ] Data API av
 - [ ] Eventuelt `pnpm copy:test-to-prod --apply`
 - [ ] Miljøvariabler i Vercel (Production og Preview)
