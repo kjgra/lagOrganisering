@@ -22,23 +22,37 @@ jobs:
     timeout-minutes: 5
     env:
       ALIAS: lagorganisering-preview.vercel.app
+      TEAM: kjgra
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       DEPLOY_URL: ${{ github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
     steps:
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
+      # Vercel sitt REST-API direkte: CLI-en slår alltid opp brukeren først,
+      # og det feiler for tokens som bare har tilgang til teamet.
       - name: Sett alias
         run: |
           if [ -z "$VERCEL_TOKEN" ]; then
             echo "::notice::VERCEL_TOKEN er ikke satt, hopper over. Se docs/publisering.md."
             exit 0
           fi
+          token="$(printf '%s' "$VERCEL_TOKEN" | tr -d '[:space:]')"
           host="${DEPLOY_URL#https://}"
           host="${host%%/*}"
           case "$host" in
             *.vercel.app) ;;
             *) echo "::error::Uventet deploy-adresse: $host"; exit 1 ;;
           esac
-          npx -y vercel@63.1.2 alias set "$host" "$ALIAS" --token "$VERCEL_TOKEN" --scope kjgra --non-interactive
+          api() {
+            curl -sS -H "Authorization: Bearer $token" -H "Content-Type: application/json" "$@"
+          }
+          deploy="$(api "https://api.vercel.com/v13/deployments/$host?slug=$TEAM")"
+          id="$(jq -r '.id // empty' <<<"$deploy")"
+          if [ -z "$id" ]; then
+            echo "::error::Fant ikke deployen $host: $(jq -r '.error.message // .' <<<"$deploy")"
+            exit 1
+          fi
+          res="$(api -X POST "https://api.vercel.com/v2/deployments/$id/aliases?slug=$TEAM" -d "{\"alias\":\"$ALIAS\"}")"
+          if [ "$(jq -r '.alias // empty' <<<"$res")" != "$ALIAS" ]; then
+            echo "::error::Kunne ikke sette alias: $(jq -r '.error.message // .' <<<"$res")"
+            exit 1
+          fi
           echo "https://$ALIAS → https://$host" >> "$GITHUB_STEP_SUMMARY"
