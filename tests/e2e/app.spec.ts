@@ -116,7 +116,7 @@ test("training plan: from the bank, approve, adjust with KI, PDF", async ({ page
   await expect(page).toHaveURL(/opplegg=/);
   await page.getByRole("button", { name: /Godkjenn versjon \d+/ }).click();
   await expect(page.locator(".nm-toast")).toContainText(/er godkjent/);
-  await expect(page.locator(".nm-badge", { hasText: "Godkjent" })).toBeVisible();
+  await expect(page.getByLabel("Treningsopplegg").locator(".nm-badge", { hasText: "Godkjent" })).toBeVisible();
 
   await page.getByRole("link", { name: "Juster med KI" }).click();
   await page.getByLabel("Hva skal endres?").fill("Mer konkurranse");
