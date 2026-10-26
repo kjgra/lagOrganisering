@@ -12,7 +12,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { ArrowDown, Bookmark, GripVertical, Minus, Pencil, Plus, Send, Shuffle, SlidersHorizontal, Trash2, Undo2, X } from "lucide-react";
+import { ArrowDown, Bookmark, GripVertical, Minus, Pencil, Plus, Send, Shuffle, SlidersHorizontal, Trash2, Undo2, UserX, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { saveBoardSettingsAction } from "@/app/actions/board";
@@ -45,6 +45,10 @@ export interface BoardPlayer {
   level: number | null;
   /** «Kommer ikke» for a placed player who no longer comes. */
   note: string | null;
+  /** No longer coming: kept out of the teams (moved to the pool when the board opens). */
+  out: boolean;
+  /** Has not answered: in the pool to be placed by hand, never placed automatically. */
+  maybe: boolean;
 }
 
 export interface BoardProps {
@@ -89,6 +93,8 @@ interface BoardState extends BoardProps {
   removeLabel: (l: string) => void;
   renameTeam: (from: string, to: string) => string | null;
   reshuffle: () => void;
+  /** Names of players taken out of the teams because they no longer come. */
+  dropped: string[];
   /** The «Fordeling» in use. */
   rules: BoardSettings;
   applyRules: (next: BoardSettings) => void;
@@ -140,16 +146,19 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
   const [rules, setRules] = useState<BoardSettings>(props.settings ?? DEFAULT_SETTINGS);
   const byId = useMemo(() => new Map(props.members.map((m) => [m.id, m])), [props.members]);
   const allowed = useMemo(() => new Set(props.members.map((m) => m.id)), [props.members]);
-  const [assignments, setAssignments] = useState<Assignments>(() =>
-    props.autoStart ? { ...props.assignments, ...distribute(props.members, props.labels, 1, optionsOf(rules, props)) } : props.assignments,
-  );
+  // Players who no longer come are taken out of the teams when the board opens.
+  const dropped = useMemo(() => props.members.filter((m) => m.out && props.assignments[m.id]).map((m) => m.name), [props.members, props.assignments]);
+  const [assignments, setAssignments] = useState<Assignments>(() => {
+    const kept = Object.fromEntries(Object.entries(props.assignments).filter(([id]) => !byId.get(id)?.out));
+    return props.autoStart ? { ...kept, ...distribute(props.members, props.labels, 1, optionsOf(rules, props)) } : kept;
+  });
   const [selected, setSelected] = useState<string | null>(null);
   const [live, setLive] = useState("");
   const [moved, setMoved] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [submit, setSubmit] = useState(false);
-  const [dirty, setDirty] = useState(false);
+  const [dirty, setDirty] = useState(dropped.length > 0);
   // A new board is distributed automatically until someone moves a player by hand.
   const [manual, setManual] = useState(!props.autoStart);
   const lockKey = useRef<string>("");
@@ -300,6 +309,7 @@ export function BoardProvider({ props, children }: { props: BoardProps; children
       return null;
     },
     reshuffle,
+    dropped,
     rules,
     applyRules,
     undo,
@@ -505,7 +515,8 @@ export function TeamBoard() {
   const byLabel = (l: string) => b.members.filter((m) => b.assignments[m.id] === l);
   const pool = b.members.filter((m) => !b.assignments[m.id] || !b.labels.includes(b.assignments[m.id]));
   const selP = b.members.find((m) => m.id === b.selected);
-  const nPlayers = b.members.filter((m) => !m.coach).length;
+  const nPlayers = b.members.filter((m) => !m.coach && !m.out && !m.maybe).length;
+  const nMaybe = b.members.filter((m) => m.maybe).length;
 
   const onEnd = (e: DragEndEvent) => {
     setDragging(null);
@@ -535,6 +546,15 @@ export function TeamBoard() {
           Send til godkjenning når jeg lagrer
         </label>
       )}
+      {b.dropped.length ? (
+        <div className="nm-note" role="status" style={{ marginBottom: "var(--space-3)" }}>
+          <Icon icon={UserX} />
+          <span>
+            {b.dropped.join(", ")} kommer ikke lenger og er tatt ut av lagene. Lagre for å oppdatere
+            forslaget.
+          </span>
+        </div>
+      ) : null}
       {b.lockedBy ? (
         <div className="nm-note" role="status" style={{ marginBottom: "var(--space-3)" }}>
           <Icon icon={Pencil} />
@@ -546,6 +566,7 @@ export function TeamBoard() {
           <span style={{ fontSize: "var(--fs-body)", fontWeight: 700 }}>Antall lag</span>
           <span className="nm-muted" style={{ fontSize: "var(--fs-caption)" }}>
             {nPlayers} {nPlayers === 1 ? "spiller" : "spillere"}
+            {nMaybe ? ` · ${nMaybe} har ikke svart` : ""}
           </span>
         </div>
         <div className="nm-stepper" onClick={(e) => e.stopPropagation()}>

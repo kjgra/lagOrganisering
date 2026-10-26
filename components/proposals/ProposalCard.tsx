@@ -61,7 +61,7 @@ export function ProposalCard({ p, editHref, eventLine }: { p: ProposalView; edit
   const share = async () => {
     const text = [
       p.name,
-      ...p.groups.map((g) => `${g.title}: ${g.members.filter((c) => !c.coach).map((c) => c.name).join(", ") || "ingen"}`),
+      ...p.groups.map((g) => `${g.title}: ${g.members.filter((c) => !c.coach && !c.note).map((c) => c.name).join(", ") || "ingen"}`),
     ].join("\n");
     try {
       if (navigator.share) {

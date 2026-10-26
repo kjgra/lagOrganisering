@@ -157,3 +157,9 @@ describe("distribute: forrige treninger", () => {
     expect(Math.max(...sums) - Math.min(...sums)).toBeLessThanOrEqual(2);
   });
 });
+
+it("never places players who no longer come or have not answered", () => {
+  const kids = Array.from({ length: 6 }, (_, i) => ({ id: `o${i}`, name: `O${i}`, coach: false, out: i === 0, maybe: i === 1 }));
+  const a = distribute(kids, ["A", "B"], 1);
+  expect(Object.keys(a).sort()).toEqual(["o2", "o3", "o4", "o5"]);
+});
