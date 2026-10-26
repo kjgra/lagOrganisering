@@ -75,7 +75,8 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Scriptet er TypeScript (.mts); Node 20 kan ikke kjøre det direkte.
+          node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # Sletter alt i preview og kjører migreringene fra main på nytt.
