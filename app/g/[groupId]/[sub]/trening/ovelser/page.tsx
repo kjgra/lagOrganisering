@@ -19,20 +19,30 @@ export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]
   const cats = Object.keys(CATEGORIES).filter((c) => bank.some((b) => b.category === c));
   const status = (s: string) => (s === "active" ? "nm-badge--kommer" : s === "candidate" ? "nm-badge--ikke-svart" : "nm-badge--neutral");
   const base = ctx.path("/trening/ovelser");
+  // Manual creation is rarely used: with KI it is a quiet link at the bottom, without KI the only button.
+  const ai = ctx.user.rights.ai;
   const buttons = (
     <div className="nm-row" style={{ gap: "var(--space-2)", marginBottom: "var(--space-4)" }}>
-      <Link href={`${base}/ny`} className="nm-btn nm-btn--primary">
-        <Icon icon={Plus} />
-        Ny øvelse
-      </Link>
-      {ctx.user.rights.ai ? (
-        <Link href={`${base}/ki`} className="nm-btn nm-btn--secondary">
+      {ai ? (
+        <Link href={`${base}/ki`} className="nm-btn nm-btn--primary">
           <Icon icon={Sparkles} />
           Ny øvelse med KI
         </Link>
-      ) : null}
+      ) : (
+        <Link href={`${base}/ny`} className="nm-btn nm-btn--primary">
+          <Icon icon={Plus} />
+          Ny øvelse
+        </Link>
+      )}
     </div>
   );
+  const manual = ai ? (
+    <p className="nm-hint" style={{ marginTop: "var(--space-6)" }}>
+      <Link href={`${base}/ny`} style={{ textDecoration: "underline" }}>
+        Lag øvelse uten KI
+      </Link>
+    </p>
+  ) : null;
   return (
     <AppShell ctx={ctx} title="Trening" section="training">
       <TrainingTabs ctx={ctx} current="ovelser" />
@@ -76,10 +86,12 @@ export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]
               </ul>
             </section>
           ))}
+          {manual}
         </>
       ) : (
         <EmptyState icon={ClipboardList} text="Banken er tom. Øvelser fra godkjente opplegg kommer hit, eller lag en selv.">
           {buttons}
+          {manual}
         </EmptyState>
       )}
     </AppShell>
