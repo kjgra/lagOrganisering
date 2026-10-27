@@ -8,30 +8,10 @@ import { DrawingSvg } from "@/components/plans/DrawingSvg";
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
 import { NffTagger } from "@/components/training/NffTagger";
-import type { BandKey } from "@/lib/nff/fagplan";
 import { checkDrawing, DrawingError, EXAMPLE_DRAWING, fixDrawing, prettyDrawing, validateDrawing, type Drawing } from "@/lib/plans/drawing";
+import type { ExerciseValues } from "@/lib/plans/exercise-values";
 
-export interface ExerciseValues {
-  name: string;
-  category: string;
-  themes: string;
-  min_players: string;
-  max_players: string;
-  duration_minutes: string;
-  area: string;
-  organisation: string;
-  execution: string;
-  learning_points: string;
-  questions: string;
-  easier: string;
-  harder: string;
-  nff_url: string;
-  drawing: string;
-  status: string;
-  bands: BandKey[];
-  nff_activity: string;
-  nff_tags: string[];
-}
+export type { ExerciseValues };
 
 function preview(json: string): { drawing: Drawing | null; error: string; warnings: string[] } {
   if (!json.trim()) return { drawing: null, error: "", warnings: [] };

@@ -36,8 +36,16 @@ export default async function ExerciseFeedbackPage(props: PageProps<"/g/[groupId
       <p className="nm-hint" style={{ marginTop: 0 }}>
         {CATEGORIES[b.category] ?? b.category}
         {b.duration_minutes ? ` · ${b.duration_minutes} min` : ""} · Alle trenere: {feedbackSummary(b)} ·{" "}
+        {ctx.user.rights.ai ? (
+          <>
+            <Link href={`${listHref}/${b.id}/ki`} style={{ textDecoration: "underline" }}>
+              Juster med KI
+            </Link>
+            {" · "}
+          </>
+        ) : null}
         <Link href={`${listHref}/${b.id}`} style={{ textDecoration: "underline" }}>
-          Endre øvelsen
+          {ctx.user.rights.ai ? "Endre manuelt" : "Endre øvelsen"}
         </Link>
       </p>
       {b.organisation ? <p style={{ whiteSpace: "pre-wrap" }}>{b.organisation}</p> : null}
