@@ -139,7 +139,7 @@ describe("KI for one exercise", () => {
     expect(() => exerciseRevisionText(base, { ...ex, wish: "Emil skal stå i mål" })).toThrow(/Emil/);
   });
   it("turns an adjusted exercise into form values, keeping status, themes, bands and its link", () => {
-    const base = bankRow("rondo", { status: "candidate", themes: ["Samhandling"], bands: ["b10_12"] as BankExercise["bands"], nff_url: "https://www.tiim.no/rondo", area: "20 × 20 m" });
+    const base = bankRow("rondo", { status: "candidate", themes: ["Samhandling"], bands: ["10-12"], nff_url: "https://www.tiim.no/rondo", area: "20 × 20 m" });
     const a = { ...exerciseAnswerFromBank(base), gjennomforing: ["Hold ballen", "Maks to touch"], min_spillere: 0, maks_spillere: 0 };
     const r = exerciseFromAnswer(JSON.stringify(a), [base], { linkUrls: [], base });
     expect(r.exercise.nff_url).toBe("https://www.tiim.no/rondo");
@@ -147,7 +147,7 @@ describe("KI for one exercise", () => {
     expect(v.execution).toBe("Hold ballen\nMaks to touch");
     expect(v.learning_points).toBe("Se opp\nVær spillbar");
     expect(v).toMatchObject({ name: "Rondo", category: "pasning_mottak", status: "candidate", themes: "Samhandling", min_players: "4", max_players: "8", area: "20 × 20 m" });
-    expect(v.bands).toEqual(["b10_12"]);
+    expect(v.bands).toEqual(["10-12"]);
   });
   it("has a schema for one exercise where every property is required", () => {
     expect(EXERCISE_SCHEMA.required).toEqual(expect.arrayContaining(["navn", "tegning_json", "min_spillere", "omrade"]));
