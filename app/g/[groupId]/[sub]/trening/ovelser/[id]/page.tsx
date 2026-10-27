@@ -6,7 +6,7 @@ import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
 import { osloParts } from "@/lib/format";
 import { teamBand } from "@/lib/nff/bands";
-import { prettyDrawing } from "@/lib/plans/drawing";
+import { exerciseValues } from "@/lib/plans/exercise-values";
 import { feedbackSummary } from "@/lib/plans/feedback";
 import { CATEGORIES, EXERCISE_STATUSES } from "@/lib/plans/plan";
 import { getExercise, getTeamSettings } from "@/lib/store/training";
@@ -20,29 +20,8 @@ export default async function ExercisePage(props: PageProps<"/g/[groupId]/[sub]/
   const d = await db();
   const b = exId ? await getExercise(d, ctx.user.access, ctx.group.id, exId).catch(() => null) : null;
   if (exId && !b) notFound();
-  const n = (x: number | null) => (x === null ? "" : String(x));
   const initial: ExerciseValues = b
-    ? {
-        name: b.name,
-        category: b.category,
-        themes: b.themes.join(", "),
-        min_players: n(b.min_players),
-        max_players: n(b.max_players),
-        duration_minutes: n(b.duration_minutes),
-        area: b.area,
-        organisation: b.organisation,
-        execution: b.execution,
-        learning_points: b.learning_points,
-        questions: b.questions,
-        easier: b.easier,
-        harder: b.harder,
-        nff_url: b.nff_url,
-        drawing: prettyDrawing(b.drawing),
-        status: b.status,
-        bands: b.bands,
-        nff_activity: b.nff_activity,
-        nff_tags: b.nff_tags,
-      }
+    ? exerciseValues(b)
     : {
         ...{ name: "", category: "", themes: "", min_players: "", max_players: "", duration_minutes: "", area: "", organisation: "", execution: "", learning_points: "" },
         ...{ questions: "", easier: "", harder: "", nff_url: "", drawing: "", status: "active", nff_activity: "", nff_tags: [] },
@@ -64,6 +43,14 @@ export default async function ExercisePage(props: PageProps<"/g/[groupId]/[sub]/
           <Link href={`${listHref}/${b.id}/evaluering`} style={{ textDecoration: "underline" }}>
             Evaluer øvelsen
           </Link>
+          {ctx.user.rights.ai ? (
+            <>
+              {" · "}
+              <Link href={`${listHref}/${b.id}/ki`} style={{ textDecoration: "underline" }}>
+                Juster med KI
+              </Link>
+            </>
+          ) : null}
         </p>
       ) : null}
       <ExerciseForm groupId={ctx.group.id} id={b?.id ?? null} initial={initial} categories={CATEGORIES} statuses={EXERCISE_STATUSES} listHref={listHref} canDelete={ctx.user.rights.admin} />

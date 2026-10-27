@@ -132,7 +132,12 @@ async function mockCall(c: CallInput, t0: number): Promise<CallResult> {
     const theme = /Månedens tema: (.+)/.exec(c.user)?.[1]?.trim();
     const wish = /# (?:Endringsønske|Ønsker fra treneren)\n\n?([\s\S]*?)(\n\n#|\n\nJuster|$)/.exec(c.user)?.[1]?.trim() || /- Ønsker fra treneren: (.+)/.exec(c.user)?.[1];
     const current = /# Gjeldende opplegg\n\n(.+)\n/.exec(c.user)?.[1];
-    if (c.kind === "exercise") {
+    const currentExercise = /# Gjeldende øvelse\n\n(.+)\n/.exec(c.user)?.[1];
+    if (c.kind === "exercise" && currentExercise) {
+      const base = JSON.parse(currentExercise) as Record<string, unknown> & { gjennomforing: string[] };
+      text = JSON.stringify({ ...base, gjennomforing: [...base.gjennomforing, `Justert med simulert KI${wish ? `: ${wish}` : ""}.`.slice(0, 400)] });
+      usage.output_tokens = 1500;
+    } else if (c.kind === "exercise") {
       const e = ref.ovelser[1];
       text = JSON.stringify({
         ...e,

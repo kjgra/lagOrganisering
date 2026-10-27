@@ -5,9 +5,10 @@ import { z } from "zod";
 import { runAction, type ActionResult } from "@/lib/actions";
 import { findGroup, requireUser } from "@/lib/auth/current";
 import { AI_MODELS } from "@/lib/ai/plan-ai";
-import { estimateKi, prepareExerciseKi, runExerciseKi, updateLearningsWithKi } from "@/lib/ai/service";
+import { estimateKi, prepareExerciseKi, reviseExerciseKi, runExerciseKi, updateLearningsWithKi } from "@/lib/ai/service";
 import { db } from "@/lib/db";
 import { exerciseOrderContext } from "@/lib/plan-data";
+import { adjustedValues, type ExerciseValues } from "@/lib/plans/exercise-values";
 import { UserError } from "@/lib/store/access";
 import { deleteExercise, saveExercise, saveLearning, savePrinciples, saveSeason, saveTeamSettings, followMainGroup, type Part } from "@/lib/store/training";
 
@@ -170,5 +171,44 @@ export async function exerciseKiRunAction(input: z.input<typeof exerciseKiInput>
     refresh();
     const warn = r.warnings.length ? ` Merk: ${r.warnings.join(" ")}` : "";
     return { data: r.id, message: `«${r.name}» er laget med KI (${r.costText}) og lagt i banken som kandidat.${warn}` };
+  });
+}
+
+const exerciseReviseInput = z.object({
+  groupId: sid,
+  sub: subId,
+  id: z.number().int().positive(),
+  players: z.number().int().min(1).max(60).nullable(),
+  minutes: z.number().int().min(1).max(120).nullable(),
+  wish: z.string().max(1000),
+  link: z.string().max(600),
+  pitchIds: z.array(z.number().int().positive()).max(50),
+  model: z.string().refine((m) => m in AI_MODELS),
+});
+
+async function exerciseRevisePrep(input: z.input<typeof exerciseReviseInput>) {
+  const v = exerciseReviseInput.parse(input);
+  const { user, group, d } = await trainer(v.groupId, v.sub);
+  const order = await exerciseOrderContext(d, user, group, { ...v, theme: "", category: "" });
+  return { d, user, prep: await prepareExerciseKi(d, user, user.rights, group, order, { model: v.model, baseId: v.id }) };
+}
+
+/** Price estimate per model for «Juster med KI» on a bank exercise. */
+export async function exerciseReviseEstimateAction(input: z.input<typeof exerciseReviseInput>): Promise<ActionResult<Record<string, string> | null>> {
+  return runAction("Prisoverslag", async () => {
+    const { d, prep } = await exerciseRevisePrep(input);
+    return { data: await estimateKi(d, prep) };
+  });
+}
+
+/** «Juster med KI» on a bank exercise: KI's version for the form. Nothing is saved until the trainer saves the form. */
+export async function exerciseReviseRunAction(input: z.input<typeof exerciseReviseInput>): Promise<ActionResult<{ values: ExerciseValues; warnings: string[] }>> {
+  return runAction("KI", async () => {
+    const { d, user, prep } = await exerciseRevisePrep(input);
+    const r = await reviseExerciseKi(d, user, prep);
+    return {
+      data: { values: adjustedValues(r.base, r.exercise, r.extra), warnings: r.warnings },
+      message: `KI har justert «${r.exercise.navn}» (${r.costText}). Se over og lagre.`,
+    };
   });
 }

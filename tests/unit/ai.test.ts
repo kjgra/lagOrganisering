@@ -3,8 +3,10 @@ import ref from "@/lib/plans/reference-plan.json";
 import {
   answerFromPlan,
   catalogue,
+  exerciseAnswerFromBank,
   exerciseFromAnswer,
   exerciseOrderText,
+  exerciseRevisionText,
   orderText,
   planFromAnswer,
   revisionText,
@@ -16,6 +18,7 @@ import {
   DEFAULT_AI_SETTINGS,
 } from "@/lib/ai/plan-ai";
 import { extractText, parseLinks } from "@/lib/ai/links";
+import { adjustedValues } from "@/lib/plans/exercise-values";
 import { validatePlan, type BankExercise } from "@/lib/plans/plan";
 
 const plan = validatePlan(ref);
@@ -121,6 +124,30 @@ describe("KI for one exercise", () => {
     expect(r.extra).toEqual({ min_players: 6, max_players: 10, duration_minutes: 120, area: "20 × 15 m" });
     expect(r.warnings.join(" ")).toMatch(/bygger ikke på/);
     expect(() => exerciseFromAnswer(JSON.stringify({ ...a, navn: "" }), [], { linkUrls: [] })).toThrow(/ingen øvelse/);
+  });
+  it("orders an adjustment of a bank exercise with the exercise, the facts and the wish", () => {
+    const base = bankRow("rondo", { nff_url: "https://www.tiim.no/rondo" });
+    const t = exerciseRevisionText(base, { ...ex, theme: "", category: "", wish: "Mindre kø" });
+    expect(t).toContain("juster én øvelse i banken");
+    expect(t).toContain(`# Gjeldende øvelse\n\n${JSON.stringify(exerciseAnswerFromBank(base))}\n`);
+    expect(t).toContain("# Fakta nå");
+    expect(t).toContain("- Antall spillere: 8");
+    expect(t).not.toContain("- Ønsker fra treneren");
+    expect(t).toContain("# Endringsønske\n\nMindre kø");
+    expect(t.trim().endsWith("Juster øvelsen.")).toBe(true);
+    expect(() => exerciseRevisionText(base, { ...ex, wish: "" })).toThrow(/hva som skal endres/);
+    expect(() => exerciseRevisionText(base, { ...ex, wish: "Emil skal stå i mål" })).toThrow(/Emil/);
+  });
+  it("turns an adjusted exercise into form values, keeping status, themes, bands and its link", () => {
+    const base = bankRow("rondo", { status: "candidate", themes: ["Samhandling"], bands: ["10-12"], nff_url: "https://www.tiim.no/rondo", area: "20 × 20 m" });
+    const a = { ...exerciseAnswerFromBank(base), gjennomforing: ["Hold ballen", "Maks to touch"], min_spillere: 0, maks_spillere: 0 };
+    const r = exerciseFromAnswer(JSON.stringify(a), [base], { linkUrls: [], base });
+    expect(r.exercise.nff_url).toBe("https://www.tiim.no/rondo");
+    const v = adjustedValues(base, r.exercise, r.extra);
+    expect(v.execution).toBe("Hold ballen\nMaks to touch");
+    expect(v.learning_points).toBe("Se opp\nVær spillbar");
+    expect(v).toMatchObject({ name: "Rondo", category: "pasning_mottak", status: "candidate", themes: "Samhandling", min_players: "4", max_players: "8", area: "20 × 20 m" });
+    expect(v.bands).toEqual(["10-12"]);
   });
   it("has a schema for one exercise where every property is required", () => {
     expect(EXERCISE_SCHEMA.required).toEqual(expect.arrayContaining(["navn", "tegning_json", "min_spillere", "omrade"]));

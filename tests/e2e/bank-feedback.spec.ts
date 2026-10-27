@@ -22,8 +22,9 @@ test("evaluate an exercise from the bank", async ({ page }) => {
   await page.reload();
   await expect(page.getByRole("button", { name: (await target.textContent())! })).toHaveAttribute("aria-pressed", "true");
 
-  // Changing the exercise is a page of its own.
-  await page.getByRole("link", { name: "Endre øvelsen" }).click();
+  // Changing the exercise is a page of its own: KI first, or by hand.
+  await expect(page.getByRole("link", { name: "Juster med KI" })).toBeVisible();
+  await page.getByRole("link", { name: "Endre manuelt" }).click();
   await expect(page).toHaveURL(/\/trening\/ovelser\/\d+$/);
   await expect(page.getByLabel("Navn")).toBeVisible();
   await expect(page.getByRole("button", { name: "Lagre evalueringen" })).toHaveCount(0);
@@ -44,6 +45,35 @@ test("make a new exercise with KI from the bank", async ({ page }) => {
   await expect(page.getByText(/laget med KI/).first()).toBeVisible();
   await expect(page.getByLabel("Status")).toHaveValue("candidate");
   await expect(page.getByLabel("Min. spillere")).toHaveValue("6");
+});
+
+test("adjust an exercise with KI, look it over and save it", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/g/G-FOTBALL/alle/trening/ovelser/ny");
+  const name = `Justeres ${Date.now()}`;
+  await page.getByLabel("Navn").fill(name);
+  await page.locator(".nm-field", { has: page.locator(".nm-field__label", { hasText: /^Kategori$/ }) }).locator("select").selectOption("smaaspill");
+  await page.getByLabel("Gjennomføring").fill("Spill 3 mot 3");
+  await page.getByRole("button", { name: "Lagre øvelsen" }).click();
+  await expect(page).toHaveURL(/\/trening\/ovelser$/);
+
+  // KI is the default way to change an exercise; manual edit is a link away.
+  await page.getByRole("link", { name: `Juster ${name} med KI` }).click();
+  await expect(page).toHaveURL(/\/trening\/ovelser\/\d+\/ki$/);
+  await expect(page.getByRole("link", { name: "Endre manuelt i stedet" })).toBeVisible();
+  await page.getByLabel("Hva skal endres?").fill("Mindre kø");
+  await page.getByRole("button", { name: "Juster med KI" }).click();
+  await expect(page.locator(".nm-toast")).toContainText(`KI har justert «${name}»`, { timeout: 30_000 });
+  await expect(page.getByText("Ingenting er lagret ennå")).toBeVisible();
+  await expect(page.getByLabel("Gjennomføring")).toHaveValue(/Spill 3 mot 3\nJustert med simulert KI: Mindre kø\./);
+  await page.getByRole("button", { name: "Lagre øvelsen" }).click();
+  await expect(page).toHaveURL(/\/trening\/ovelser$/);
+
+  await page.getByRole("link", { name: `Juster ${name} med KI` }).click();
+  await page.getByRole("link", { name: "Endre manuelt i stedet" }).click();
+  await expect(page).toHaveURL(/\/trening\/ovelser\/\d+$/);
+  await expect(page.getByLabel("Gjennomføring")).toHaveValue(/Justert med simulert KI: Mindre kø\./);
 });
 
 test("tag an exercise with NFF's fagplan", async ({ page }) => {
@@ -78,7 +108,8 @@ test("a trainer without admin edits «Trening», but cannot delete exercises or 
   await expect(page.locator(".nm-toast")).toContainText("Prinsippene er lagret");
 
   await page.getByRole("navigation", { name: "Trening" }).getByRole("link", { name: "Øvelser" }).click();
-  await page.locator(".nm-pick").first().getByRole("link", { name: /^Endre / }).click();
+  await page.locator(".nm-pick").first().getByRole("link", { name: /^Juster .* med KI$/ }).click();
+  await page.getByRole("link", { name: "Endre manuelt i stedet" }).click();
   await expect(page.getByLabel("Navn")).toBeVisible();
   await expect(page.getByRole("button", { name: "Slett" })).toHaveCount(0);
 
@@ -98,12 +129,13 @@ test("an admin deletes an exercise only after «Er du sikker?»", async ({ page 
   await page.locator(".nm-field", { has: page.locator(".nm-field__label", { hasText: /^Kategori$/ }) }).locator("select").selectOption("annet");
   await page.getByRole("button", { name: "Lagre øvelsen" }).click();
   await expect(page).toHaveURL(/\/trening\/ovelser$/);
-  await page.getByRole("link", { name: `Endre ${name}` }).click();
+  await page.getByRole("link", { name: `Juster ${name} med KI` }).click();
+  await page.getByRole("link", { name: "Endre manuelt i stedet" }).click();
   await page.getByRole("button", { name: "Slett" }).click();
   await expect(page.getByText("Er du sikker? Øvelsen slettes for godt fra banken.")).toBeVisible();
   await page.getByRole("button", { name: "Ja, slett" }).click();
   await expect(page.locator(".nm-toast")).toContainText("Øvelsen er slettet");
-  await expect(page.getByRole("link", { name: `Endre ${name}` })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: `Juster ${name} med KI` })).toHaveCount(0);
 });
 
 test("a team has the main group's «Laget» until it saves its own, and can follow the main group again", async ({ page }) => {

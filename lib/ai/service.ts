@@ -2,7 +2,7 @@ import "server-only";
 import type { CurrentUser } from "@/lib/auth/current";
 import type { Db } from "@/lib/db";
 import { osloMonthStart, shortDate } from "@/lib/format";
-import type { Plan } from "@/lib/plans/plan";
+import type { BankExercise, Plan } from "@/lib/plans/plan";
 import { FEEDBACK_TAGS, USE_AGAIN } from "@/lib/plans/feedback";
 import { isSensitive, memberNames, namesProblem } from "@/lib/sensitive";
 import { UserError, type Rights } from "@/lib/store/access";
@@ -31,6 +31,7 @@ import {
   EXERCISE_SCHEMA,
   exerciseFromAnswer,
   exerciseOrderText,
+  exerciseRevisionText,
   experienceText,
   formatNok,
   orderText,
@@ -144,14 +145,25 @@ export async function runKi(d: Db, user: CurrentUser, prep: KiPrep, eventId: str
 }
 
 // «Ny øvelse med KI»: one exercise for the bank, with the same instructions, bank and experience.
+// «Juster med KI» on a bank exercise works the same way, with the exercise as `base`.
 
 export interface ExerciseKiPrep extends Omit<KiPrep, "answerCtx"> {
   theme: string;
   linkUrls: string[];
+  base: BankExercise | null;
 }
 
-export async function prepareExerciseKi(d: Db, user: CurrentUser, rights: Rights, group: Group, order: ExerciseOrderContext, opts: { model?: string; now?: Date } = {}): Promise<ExerciseKiPrep> {
+export async function prepareExerciseKi(
+  d: Db,
+  user: CurrentUser,
+  rights: Rights,
+  group: Group,
+  order: ExerciseOrderContext,
+  opts: { model?: string; now?: Date; baseId?: number } = {},
+): Promise<ExerciseKiPrep> {
   const { settings, model, budget, bank, system } = await kiBasis(d, user, rights, group, order.sub ?? "", opts.model, opts.now ?? new Date(), order.theme);
+  const base = opts.baseId === undefined ? null : (bank.find((b) => b.id === opts.baseId) ?? null);
+  if (opts.baseId !== undefined && !base) throw new UserError("Fant ikke øvelsen.");
   return {
     groupId: group.id,
     kind: "exercise",
@@ -159,21 +171,22 @@ export async function prepareExerciseKi(d: Db, user: CurrentUser, rights: Rights
     settings,
     budget,
     bank,
-    call: { model, system, user: exerciseOrderText(order), schema: EXERCISE_SCHEMA, maxTokens: EXERCISE_MAX_TOKENS, kind: "exercise" },
+    call: { model, system, user: base ? exerciseRevisionText(base, order) : exerciseOrderText(order), schema: EXERCISE_SCHEMA, maxTokens: EXERCISE_MAX_TOKENS, kind: "exercise" },
     theme: order.theme,
     linkUrls: order.links.map((l) => l.url),
+    base,
   };
 }
 
-/** Call the model, log the call, and save the exercise in the bank as a candidate made with KI. */
-export async function runExerciseKi(d: Db, user: CurrentUser, prep: ExerciseKiPrep) {
+/** Call the model and log the call (also when it failed, since it may have cost money). */
+async function callExerciseKi(d: Db, user: CurrentUser, prep: ExerciseKiPrep) {
   const r = await callClaude(prep.call);
   let result: ReturnType<typeof exerciseFromAnswer> | null = null;
   let errorCode = r.errorCode;
   let message = r.message;
   if (r.ok) {
     try {
-      result = exerciseFromAnswer(r.text, prep.bank, { linkUrls: prep.linkUrls });
+      result = exerciseFromAnswer(r.text, prep.bank, { linkUrls: prep.linkUrls, base: prep.base });
     } catch (err) {
       errorCode = "ugyldig_svar";
       message = `KI-svaret kunne ikke brukes: ${(err as Error).message}`;
@@ -188,9 +201,21 @@ export async function runExerciseKi(d: Db, user: CurrentUser, prep: ExerciseKiPr
     null,
   );
   if (!result) throw new AiError(message || "Noe gikk galt med KI. Prøv igjen om litt.");
+  return { ...result, costText: formatNok(cost, prep.settings.usd_nok) };
+}
+
+/** «Ny øvelse med KI»: call the model and save the exercise in the bank as a candidate made with KI. */
+export async function runExerciseKi(d: Db, user: CurrentUser, prep: ExerciseKiPrep) {
+  const result = await callExerciseKi(d, user, prep);
   const id = await savePlanExercise(d, user.access, prep.groupId, result.exercise, [prep.theme], "ai", result.extra);
   if (id === null) throw new AiError("Øvelsen fantes allerede i banken. Prøv igjen.");
-  return { id, name: result.exercise.navn, warnings: result.warnings, costText: formatNok(cost, prep.settings.usd_nok) };
+  return { id, name: result.exercise.navn, warnings: result.warnings, costText: result.costText };
+}
+
+/** «Juster med KI»: the adjusted exercise, not saved. The trainer looks it over in the form and saves it there. */
+export async function reviseExerciseKi(d: Db, user: CurrentUser, prep: ExerciseKiPrep) {
+  if (!prep.base) throw new UserError("Fant ikke øvelsen.");
+  return { base: prep.base, ...(await callExerciseKi(d, user, prep)) };
 }
 
 // Learnings with KI: the old text and the evaluations since the last KI version give a new version.

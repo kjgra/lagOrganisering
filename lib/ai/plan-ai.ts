@@ -29,7 +29,7 @@ import {
   temaTag,
   type BandKey,
 } from "@/lib/nff/fagplan";
-import { EXERCISE_TASK, PLAN_INSTRUCTIONS } from "./prompts";
+import { EXERCISE_REVISION_TASK, EXERCISE_TASK, PLAN_INSTRUCTIONS } from "./prompts";
 
 /**
  * KI for training plans (port of fct_ai.R). One call gives a plan as JSON
@@ -491,14 +491,10 @@ export interface ExerciseOrderContext {
   fagplan?: string;
 }
 
-/** The order for «Ny øvelse med KI»: one exercise for the bank, without names. */
-export function exerciseOrderText(c: ExerciseOrderContext): string {
-  if (!c.theme.trim() && !c.wish.trim() && !c.links.length) throw new AiError("Skriv et tema eller et ønske for øvelsen.");
-  checkWish([c.wish], c.names);
+/** The facts in an order for one exercise, one line each; empty ones left out. */
+function exerciseOrderLines(c: ExerciseOrderContext): string[] {
   const line = (label: string, x: string | number | null | undefined) => (x !== null && x !== undefined && String(x).trim() ? `- ${label}: ${String(x).trim()}` : null);
-  const out = [
-    "# Bestilling",
-    "",
+  return [
     line("Tema", c.theme),
     line("Om temaet", c.themeDescription),
     line("Alder", c.team.age_group),
@@ -510,7 +506,58 @@ export function exerciseOrderText(c: ExerciseOrderContext): string {
     line("Kategori", CATEGORIES[c.category] ? `${c.category} (${CATEGORIES[c.category]})` : null),
     line("Ønsker fra treneren", c.wish),
   ].filter((x) => x !== null);
+}
+
+/** The order for «Ny øvelse med KI»: one exercise for the bank, without names. */
+export function exerciseOrderText(c: ExerciseOrderContext): string {
+  if (!c.theme.trim() && !c.wish.trim() && !c.links.length) throw new AiError("Skriv et tema eller et ønske for øvelsen.");
+  checkWish([c.wish], c.names);
+  const out = ["# Bestilling", "", ...exerciseOrderLines(c)];
   return `${EXERCISE_TASK}\n${out.join("\n")}${c.fagplan ? `\n\n${c.fagplan}` : ""}${linksText(c.links)}\n\nLag øvelsen.`;
+}
+
+/** A bank exercise in the answer schema, to adjust it with KI. */
+export function exerciseAnswerFromBank(b: BankExercise): ExerciseAnswer {
+  const e = exerciseFromBank(b);
+  return {
+    kilde: "justert",
+    kode: b.code,
+    basert_pa: b.code,
+    naermeste_kode: "",
+    hvorfor_ny: "",
+    navn: b.name,
+    kategori: categoryKey(b.category),
+    fokus: "",
+    organisering: e.organisering,
+    gjennomforing: e.gjennomforing,
+    tilpasning: [],
+    laeringsmomenter: e.laeringsmomenter,
+    sporsmal: e.sporsmal,
+    enklere: b.easier,
+    vanskeligere: b.harder,
+    tegning_json: b.drawing ? JSON.stringify(compactDrawing(b.drawing)) : "",
+    lenke: b.nff_url,
+    aktivitet: b.nff_activity,
+    nff_tags: b.nff_tags,
+    min_spillere: b.min_players ?? 0,
+    maks_spillere: b.max_players ?? 0,
+    minutter: b.duration_minutes ?? 0,
+    omrade: b.area,
+  };
+}
+
+/** The order for «Juster med KI» on a bank exercise: the exercise, the facts now and what to change. */
+export function exerciseRevisionText(base: BankExercise, c: ExerciseOrderContext): string {
+  if (!c.wish.trim() && !c.links.length) throw new AiError("Skriv hva som skal endres, eller legg inn en lenke.");
+  checkWish([c.wish], c.names);
+  const facts = ["# Fakta nå", "", ...exerciseOrderLines({ ...c, wish: "" })];
+  return (
+    `${EXERCISE_REVISION_TASK}\n# Gjeldende øvelse\n\n${JSON.stringify(exerciseAnswerFromBank(base))}\n\n${facts.join("\n")}` +
+    (c.fagplan ? `\n\n${c.fagplan}` : "") +
+    (c.wish.trim() ? `\n\n# Endringsønske\n\n${c.wish.trim()}` : "") +
+    linksText(c.links) +
+    "\n\nJuster øvelsen."
+  );
 }
 
 /** The order for «Juster med KI»: the current plan, the facts now, comments and what to change. */
@@ -708,7 +755,11 @@ export interface ExerciseExtra {
 }
 
 /** Turn the answer to «Ny øvelse med KI» into an exercise for the bank. */
-export function exerciseFromAnswer(answer: string, bank: BankExercise[], ctx: { linkUrls: string[] }): { exercise: PlanExercise; extra: ExerciseExtra; warnings: string[] } {
+export function exerciseFromAnswer(
+  answer: string,
+  bank: BankExercise[],
+  ctx: { linkUrls: string[]; base?: BankExercise | null },
+): { exercise: PlanExercise; extra: ExerciseExtra; warnings: string[] } {
   let a: Partial<ExerciseAnswer>;
   try {
     a = JSON.parse(answer);
@@ -716,7 +767,9 @@ export function exerciseFromAnswer(answer: string, bank: BankExercise[], ctx: { 
     throw new AiError("Svaret er ikke gyldig JSON.");
   }
   const warnings: string[] = [];
-  const exercise = newExercise(a, txt(a.kilde), "Øvelsen", { codes: bank.map((b) => b.code), used: [], allowedLinks: new Set(ctx.linkUrls), warnings });
+  // An adjusted exercise may keep the link it had.
+  const allowedLinks = new Set([...ctx.linkUrls, ...(ctx.base?.nff_url ? [ctx.base.nff_url] : [])]);
+  const exercise = newExercise(a, txt(a.kilde), "Øvelsen", { codes: bank.map((b) => b.code), used: [], allowedLinks, warnings });
   if (!exercise) throw new AiError("Svaret hadde ingen øvelse som kunne brukes.");
   for (const u of ctx.linkUrls) if (exercise.nff_url !== u) warnings.push(`Øvelsen bygger ikke på ${u}.`);
   const n = (x: unknown, hi: number) => {
