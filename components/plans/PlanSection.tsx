@@ -93,7 +93,7 @@ export async function PlanSection({ ctx, event, selected }: { ctx: GroupContext;
         {!past ? (
           <div className="nm-row" style={{ gap: "var(--space-2)" }}>
             {prev ? (
-              <Link href={`${base}/opplegg/endre?fra=${prev.id}`} className="nm-btn nm-btn--primary">
+              <Link href={`${base}/opplegg/endre?fra=${prev.id}`} className="nm-btn nm-btn--secondary">
                 <Icon icon={Copy} />
                 Bruk opplegget fra {prevEvent?.start ? dayLabel(prevEvent.start) : "forrige økt"}
               </Link>

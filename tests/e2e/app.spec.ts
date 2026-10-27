@@ -18,7 +18,7 @@ test("wrong password gives a message", async ({ page }) => {
 test("make teams with tap-to-move and save the proposal", async ({ page }) => {
   await loginToEvents(page);
   await openNextTraining(page);
-  await page.getByRole("link", { name: /Lag lag av|Nytt lagforslag/ }).click();
+  await page.getByRole("link", { name: /^(Lag lag|Nytt lagforslag)/ }).click();
   await expect(page).toHaveURL(/\/lag$/);
   const lag1 = page.locator('section[aria-label^="Lag 1"]');
   const lag2 = page.locator('section[aria-label^="Lag 2"]');
@@ -36,7 +36,7 @@ test("make teams with tap-to-move and save the proposal", async ({ page }) => {
 test("players who have not answered are available, but not placed automatically", async ({ page }) => {
   await loginToEvents(page);
   await openNextTraining(page);
-  await page.getByRole("link", { name: /Lag lag av|Nytt lagforslag/ }).click();
+  await page.getByRole("link", { name: /^(Lag lag|Nytt lagforslag)/ }).click();
   await expect(page).toHaveURL(/\/lag$/);
   const pool = page.locator('section[aria-label="Tilgjengelige, ikke fordelt"]');
   await expect(pool.locator(".nm-chip", { hasText: "Ikke svart" }).first()).toBeVisible();
@@ -49,7 +49,7 @@ test("players who have not answered are available, but not placed automatically"
 test("an approved proposal can be edited from the event, and stays approved", async ({ page }) => {
   await loginToEvents(page);
   await openNextTraining(page);
-  await page.getByRole("link", { name: /Lag lag av|Nytt lagforslag/ }).click();
+  await page.getByRole("link", { name: /^(Lag lag|Nytt lagforslag)/ }).click();
   await expect(page).toHaveURL(/\/lag$/);
   await page.getByLabel("Navn på forslaget").fill("Til godkjenning e2e");
   await page.getByText("Send til godkjenning når jeg lagrer").click();
@@ -71,7 +71,7 @@ test("an approved proposal can be edited from the event, and stays approved", as
 test("Fordeling: choose nivådelt, and it is remembered", async ({ page }) => {
   await loginToEvents(page);
   await openNextTraining(page);
-  await page.getByRole("link", { name: /Lag lag av|Nytt lagforslag/ }).click();
+  await page.getByRole("link", { name: /^(Lag lag|Nytt lagforslag)/ }).click();
   await expect(page).toHaveURL(/\/lag$/);
   await openFordeling(page);
   const sheet = page.getByRole("dialog", { name: "Fordeling" });
@@ -96,12 +96,12 @@ test("Fordeling: choose nivådelt, and it is remembered", async ({ page }) => {
 test("Fordeling: «Som sist» builds on the teams of the training before", async ({ page }) => {
   await loginToEvents(page);
   await openNextTraining(page);
-  await page.getByRole("link", { name: /Lag lag av|Nytt lagforslag/ }).click();
+  await page.getByRole("link", { name: /^(Lag lag|Nytt lagforslag)/ }).click();
   await page.getByRole("button", { name: /Lagre forslag/ }).first().click();
   await expect(page).toHaveURL(/arrangementer\/E-[^/]+$/);
   await page.goto("/g/G-FOTBALL/S-G2016/arrangementer");
   await page.locator(".nm-event", { hasNotText: /Seriekamp|Avlyst/ }).nth(1).click();
-  await page.getByRole("link", { name: /Lag lag av|Nytt lagforslag/ }).click();
+  await page.getByRole("link", { name: /^(Lag lag|Nytt lagforslag)/ }).click();
   await expect(page).toHaveURL(/\/lag$/);
   await openFordeling(page);
   const sheet = page.getByRole("dialog", { name: "Fordeling" });
