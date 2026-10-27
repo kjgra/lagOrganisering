@@ -144,6 +144,19 @@ test("training plan: from the bank, approve, adjust with KI, PDF", async ({ page
   expect(pdf.headers()["content-type"]).toBe("application/pdf");
 });
 
+test("training plan: reuse the plan of the training before", async ({ page }, info) => {
+  await loginToEvents(page);
+  // The plan test made a plan for the next training. Each project copies it to its own later training.
+  await page.locator(".nm-event", { hasNotText: /Seriekamp|Avlyst/ }).nth(info.project.name === "mobil" ? 1 : 2).click();
+  await expect(page).toHaveURL(/arrangementer\/E-/);
+  await page.getByRole("link", { name: /^Bruk opplegget fra / }).click();
+  await expect(page).toHaveURL(/opplegg\/endre\?fra=\d+/);
+  await expect(page.getByText("fra forrige økt").first()).toBeVisible();
+  await page.getByRole("button", { name: "Lagre opplegget" }).click();
+  await expect(page).toHaveURL(/opplegg=/);
+  await expect(page.locator(".nm-toast")).toContainText("Versjon 1 er lagret");
+});
+
 test("admin: give KI access and save the season plan", async ({ page }) => {
   await login(page);
   await expect(page).toHaveURL(/arrangementer|velg-gruppe/);

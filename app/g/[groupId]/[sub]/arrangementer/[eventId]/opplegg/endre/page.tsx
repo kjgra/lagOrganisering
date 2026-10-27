@@ -11,7 +11,7 @@ import { meanText } from "@/lib/plans/feedback";
 import { eventIsPast } from "@/lib/spond/events";
 import { getPlan, getTeamSettings, listExercises } from "@/lib/store/training";
 
-/** Make a plan by hand, or change a version (saved as a new version). */
+/** Make a plan by hand, change a version (saved as a new version), or copy the plan of an earlier event. */
 export default async function EditPlanPage(props: PageProps<"/g/[groupId]/[sub]/arrangementer/[eventId]/opplegg/endre">) {
   const ctx = await contextFromParams(props.params);
   const { eventId } = await props.params;
@@ -28,7 +28,9 @@ export default async function EditPlanPage(props: PageProps<"/g/[groupId]/[sub]/
     themeForEvent(d, ctx.user, ctx.group, event),
     fromId ? getPlan(d, ctx.user.access, fromId).catch(() => null) : Promise.resolve(null),
   ]);
-  if (fromId && (!base || base.eventId !== event.id)) notFound();
+  if (fromId && (!base || base.groupId !== ctx.group.id)) notFound();
+  // A plan from another event is copied: saved here as this event's first version.
+  const copy = !!base && base.eventId !== event.id;
 
   const bankItems: EditorExercise[] = bank
     .filter((b) => b.status !== "archived")
@@ -40,7 +42,7 @@ export default async function EditPlanPage(props: PageProps<"/g/[groupId]/[sub]/
       note: [b.status === "candidate" ? "kandidat" : "", b.fb_n ? `snitt ${meanText(b.fb_mean ?? 0)} av 3 (${b.fb_n})` : "", b.themes.length ? b.themes.join(", ") : ""].filter(Boolean).join(" · "),
     }));
   const chosen: EditorExercise[] = base
-    ? base.plan.ovelser.map((e, i) => ({ key: bank.some((b) => b.code === e.kode) && e.kilde === "bank" ? `b:${e.kode}` : `k:${i}`, ref: { keep: i + 1 }, name: e.navn, category: e.kategori, note: `fra versjon ${base.version}` }))
+    ? base.plan.ovelser.map((e, i) => ({ key: bank.some((b) => b.code === e.kode) && e.kilde === "bank" ? `b:${e.kode}` : `k:${i}`, ref: { keep: i + 1 }, name: e.navn, category: e.kategori, note: copy ? "fra forrige økt" : `fra versjon ${base.version}` }))
     : [];
   const initial = base ? settingsFromPlan(base.plan) : defaultSettings(season?.theme ?? "");
   if (!base && team.session_minutes) {
@@ -50,8 +52,8 @@ export default async function EditPlanPage(props: PageProps<"/g/[groupId]/[sub]/
   }
 
   return (
-    <AppShell ctx={ctx} title={base ? `Endre opplegg v${base.version}` : `Opplegg · ${event.start ? dayLabel(event.start) : event.heading}`} section="events" back={eventPath}>
-      <PlanEditor groupId={ctx.group.id} eventId={event.id} baseId={base?.id ?? null} initial={initial} chosen={chosen} bank={bankItems} doneHref={eventPath} />
+    <AppShell ctx={ctx} title={copy && base ? `Kopier opplegg · ${base.plan.tittel}` : base ? `Endre opplegg v${base.version}` : `Opplegg · ${event.start ? dayLabel(event.start) : event.heading}`} section="events" back={eventPath}>
+      <PlanEditor groupId={ctx.group.id} eventId={event.id} baseId={base?.id ?? null} copy={copy} initial={initial} chosen={chosen} bank={bankItems} doneHref={eventPath} />
     </AppShell>
   );
 }

@@ -23,6 +23,7 @@ import {
   listSeason,
   myBankFeedback,
   planVersions,
+  previousPlan,
   principlesState,
   saveBankFeedback,
   saveFeedback,
@@ -256,6 +257,19 @@ describe("«Trening» for every trainer, per subgroup", () => {
     expect(await events("J")).toEqual(["EA", "EJ"]);
     expect(await events("")).toEqual(["EA", "EG", "EJ"]);
     expect((await learningState(d, t, "G5", "G")).nNew).toBe(2);
+  });
+});
+
+describe("previous plan", () => {
+  it("picks the newest earlier event with a plan, its approved version before newer drafts", async () => {
+    const a1 = await savePlan(d, me, "G1", "EP-A", plan);
+    await savePlan(d, me, "G1", "EP-A", { ...plan, tittel: "Utkast" });
+    await approvePlan(d, me, a1.id);
+    const b = await savePlan(d, me, "G1", "EP-B", { ...plan, tittel: "Eldre" });
+    expect(await previousPlan(d, me, "G1", ["EP-NONE", "EP-A", "EP-B"])).toEqual({ id: a1.id, eventId: "EP-A", title: plan.tittel });
+    expect((await previousPlan(d, me, "G1", ["EP-B", "EP-A"]))?.id).toBe(b.id);
+    expect(await previousPlan(d, me, "G1", ["EP-NONE"])).toBeNull();
+    await expect(previousPlan(d, me, "G9", ["EP-A"])).rejects.toThrow(/tilgang/);
   });
 });
 

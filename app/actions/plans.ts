@@ -79,7 +79,8 @@ export async function savePlanAction(input: z.input<typeof planInput>): Promise<
     const d = await db();
     const bank = await listExercises(d, user.access, group.id);
     const base = v.baseId ? await getPlan(d, user.access, v.baseId) : null;
-    if (base && (base.groupId !== group.id || base.eventId !== event.id)) throw new UserError("Opplegget hører til et annet arrangement.");
+    // A base from another event of the group is a copy of an earlier session.
+    if (base && base.groupId !== group.id) throw new UserError("Opplegget hører til en annen gruppe.");
     const ex: PlanExercise[] = v.exercises.map((x) => {
       if ("bank" in x) {
         const b = bank.find((e) => e.code === x.bank && e.status !== "archived");
