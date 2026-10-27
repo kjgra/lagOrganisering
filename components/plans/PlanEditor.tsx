@@ -19,11 +19,13 @@ export interface EditorExercise {
 
 const num = (s: string, lo: number, hi: number) => Math.min(hi, Math.max(lo, Math.round(Number(s) || 0)));
 
-/** Put a plan together from the bank (or change a version): exercises in order, times and texts. */
+/** Put a plan together from the bank (or change a version, or copy an earlier session's plan): exercises in order, times and texts. */
 export function PlanEditor(props: {
   groupId: string;
   eventId: string;
   baseId: number | null;
+  /** The base is from an earlier event: saved here as a new plan. */
+  copy?: boolean;
   initial: PlanSettings;
   chosen: EditorExercise[];
   bank: EditorExercise[];
@@ -234,7 +236,7 @@ export function PlanEditor(props: {
       <div>
         <button type="submit" className="nm-btn nm-btn--primary nm-btn--lg" disabled={pending || !list.length}>
           <Icon icon={Save} />
-          {props.baseId ? "Lagre som ny versjon" : "Lagre opplegget"}
+          {props.baseId && !props.copy ? "Lagre som ny versjon" : "Lagre opplegget"}
         </button>
       </div>
     </form>

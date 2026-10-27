@@ -1,4 +1,4 @@
-import { ClipboardCheck, FileDown, Pencil, Sparkles } from "lucide-react";
+import { ClipboardCheck, Copy, FileDown, Pencil, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { DrawingSvg } from "@/components/plans/DrawingSvg";
 import { PlanComments } from "@/components/plans/PlanComments";
@@ -7,13 +7,14 @@ import { Icon } from "@/components/ui/icon";
 import { AI_MODELS } from "@/lib/ai/plan-ai";
 import type { GroupContext } from "@/lib/context";
 import { db } from "@/lib/db";
-import { savedAt } from "@/lib/format";
+import { trainingEventsBefore } from "@/lib/events-data";
+import { dayLabel, savedAt } from "@/lib/format";
 import { FEEDBACK_TAGS, RATINGS, ratingsText } from "@/lib/plans/feedback";
 import { bankCandidates, schedule, type PlanExercise } from "@/lib/plans/plan";
 import { profileName } from "@/lib/proposal-view";
 import { eventIsPast } from "@/lib/spond/events";
 import type { SpondEvent } from "@/lib/spond/types";
-import { getPlan, listExercises, listFeedback, listPlanComments, planVersions } from "@/lib/store/training";
+import { getPlan, listExercises, listFeedback, listPlanComments, planVersions, previousPlan } from "@/lib/store/training";
 
 function Lines({ title, items }: { title: string; items: string[] }) {
   if (!items.length) return null;
@@ -79,6 +80,10 @@ export async function PlanSection({ ctx, event, selected }: { ctx: GroupContext;
   );
 
   if (!versions.length) {
+    // The newest earlier training of the subgroup with a plan, to copy from.
+    const earlier = past ? [] : await trainingEventsBefore(user, group.id, ctx.subgroup?.id ?? null, event).catch(() => []);
+    const prev = earlier.length ? await previousPlan(d, user.access, group.id, earlier.map((e) => e.id)) : null;
+    const prevEvent = prev ? earlier.find((e) => e.id === prev.eventId) : undefined;
     return (
       <section aria-labelledby="plan-h">
         {head}
@@ -87,6 +92,12 @@ export async function PlanSection({ ctx, event, selected }: { ctx: GroupContext;
         </p>
         {!past ? (
           <div className="nm-row" style={{ gap: "var(--space-2)" }}>
+            {prev ? (
+              <Link href={`${base}/opplegg/endre?fra=${prev.id}`} className="nm-btn nm-btn--secondary">
+                <Icon icon={Copy} />
+                Bruk opplegget fra {prevEvent?.start ? dayLabel(prevEvent.start) : "forrige økt"}
+              </Link>
+            ) : null}
             <Link href={`${base}/opplegg/endre`} className="nm-btn nm-btn--secondary">
               <Icon icon={Pencil} />
               Lag opplegg

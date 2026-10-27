@@ -493,6 +493,26 @@ export async function latestPlans(d: Db, access: Access, groupId: string, eventI
   );
 }
 
+/**
+ * The plan to reuse from earlier events (newest first): the first event that
+ * has one, and its approved version, else its newest.
+ */
+export async function previousPlan(d: Db, access: Access, groupId: string, eventIds: string[]): Promise<{ id: number; eventId: string; title: string } | null> {
+  assertGroup(access, groupId);
+  if (!eventIds.length) return null;
+  const rows = await d.query<{ id: number; spond_event_id: string; title: string }>(
+    `SELECT DISTINCT ON (spond_event_id) id, spond_event_id, plan->>'tittel' AS title
+       FROM training_plans WHERE spond_group_id = $1 AND spond_event_id = ANY($2::text[]) AND status <> 'deleted'
+      ORDER BY spond_event_id, (status = 'approved') DESC, version DESC`,
+    [groupId, eventIds],
+  );
+  for (const eventId of eventIds) {
+    const r = rows.find((x) => x.spond_event_id === eventId);
+    if (r) return { id: r.id, eventId, title: r.title };
+  }
+  return null;
+}
+
 export interface StoredPlan {
   id: number;
   groupId: string;
