@@ -32,7 +32,7 @@ export interface BoardSettings {
   history: HistoryMode;
 }
 
-export const DEFAULT_SETTINGS: BoardSettings = { mode: "even", roles: ["Keeper"], pairs: true, history: "off" };
+export const DEFAULT_SETTINGS: BoardSettings = { mode: "even", roles: ["Keeper"], pairs: true, history: "rotate" };
 
 export interface DistributeOptions {
   mode?: Mode;
