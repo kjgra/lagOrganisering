@@ -43,7 +43,7 @@ Uten `DATABASE_URL` i Preview brukes en database i minnet med demodata; den null
 
 **Spond-profil-ID**: deploy uten `SUPERADMIN_PROFILE_ID`, logg inn med Spond, og «Ingen tilgang»-siden viser profil-ID-en din. Sett den som `SUPERADMIN_PROFILE_ID` og deploy på nytt. Superadmin står aldri i databasen, så ingen kan låse deg ute.
 
-**KI-modeller**: Haiku 5.5 er standard, Sonnet 5.5 kan velges per opplegg. Grenser per lag og totalt settes under Innstillinger → KI (superadmin). Sonnet-kall bruker serverside-fallback hvis en sikkerhetsklassifisering avviser forespørselen.
+**KI-modeller**: Sonnet 5.5 er standard, Haiku 5.5 (billigere) kan velges per opplegg. Grenser per lag og totalt settes under Innstillinger → KI (superadmin). Sonnet-kall bruker serverside-fallback hvis en sikkerhetsklassifisering avviser forespørselen.
 
 ## 3. Kopier data fra test (valgfritt)
 

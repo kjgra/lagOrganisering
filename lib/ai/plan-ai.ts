@@ -46,8 +46,8 @@ export const WISH_MAX = 1000;
 // Prices in USD per million tokens (Claude API, checked 14 Oct 2026). Haiku's
 // price applies to prompts up to 100k tokens, far above ours.
 export const AI_MODELS: Record<string, { label: string; choice: string; input: number; output: number; cacheWrite: number; cacheRead: number }> = {
-  "claude-haiku-5-5": { label: "Haiku 5.5", choice: "Standard", input: 0.1, output: 0.5, cacheWrite: 0.125, cacheRead: 0.01 },
-  "claude-sonnet-5-5": { label: "Sonnet 5.5", choice: "Bedre kvalitet", input: 2, output: 10, cacheWrite: 2.5, cacheRead: 0.2 },
+  "claude-sonnet-5-5": { label: "Sonnet 5.5", choice: "Standard", input: 2, output: 10, cacheWrite: 2.5, cacheRead: 0.2 },
+  "claude-haiku-5-5": { label: "Haiku 5.5", choice: "Billigere", input: 0.1, output: 0.5, cacheWrite: 0.125, cacheRead: 0.01 },
 };
 
 export interface Usage {
@@ -81,7 +81,7 @@ export interface AiSettings {
 
 /** Defaults until the superadmin saves others. USD/NOK was 9.56 on 9 Oct 2026; 10 leaves room for fees. */
 export const DEFAULT_AI_SETTINGS: AiSettings = {
-  model: "claude-haiku-5-5",
+  model: "claude-sonnet-5-5",
   group_limit_nok: 30,
   total_limit_usd: 8,
   max_new_exercises: 2,
