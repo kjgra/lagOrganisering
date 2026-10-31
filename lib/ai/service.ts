@@ -117,7 +117,7 @@ export async function estimateKi(d: Db, prep: Pick<KiPrep, "call" | "kind" | "mo
  * Step 2 and 3: call the model, log the call (also when it failed, since it
  * may have cost money), turn the answer into a plan and save it as a new version.
  */
-export async function runKi(d: Db, user: CurrentUser, prep: KiPrep, eventId: string, commentIds: number[] = []) {
+export async function runKi(d: Db, user: CurrentUser, prep: KiPrep, eventId: string, commentIds: number[] = [], eventTime: { start: string | null; end: string | null } = { start: null, end: null }) {
   const r = await callClaude(prep.call);
   let result: ReturnType<typeof planFromAnswer> | null = null;
   let errorCode = r.errorCode;
@@ -139,7 +139,7 @@ export async function runKi(d: Db, user: CurrentUser, prep: KiPrep, eventId: str
     eventId,
   );
   if (!result) throw new AiError(message || "Noe gikk galt med KI. Prøv igjen om litt.");
-  const saved = await savePlan(d, user.access, prep.groupId, eventId, result.plan, { source: "ai", model: prep.model, costUsd: cost });
+  const saved = await savePlan(d, user.access, prep.groupId, eventId, result.plan, { source: "ai", model: prep.model, costUsd: cost, eventStart: eventTime.start, eventEnd: eventTime.end });
   await d.query("UPDATE ai_usage SET plan_id = $2 WHERE id = $1", [usageId, saved.id]);
   if (commentIds.length) await markCommentsUsed(d, user.access, prep.groupId, commentIds, saved.id);
   return { ...saved, warnings: result.warnings, costText: formatNok(cost, prep.settings.usd_nok) };

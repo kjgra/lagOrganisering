@@ -1,0 +1,34 @@
+name: Påminnelser
+
+# Ber appen sende påminnelser om evaluering etter trening (varsler på mobilen).
+# Hvert kvarter, eller manuelt fra Actions-fanen. Trenger repo-secret
+# CRON_SECRET (samme som i Vercel) og repo-variabel APP_URL (f.eks.
+# https://lagorganisering.vercel.app); uten dem hoppes alt over.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: reminders
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    name: Send påminnelser
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      APP_URL: ${{ vars.APP_URL }}
+    steps:
+      - name: Kall appen
+        run: |
+          if [ -z "$CRON_SECRET" ] || [ -z "$APP_URL" ]; then
+            echo "::notice::CRON_SECRET eller APP_URL er ikke satt, hopper over. Se docs/publisering.md."
+            exit 0
+          fi
+          curl -fsS --max-time 60 -X POST -H "Authorization: Bearer $CRON_SECRET" "${APP_URL%/}/api/paminnelser"

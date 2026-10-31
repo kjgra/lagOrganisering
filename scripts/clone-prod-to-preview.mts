@@ -35,8 +35,8 @@ export interface CloneResult {
   missingColumns?: string[];
 }
 
-/** Short-lived editing state, never copied. */
-const SKIP = new Set(["edit_locks"]);
+/** Short-lived editing state, and push subscriptions (tied to the prod VAPID keys), never copied. */
+const SKIP = new Set(["edit_locks", "push_subscriptions"]);
 const BATCH = 500;
 
 class DryRun extends Error {}

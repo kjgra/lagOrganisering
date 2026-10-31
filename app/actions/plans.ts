@@ -92,7 +92,7 @@ export async function savePlanAction(input: z.input<typeof planInput>): Promise<
       return e;
     });
     const plan = buildPlan(ex, v.settings, base ? { kilde: base.plan.kilde, stikkord_merknad: base.plan.stikkord_merknad } : {});
-    const saved = await savePlan(d, user.access, group.id, event.id, plan, { source: "manual" });
+    const saved = await savePlan(d, user.access, group.id, event.id, plan, { source: "manual", eventStart: event.start, eventEnd: event.end });
     refresh();
     return { data: saved, message: `Versjon ${saved.version} er lagret.` };
   });
@@ -205,7 +205,7 @@ export async function kiEstimateAction(input: z.input<typeof kiInput>): Promise<
 export async function kiRunAction(input: z.input<typeof kiInput>): Promise<ActionResult<{ id: number; version: number }>> {
   return runAction("KI", async () => {
     const { d, user, event, prep, commentIds } = await kiPrep(input);
-    const r = await runKi(d, user, prep, event.id, commentIds);
+    const r = await runKi(d, user, prep, event.id, commentIds, event);
     refresh();
     const warn = r.warnings.length ? ` Merk: ${r.warnings.join(" ")}` : "";
     return { data: { id: r.id, version: r.version }, message: `Versjon ${r.version} er laget med KI (${r.costText}).${warn}` };
