@@ -188,6 +188,20 @@ function describeUrl(url: string): string {
   }
 }
 
+/**
+ * describeUrl for the log, which is public in Actions: the project ref is cut
+ * to its first four characters, enough to tell prod from preview.
+ */
+export function maskUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    const user = u.username.replace(/^(postgres\.)?(.{4}).+$/, (_, p = "", head) => `${p}${head}…`);
+    return `${user}@${u.hostname}${u.pathname}`;
+  } catch {
+    return "(ugyldig URL)";
+  }
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const apply = args.includes("--apply");
@@ -199,8 +213,8 @@ async function main(): Promise<void> {
   if (!srcUrl || !dstUrl) throw new Error("Sett SOURCE_DATABASE_URL (prod) og TARGET_DATABASE_URL (preview).");
   if (srcUrl === dstUrl || describeUrl(srcUrl) === describeUrl(dstUrl)) throw new Error("Kilde og mål er samme database.");
 
-  console.log(`Fra: ${describeUrl(srcUrl)}`);
-  console.log(`Til: ${describeUrl(dstUrl)} (alt her erstattes)`);
+  console.log(`Fra: ${maskUrl(srcUrl)}`);
+  console.log(`Til: ${maskUrl(dstUrl)} (alt her erstattes)`);
   console.log(apply ? "Skriver til målet." : "Prøvekjøring (ingenting lagres). Legg til --apply for å skrive.");
 
   const src = connect(srcUrl);

@@ -7,7 +7,9 @@ import { z } from "zod";
  * Simulation: with SPOND_MOCK=true the app uses a fake Spond with demo data,
  * without DATABASE_URL it uses PGlite (Postgres in the process), and with
  * AI_MOCK=true (and no ANTHROPIC_API_KEY) KI answers with a canned plan.
- * Production (VERCEL_ENV=production) refuses all three.
+ * Production (VERCEL_ENV=production) refuses all three. SPOND_MOCK with a
+ * remote DATABASE_URL is refused everywhere: the public demo logins would
+ * give superadmin on real data.
  */
 
 const list = (fallback: string[]) =>
@@ -56,6 +58,15 @@ let cached: Env | null = null;
 // A fixed key for local simulation only. Production must set SESSION_SECRET.
 const DEV_SECRET = "dev-only-secret-not-for-production-use-0123456789";
 
+/** A Postgres on this machine (local development or CI), not Supabase. */
+export function isLocalDb(url: string): boolean {
+  try {
+    return ["localhost", "127.0.0.1", "[::1]"].includes(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
 export function env(): Env {
   if (cached) return cached;
   const parsed = schema.parse(process.env);
@@ -68,6 +79,9 @@ export function env(): Env {
       parsed.SESSION_SECRET.length < 32 && "SESSION_SECRET må ha minst 32 tegn",
     ].filter(Boolean);
     if (problems.length) throw new Error(`Feil i miljøvariabler: ${problems.join("; ")}.`);
+  }
+  if (parsed.SPOND_MOCK && parsed.DATABASE_URL && !isLocalDb(parsed.DATABASE_URL)) {
+    throw new Error("Feil i miljøvariabler: SPOND_MOCK kan ikke brukes med en ekstern DATABASE_URL (demokontoene ville fått tilgang til ekte data).");
   }
   if (!parsed.SESSION_SECRET) {
     if (parsed.NODE_ENV === "production" && !parsed.SPOND_MOCK) {

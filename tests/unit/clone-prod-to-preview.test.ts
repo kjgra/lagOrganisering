@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Db } from "@/lib/db";
 import { seedDemo } from "@/lib/demo/seed";
-import { cloneDatabase } from "../../scripts/clone-prod-to-preview.mjs";
+import { cloneDatabase, maskUrl } from "../../scripts/clone-prod-to-preview.mjs";
 import { testDb } from "../helpers/db";
 
 let src: Db;
@@ -58,5 +58,13 @@ describe("clone prod to preview", () => {
        VALUES ('G-NY', 'ny', 'Ny øvelse', 'Pasning', 'active', 'P-1', 'P-1') RETURNING id`,
     );
     expect(row.id).toBe(max.m + 1);
+  });
+});
+
+describe("maskUrl", () => {
+  it("cuts the project ref and drops the password", () => {
+    const url = "postgresql://postgres.abcdefghijklmnopqrst:hemmelig@aws-0-eu-west-1.pooler.supabase.com:5432/postgres";
+    expect(maskUrl(url)).toBe("postgres.abcd…@aws-0-eu-west-1.pooler.supabase.com/postgres");
+    expect(maskUrl(url)).not.toContain("hemmelig");
   });
 });
