@@ -5,7 +5,7 @@ import { GroupSelect } from "@/components/settings/admin/GroupSelect";
 import { MaintenancePanel } from "@/components/settings/admin/MaintenancePanel";
 import { RoleTable } from "@/components/settings/admin/RoleTable";
 import { ADMIN_TABS, SettingsShell, type AdminTab } from "@/components/settings/SettingsShell";
-import { adminContext, trainers, type AdminContext } from "@/lib/admin";
+import { adminContext, allTrainers, type AdminContext } from "@/lib/admin";
 import { AI_MODELS, budgetCheck, formatNok } from "@/lib/ai/plan-ai";
 import { db } from "@/lib/db";
 import { superadminId } from "@/lib/env";
@@ -32,7 +32,7 @@ export default async function AdminTabPage(props: PageProps<"/innstillinger/[tab
   return (
     <SettingsShell user={ctx.user} back={ctx.back} tab={t.key} groupId={ctx.group.id}>
       <h2 className="nm-h2">{t.label}</h2>
-      {t.key !== "vedlikehold" ? <GroupSelect groups={ctx.user.data.groups.map((g) => ({ id: g.id, name: g.name }))} current={ctx.group.id} hrefFor={hrefFor} /> : null}
+      {t.key !== "vedlikehold" && t.key !== "trenere" ? <GroupSelect groups={ctx.user.data.groups.map((g) => ({ id: g.id, name: g.name }))} current={ctx.group.id} hrefFor={hrefFor} /> : null}
       {body}
     </SettingsShell>
   );
@@ -45,33 +45,47 @@ const MOVED: Record<string, string> = { arshjul: "/trening/arshjul", standard: "
 const str = (x: unknown) => (typeof x === "string" ? x : "");
 
 const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactNode>> = {
-  async trenere({ user, group }) {
-    const list = trainers(group);
+  async trenere({ user }) {
+    const groups = user.data.groups;
+    const list = allTrainers(groups);
     const roles = await listRoles(await db(), list.map((t) => t.profileId));
     const sa = superadminId();
+    const nameIn = (id: string) => {
+      for (const g of groups) {
+        const n = profileName(g, id);
+        if (n !== "en trener") return n;
+      }
+      return "en trener";
+    };
     const rows = list.map((t) => {
       const r = roles.find((x) => x.spond_profile_id === t.profileId);
       return {
         profileId: t.profileId,
         name: t.name,
         roles: t.roles,
+        groupId: t.groups[0].id,
+        groups: t.groups.map((g) => ({ id: g.id, name: g.name, teams: g.teams })),
         app: !!r?.can_use_app,
         ai: !!r?.can_use_ai,
         admin: !!r?.is_admin,
         tags: r?.can_see_tags ?? true,
         superadmin: t.profileId === sa,
         self: t.profileId === user.session.profileId,
-        changed: r ? `Endret av ${profileName(group, r.updated_by)} ${savedAt(r.updated_at)}` : "",
+        changed: r ? `Endret av ${nameIn(r.updated_by)} ${savedAt(r.updated_at)}` : "",
       };
     });
     return (
       <>
         <p style={{ marginTop: 0 }}>
-          Trenere med profil i Spond. <strong>App</strong> gir tilgang til å logge inn i appen; ingen andre kommer inn. <strong>KI</strong> gir tilgang til å lage opplegg
-          med KI. <strong>Tagger</strong> gir tilgang til å se og endre nivå, hvem som spiller godt sammen, og tagger på spillere; alle
-          trenere har det som standard. <strong>Admin</strong> gir tannhjulet og alltid app-tilgang. Bare superadmin kan gi admin.
+          Trenere med profil i Spond, fra alle gruppene du er med i. <strong>App</strong> gir tilgang til å logge inn i appen; ingen andre kommer inn. <strong>KI</strong> gir
+          tilgang til å lage opplegg med KI. <strong>Tagger</strong> gir tilgang til å se og endre nivå, hvem som spiller godt sammen, og tagger på spillere; alle trenere har
+          det som standard. <strong>Admin</strong> gir tannhjulet og alltid app-tilgang. Bare superadmin kan gi admin.
         </p>
-        {rows.length ? <RoleTable groupId={group.id} rows={rows} canAdmin={user.rights.superadmin} /> : <p className="nm-muted">Fant ingen trenere med Spond-profil i gruppa.</p>}
+        {rows.length ? (
+          <RoleTable rows={rows} groups={groups.map((g) => ({ id: g.id, name: g.name }))} canAdmin={user.rights.superadmin} />
+        ) : (
+          <p className="nm-muted">Fant ingen trenere med Spond-profil i gruppene dine.</p>
+        )}
       </>
     );
   },

@@ -33,3 +33,28 @@ export function trainers(group: Group) {
     .map((m) => ({ profileId: m.profileId!, name: `${m.firstName} ${m.lastName}`.trim(), roles: m.roles }))
     .sort((a, b) => a.name.localeCompare(b.name, "nb"));
 }
+
+export interface TrainerAcrossGroups {
+  profileId: string;
+  name: string;
+  roles: string;
+  /** The main groups the trainer is in, with the teams (subgroups) there. */
+  groups: { id: string; name: string; teams: string[] }[];
+}
+
+/** Trainers with a Spond profile in any of the given main groups, each once. */
+export function allTrainers(groups: Group[]): TrainerAcrossGroups[] {
+  const out = new Map<string, TrainerAcrossGroups>();
+  for (const g of groups) {
+    const subs = new Map(g.subgroups.map((s) => [s.id, s.name]));
+    for (const t of trainers(g)) {
+      const m = g.members.find((x) => x.profileId === t.profileId && x.kind === "coach")!;
+      const teams = m.subgroupIds.map((id) => subs.get(id)).filter((x): x is string => !!x);
+      const row = out.get(t.profileId) ?? { ...t, groups: [] };
+      if (row.roles !== t.roles && t.roles) row.roles = [...new Set([...row.roles.split(", "), ...t.roles.split(", ")].filter(Boolean))].join(", ");
+      row.groups.push({ id: g.id, name: g.name, teams });
+      out.set(t.profileId, row);
+    }
+  }
+  return [...out.values()].sort((a, b) => a.name.localeCompare(b.name, "nb"));
+}
