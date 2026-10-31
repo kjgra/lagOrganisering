@@ -8,6 +8,7 @@ import { exerciseOrderContext } from "@/lib/plan-data";
 import { exerciseChanges } from "@/lib/plans/exercise-edits";
 import { adjustedValues, exerciseInputFrom, exerciseValues } from "@/lib/plans/exercise-values";
 import { proposalPlan, proposalWish, reasonText } from "@/lib/plans/improvements";
+import { bandLabel } from "@/lib/plans/observations";
 import type { ExercisePattern } from "@/lib/plans/observations";
 import { isSmallChange, rollbackDecision } from "@/lib/plans/versions";
 import { sendPush } from "@/lib/push";
@@ -36,11 +37,14 @@ export interface ProposeResult {
 
 export async function proposeImprovements(d: Db, access: Access, groupId: string, patterns: ExercisePattern[], now = new Date()): Promise<ProposeResult> {
   const settings = await getAiSettings(d);
-  const bank = new Map((await listExercises(d, access, groupId)).filter((b) => b.status !== "archived").map((b) => [b.code, b]));
+  const all = await listExercises(d, access, groupId);
+  const bank = new Map(all.filter((b) => b.status !== "archived").map((b) => [b.code, b]));
+  // The age bands that have a variant of each exercise already.
+  const variantFor = (code: string) => all.filter((b) => b.based_on === code && b.status !== "archived").flatMap((b) => b.bands);
   const busy = await busyProposals(d, now);
   // The worst first.
   const todo = patterns
-    .map((p) => ({ p, plan: proposalPlan(p), b: bank.get(p.code) }))
+    .map((p) => ({ p, plan: proposalPlan(p, variantFor(p.code)), b: bank.get(p.code) }))
     .filter((x) => x.plan && x.b && !busy.open.has(x.p.code) && !busy.recent.has(`${x.p.code}\n${x.plan.signature}`))
     .sort((a, b) => (a.p.score ?? 2) - (b.p.score ?? 2));
   let proposed = 0;
@@ -67,14 +71,20 @@ export async function proposeImprovements(d: Db, access: Access, groupId: string
       const order = await exerciseOrderContext(d, { access }, { id: groupId, members: [] }, { sub: "", theme: "", players: null, minutes: null, category: "", wish, link: "", pitchIds: [] }, now);
       const prep = await prepareExerciseKi(d, { access }, { ai: true }, { id: groupId }, order, { baseId: b!.id, now });
       const r = await reviseExerciseKi(d, { access }, prep);
-      const values = adjustedValues(r.base, r.exercise, r.extra);
+      let values = adjustedValues(r.base, r.exercise, r.extra);
+      if (plan!.kind === "variant" && plan!.band) {
+        // A new exercise for one age band, based on this one.
+        const label = bandLabel(plan!.band.band);
+        const name = values.name.trim() === base.name.trim() ? `${base.name} (${label})` : values.name;
+        values = { ...values, name: name.slice(0, 120), bands: [plan!.band.band] };
+      }
       // KI changed nothing: kept as handled, so it is not asked again for a while.
       const same = !Object.keys(exerciseChanges(base, values)).length;
       const pid = await saveProposal(d, { ...common, proposed: values, model: prep.model, costUsd: r.costUsd, status: same ? "utdatert" : "ny" });
       if (!pid || same) continue;
       proposed++;
       // Only new lines under easier, harder, questions or learning points: used right away when that is turned on.
-      if (settings.auto_approve_small && isSmallChange(base, values)) {
+      if (settings.auto_approve_small && plan!.kind !== "variant" && isSmallChange(base, values)) {
         await saveExercise(d, access, groupId, exerciseInputFrom(values), b!.id, { kiDraft: values, source: "automatisk", proposalId: pid });
         await decideProposal(d, access, groupId, pid, "auto");
       }

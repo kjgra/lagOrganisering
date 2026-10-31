@@ -2,7 +2,7 @@ import { CircleAlert, ThumbsUp, TrendingDown } from "lucide-react";
 import { Icon } from "@/components/ui/icon";
 import { shortDate } from "@/lib/format";
 import { meanText } from "@/lib/plans/feedback";
-import { OBSERVATION_KINDS, patternText, TREND_TEXT, type Pattern } from "@/lib/plans/observations";
+import { bandLabel, OBSERVATION_KINDS, patternText, TREND_TEXT, type Pattern } from "@/lib/plans/observations";
 import type { StoredPattern } from "@/lib/store/observations";
 
 /**
@@ -35,6 +35,11 @@ export function TrainersSay({ p, minSessions, minTrainers }: { p: StoredPattern;
       {p.score !== null ? (
         <p style={{ margin: 0 }}>
           Vektet snitt {meanText(p.score)} av 3 fra {p.ratings} {p.ratings === 1 ? "vurdering" : "vurderinger"}
+        </p>
+      ) : null}
+      {(p.bands ?? []).length > 1 ? (
+        <p style={{ margin: 0 }}>
+          Per aldersgruppe: {p.bands.map((b) => `${bandLabel(b.band)} ${meanText(b.mean)} (${b.ratings})`).join(" · ")}
         </p>
       ) : null}
       {p.trend ? (

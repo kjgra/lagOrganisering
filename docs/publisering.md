@@ -129,6 +129,8 @@ Felles øvelsesbank: banken er én for hele appen og eies ikke av noen gruppe (s
 
 Sperre mot doble øvelser: før en ny øvelse lagres (skjema, KI eller godkjent opplegg), sammenlignes den med banken (navn, kategori, tema og tegning, `similarExercises` i lib/plans/plan.ts). Fra 75 % likhet blir den ikke lagret; varianter (basert på en øvelse) er unntatt. Fra 60 % vises bare et hint ved godkjenning.
 
+Aldersgrupper og varianter: hver evaluering får NFF-båndet til laget (fødselsår i laginnstillingene for lagene treningen var for, ellers gruppens innstilling; fra banken lagene treneren har i Spond). exercise_patterns.bands har snitt per bånd. Har ett bånd snitt ≥ 2,4 og et annet ≤ 1,7, begge fra minst 3 vurderinger, lager appen et «Variant»-forslag for det svake båndet; «Bruk» lagrer det som en ny øvelse med based_on. Migreringen 20261101180000_band_variants.sql legger til kolonnen og forslagstypen.
+
 ## Sjekkliste
 
 - [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt

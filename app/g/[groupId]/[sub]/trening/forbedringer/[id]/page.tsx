@@ -42,6 +42,11 @@ export default async function ProposalPage(props: PageProps<"/g/[groupId]/[sub]/
               : "Små forbedringer brukes automatisk (KI-innstillinger). Under Versjoner på øvelsen kan du gå tilbake."}
           </p>
         ) : null}
+        {p.kind === "variant" ? (
+          <p className="nm-hint" style={{ margin: 0 }}>
+            Forslaget er en ny øvelse for én aldersgruppe, basert på denne. Den som finnes blir som den er, for de andre aldersgruppene.
+          </p>
+        ) : null}
         {p.kind === "arkiver" ? (
           <p className="nm-hint" style={{ margin: 0 }}>
             Forslaget er å arkivere øvelsen. Den blir liggende i banken, men KI bruker den ikke lenger.

@@ -1,4 +1,7 @@
+import { NFF_BANDS, type NffBand } from "@/lib/nff/bands";
 import { FEEDBACK_TAGS } from "./feedback";
+
+type BandKey = NffBand["key"];
 
 /**
  * Observations and patterns per exercise. An observation is one problem or
@@ -53,6 +56,8 @@ export interface EvaluationRow {
   author: string;
   /** How many came to the training, when it is known. */
   players: number | null;
+  /** The team's NFF age band when it was evaluated, when the team has a birth year. */
+  band: BandKey | null;
   at: Date;
 }
 
@@ -71,8 +76,10 @@ export interface Pattern {
   /** Passes the thresholds: said often enough to act on. */
   pattern: boolean;
   part: string;
-  /** «med 12 eller flere spillere» when it only happens then. */
+  /** «med 12 eller flere spillere» or «for 6–7 år» when it only happens then. */
   context: string;
+  /** The age band, when the context is one. */
+  band?: BandKey | "";
   suggestions: string[];
 }
 
@@ -83,7 +90,19 @@ export interface ExercisePattern {
   ratings: number;
   trend: "" | "faller" | "byttes_ut";
   patterns: Pattern[];
+  /** Mean rating per age band, for the bands with ratings. */
+  bands: BandScore[];
 }
+
+export interface BandScore {
+  band: BandKey;
+  /** Plain mean (1–3). */
+  mean: number;
+  ratings: number;
+  trainers: number;
+}
+
+export const bandLabel = (b: string) => NFF_BANDS.find((x) => x.key === b)?.label ?? b;
 
 /** Newer evaluations count more: half the weight after this many days. */
 const HALF_LIFE_DAYS = 90;
@@ -116,14 +135,27 @@ export function bankMean(rows: EvaluationRow[], now: Date): number {
   return sw ? s / sw : 2.5;
 }
 
-function contextOf(obs: { players: number | null }[], all: EvaluationRow[]): string {
+function contextOf(obs: EvaluationRow[], all: EvaluationRow[]): { context: string; band: BandKey | "" } {
   const known = obs.map((o) => o.players).filter((p): p is number => p !== null);
-  if (known.length < 2) return "";
-  const usedBig = all.some((r) => r.players !== null && r.players >= BIG_GROUP);
-  const usedSmall = all.some((r) => r.players !== null && r.players < BIG_GROUP);
-  if (known.every((p) => p >= BIG_GROUP) && usedSmall) return `med ${BIG_GROUP} eller flere spillere`;
-  if (known.every((p) => p < BIG_GROUP) && usedBig) return `med færre enn ${BIG_GROUP} spillere`;
-  return "";
+  if (known.length >= 2) {
+    const usedBig = all.some((r) => r.players !== null && r.players >= BIG_GROUP);
+    const usedSmall = all.some((r) => r.players !== null && r.players < BIG_GROUP);
+    if (known.every((p) => p >= BIG_GROUP) && usedSmall) return { context: `med ${BIG_GROUP} eller flere spillere`, band: "" };
+    if (known.every((p) => p < BIG_GROUP) && usedBig) return { context: `med færre enn ${BIG_GROUP} spillere`, band: "" };
+  }
+  // Only one age band says it, and the exercise is used in others too.
+  const bands = obs.map((o) => o.band);
+  const band = bands[0];
+  if (bands.length >= 2 && band && bands.every((b) => b === band) && all.some((r) => r.band && r.band !== band)) return { context: `for ${bandLabel(band)}`, band };
+  return { context: "", band: "" };
+}
+
+function bandScores(rated: EvaluationRow[]): BandScore[] {
+  return NFF_BANDS.flatMap(({ key }) => {
+    const rs = rated.filter((r) => r.band === key);
+    if (!rs.length) return [];
+    return [{ band: key, mean: Math.round((rs.reduce((s, r) => s + r.rating!, 0) / rs.length) * 100) / 100, ratings: rs.length, trainers: new Set(rs.map((r) => r.author)).size }];
+  });
 }
 
 /**
@@ -180,7 +212,7 @@ export function analysePatterns(
         trainers,
         pattern: sessions >= settings.minSessions || trainers >= settings.minTrainers,
         part,
-        context: contextOf(
+        ...contextOf(
           xs.map((x) => x.row),
           rows,
         ),
@@ -194,7 +226,7 @@ export function analysePatterns(
     const falling = recent.length >= 2 && older.length >= 2 && mean(recent)! <= mean(older)! - 0.5;
     const out = removed.filter((r) => r.code === code && now.getTime() - r.at.getTime() <= REMOVED_DAYS * DAY).length;
     const trend = out >= 2 ? "byttes_ut" : falling ? "faller" : "";
-    return { code, score, ratings: rated.length, trend, patterns };
+    return { code, score, ratings: rated.length, trend, patterns, bands: bandScores(rated) };
   });
 }
 

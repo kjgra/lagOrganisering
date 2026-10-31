@@ -134,10 +134,14 @@ export async function saveExerciseAction(
       .object({ groupId: sid, id: z.number().int().positive().nullable(), input: exerciseInput, kiDraft: kiDraftInput.optional(), proposalId: z.number().int().positive().optional() })
       .parse({ groupId, id, input, kiDraft, proposalId });
     const { user, d } = await trainer(v.groupId);
-    if (v.proposalId && (await getProposal(d, user.access, v.groupId, v.proposalId)).status !== "ny") throw new UserError("Forslaget er allerede behandlet.");
-    const newId = await saveExercise(d, user.access, v.groupId, v.input, v.id, {
+    const proposal = v.proposalId ? await getProposal(d, user.access, v.groupId, v.proposalId) : null;
+    if (proposal && proposal.status !== "ny") throw new UserError("Forslaget er allerede behandlet.");
+    // A variant is saved as a new exercise based on the one it came from.
+    const variant = proposal?.kind === "variant";
+    const newId = await saveExercise(d, user.access, v.groupId, v.input, variant ? null : v.id, {
       kiDraft: v.kiDraft as ExerciseValues | undefined,
-      ...(v.proposalId ? { source: "forbedring" as const, proposalId: v.proposalId } : {}),
+      ...(proposal ? { source: "forbedring" as const, proposalId: proposal.id } : {}),
+      ...(variant ? { basedOn: proposal.exercise_code } : {}),
     });
     if (v.proposalId) await decideProposal(d, user.access, v.groupId, v.proposalId, "endret");
     refresh();

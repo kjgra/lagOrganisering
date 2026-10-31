@@ -373,7 +373,7 @@ export async function saveExercise(
   groupId: string,
   input: Partial<ExerciseInput>,
   id: number | null,
-  opts: { kiDraft?: ExerciseValues; source?: VersionSource; proposalId?: number | null } = {},
+  opts: { kiDraft?: ExerciseValues; source?: VersionSource; proposalId?: number | null; basedOn?: string } = {},
 ): Promise<number> {
   assertGroup(access, groupId);
   const v = wrap(() => validateExercise(input));
@@ -382,18 +382,19 @@ export async function saveExercise(
   const drawing = v.drawing ? JSON.stringify(compactDrawing(v.drawing)) : null;
   const fields = [v.name, v.category, v.themes, v.min_players, v.max_players, v.duration_minutes, v.area, v.organisation, v.execution, v.learning_points, v.questions, v.easier, v.harder, v.nff_url, access.profileId, drawing, v.status, v.bands, v.nff_activity, v.nff_tags];
   if (!id) {
-    const like = tooSimilar({ ...v, drawing: v.drawing ?? null }, await listExercises(d, access, groupId));
+    // A variant is meant to be like the one it is based on.
+    const like = opts.basedOn ? null : tooSimilar({ ...v, drawing: v.drawing ?? null }, await listExercises(d, access, groupId));
     if (like) throw new TooSimilarError(like);
     const taken = (await d.query<{ code: string }>("SELECT code FROM exercises WHERE spond_group_id = $1", [bank])).map((r) => r.code);
     const [{ id: newId }] = await d.query<{ id: number }>(
       `INSERT INTO exercises (spond_group_id, code, name, category, themes, min_players, max_players, duration_minutes, area,
                               organisation, execution, learning_points, questions, easier, harder, nff_url, created_by, updated_by,
-                              drawing, status, bands, nff_activity, nff_tags)
+                              drawing, status, bands, nff_activity, nff_tags, based_on)
        VALUES ($1, $2, $3, $4, $5::text[], $6, $7, $8, NULLIF($9, ''), NULLIF($10, ''), NULLIF($11, ''), NULLIF($12, ''),
                NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), NULLIF($16, ''), $17, $17, $18::jsonb, coalesce($19, 'active'),
-               $20::text[], NULLIF($21, ''), $22::text[])
+               $20::text[], NULLIF($21, ''), $22::text[], NULLIF($23, ''))
        RETURNING id`,
-      [bank, exerciseCode(v.name, taken), ...fields],
+      [bank, exerciseCode(v.name, taken), ...fields, opts.basedOn ?? ""],
     );
     return newId;
   }
@@ -851,7 +852,15 @@ export async function myBankFeedback(d: Db, access: Access, groupId: string, exe
  * igjen: Ja» makes a candidate active.
  * @returns whether the exercise became active.
  */
-export async function saveBankFeedback(d: Db, access: Access, groupId: string, exerciseId: number, row: FeedbackInput | null): Promise<boolean> {
+export async function saveBankFeedback(
+  d: Db,
+  access: Access,
+  groupId: string,
+  exerciseId: number,
+  row: FeedbackInput | null,
+  /** The teams the trainer has, so the evaluation counts for their age band. */
+  subgroupIds: string[] = [],
+): Promise<boolean> {
   assertGroup(access, groupId);
   const ex = await d.query<{ code: string }>("SELECT code FROM exercises WHERE id = $1 AND spond_group_id = $2", [exerciseId, BANK]);
   if (!ex.length) throw new UserError("Fant ikke øvelsen.");
@@ -860,10 +869,10 @@ export async function saveBankFeedback(d: Db, access: Access, groupId: string, e
     await t.query("DELETE FROM exercise_feedback WHERE spond_group_id = $1 AND exercise_code = $2 AND author = $3 AND plan_id IS NULL", [groupId, code, access.profileId]);
     if (!row) return false;
     await t.query(
-      `INSERT INTO exercise_feedback (spond_group_id, exercise_code, rating, tags, actual_minutes, body, use_again, author, exercise_version)
+      `INSERT INTO exercise_feedback (spond_group_id, exercise_code, rating, tags, actual_minutes, body, use_again, author, exercise_version, spond_subgroup_ids)
        VALUES ($1, $2, $3, $4::text[], $5, NULLIF($6, ''), NULLIF($7, ''), $8,
-               (SELECT version FROM exercises WHERE spond_group_id = '${BANK}' AND code = $2))`,
-      [groupId, code, row.rating, row.tags, row.actual_minutes, row.body, row.use_again, access.profileId],
+               (SELECT version FROM exercises WHERE spond_group_id = '${BANK}' AND code = $2), $9::text[])`,
+      [groupId, code, row.rating, row.tags, row.actual_minutes, row.body, row.use_again, access.profileId, subgroupIds],
     );
     if (row.rating !== 3 || row.use_again !== "yes") return false;
     const act = await t.query(

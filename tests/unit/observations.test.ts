@@ -15,7 +15,7 @@ const now = new Date("2026-10-31T12:00:00Z");
 const daysAgo = (n: number) => new Date(now.getTime() - n * 86_400_000);
 const settings = { minSessions: 3, minTrainers: 2 };
 let id = 0;
-const ev = (x: Partial<EvaluationRow>): EvaluationRow => ({ feedbackId: ++id, code: "A", rating: 2, tags: [], session: `E${id}`, author: "P-1", players: null, at: daysAgo(1), ...x });
+const ev = (x: Partial<EvaluationRow>): EvaluationRow => ({ feedbackId: ++id, code: "A", rating: 2, tags: [], session: `E${id}`, author: "P-1", players: null, band: null, at: daysAgo(1), ...x });
 
 describe("patterns per exercise", () => {
   it("counts a kind once per evaluation, and makes it a pattern from enough sessions or trainers", () => {
@@ -40,6 +40,25 @@ describe("patterns per exercise", () => {
     expect(analysePatterns(rows, obs, [], { minSessions: 2, minTrainers: 2 }, now)[0].patterns[0]).toMatchObject({ kind: "ko", pattern: true });
     // Two trainers saying the same is enough.
     expect(b.patterns).toMatchObject([{ kind: "goy", positive: true, trainers: 2, pattern: true }]);
+  });
+
+  it("sees when a problem only comes from one age band, and gives the mean per band", () => {
+    const rows = [
+      ev({ code: "C", tags: ["for_vanskelig"], band: "6-7", rating: 1, author: "P-1" }),
+      ev({ code: "C", tags: ["for_vanskelig"], band: "6-7", rating: 1, author: "P-2" }),
+      ev({ code: "C", tags: [], band: "10-12", rating: 3, author: "P-3" }),
+      ev({ code: "C", tags: [], band: null, rating: 2, author: "P-4" }),
+    ];
+    const [c] = analysePatterns(rows, [], [], settings, now);
+    expect(c.patterns[0]).toMatchObject({ kind: "for_vanskelig", context: "for 6–7 år", band: "6-7" });
+    expect(patternText(c.patterns[0])).toBe("For vanskelig: 2 økter, 2 trenere · enklere/vanskeligere · for 6–7 år");
+    expect(c.bands).toEqual([
+      { band: "6-7", mean: 1, ratings: 2, trainers: 2 },
+      { band: "10-12", mean: 3, ratings: 1, trainers: 1 },
+    ]);
+    // Used in one band only: nothing to compare with.
+    const [only] = analysePatterns(rows.slice(0, 2), [], [], settings, now);
+    expect(only.patterns[0].context).toBe("");
   });
 
   it("pulls few ratings towards the bank's mean, and flags falling ratings and exercises trainers take out", () => {

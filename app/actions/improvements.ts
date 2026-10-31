@@ -35,6 +35,13 @@ export async function applyProposalAction(groupId: string, proposalId: number): 
     if (Object.keys(exerciseChanges(now, p.base_values)).length) {
       throw new UserError("Øvelsen er endret siden forslaget ble laget. Velg «Endre først» for å se over forslaget.");
     }
+    if (p.kind === "variant") {
+      // A new exercise in the bank, based on this one; the one it is based on stays as it is.
+      const newId = await saveExercise(d, user.access, group.id, exerciseInputFrom(p.proposed), null, { basedOn: p.exercise_code });
+      await decideProposal(d, user.access, group.id, p.id, "brukt");
+      refresh();
+      return { data: newId, message: `«${p.proposed.name}» er lagt til i banken som variant.` };
+    }
     await saveExercise(d, user.access, group.id, exerciseInputFrom(p.proposed), p.exercise_id, { kiDraft: p.proposed, source: "forbedring", proposalId: p.id });
     await decideProposal(d, user.access, group.id, p.id, "brukt");
     refresh();
