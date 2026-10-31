@@ -28,6 +28,30 @@ export const FEEDBACK_TAGS: Record<string, string> = {
   tema_nei: "fikk ikke fram temaet",
 };
 
+/**
+ * Keywords for the session as a whole: how the exercises worked together, not
+ * each one. Kept apart from FEEDBACK_TAGS, so they never count for an exercise.
+ */
+export const SESSION_TAGS: Record<string, string> = {
+  god_progresjon: "god progresjon",
+  god_flyt: "god flyt mellom øvelsene",
+  darlig_flyt: "dårlig flyt mellom øvelsene",
+  mye_organisering: "mye tid til organisering",
+  for_mye_program: "for mye på programmet",
+  mye_aktivitet: "mye aktivitet for alle",
+  mye_venting: "mye venting",
+  god_mestring: "god mestring",
+  passet_gruppen: "passet antall spillere",
+  for_faa_trenere: "for få trenere",
+  okt_tema_ja: "fikk fram temaet",
+  okt_tema_nei: "fikk ikke fram temaet",
+};
+
+/** The label of an exercise or session keyword. */
+export function tagLabel(key: string): string {
+  return FEEDBACK_TAGS[key] ?? SESSION_TAGS[key] ?? key;
+}
+
 export const USE_AGAIN: Record<string, string> = { yes: "Ja", changes: "Med endringer", no: "Nei" };
 export const FEEDBACK_BODY_MAX = 300;
 /** «Fortell om økta»: the trainer's own words, which KI turns into the form. */
@@ -67,8 +91,9 @@ function intIn(x: unknown, what: string, lo: number, hi: number): number | null 
 /** Check one row; null when nothing is filled in. */
 function checkRow(r: RawFeedback, what: string, session: boolean, names: string[]) {
   const rating = intIn(r.rating, `${what}: vurderingen`, 1, 3);
-  const tags = session ? [] : [...new Set((r.tags ?? []).filter(Boolean))];
-  if (tags.some((t) => !(t in FEEDBACK_TAGS))) throw new FeedbackError(`${what}: ukjent stikkord.`);
+  const tags = [...new Set((r.tags ?? []).filter(Boolean))];
+  const known = session ? SESSION_TAGS : FEEDBACK_TAGS;
+  if (tags.some((t) => !(t in known))) throw new FeedbackError(`${what}: ukjent stikkord.`);
   const body = txt(r.body);
   if (body.length > FEEDBACK_BODY_MAX) throw new FeedbackError(`${what}: teksten kan ha maks ${FEEDBACK_BODY_MAX} tegn.`);
   if (isSensitive(body)) throw new FeedbackError(`${what}: teksten skal ikke inneholde helseopplysninger eller andre sensitive opplysninger.`);

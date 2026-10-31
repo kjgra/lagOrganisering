@@ -43,6 +43,8 @@ export function FeedbackForm(p: {
   rows: FeedbackDraft[];
   ratings: Record<string, string>;
   tags: Record<string, string>;
+  /** Keywords for «Hele økta» after a training. */
+  sessionTags?: Record<string, string>;
   useAgain: Record<string, string>;
   /** The trainer may use KI: «Fortell om økta» fills in the form. */
   ki?: boolean;
@@ -126,22 +128,24 @@ export function FeedbackForm(p: {
                   </button>
                 ))}
             </div>
+            {Object.keys(session ? (p.sessionTags ?? {}) : p.tags).length ? (
+              <div className="nm-row" style={{ gap: "var(--space-2)" }} role="group" aria-label={session ? "Stikkord for hele økta" : "Stikkord"}>
+                {Object.entries(session ? (p.sessionTags ?? {}) : p.tags).map(([k, label]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    className="nm-chip"
+                    style={{ cursor: "pointer" }}
+                    aria-pressed={x.tags.includes(k)}
+                    onClick={() => upd(i, { tags: x.tags.includes(k) ? x.tags.filter((t) => t !== k) : [...x.tags, k] })}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             {!session ? (
               <>
-                <div className="nm-row" style={{ gap: "var(--space-2)" }} role="group" aria-label="Stikkord">
-                  {Object.entries(p.tags).map(([k, label]) => (
-                    <button
-                      key={k}
-                      type="button"
-                      className="nm-chip"
-                      style={{ cursor: "pointer" }}
-                      aria-pressed={x.tags.includes(k)}
-                      onClick={() => upd(i, { tags: x.tags.includes(k) ? x.tags.filter((t) => t !== k) : [...x.tags, k] })}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
                 <div className="nm-form-row">
                   <label className="nm-field">
                     <span className="nm-field__label">Faktisk tid (min){x.planned ? ` · plan ${x.planned}` : ""}</span>

@@ -8,6 +8,16 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.1.0] – 2026-11-01
+
+Første steg mot en KI som lærer av hele økter, ikke bare enkeltøvelser.
+
+### Lagt til
+
+- «Trenere på økta» i «Lag opplegg med KI»: fylles ut med trenerne som har svart ja i Spond, og kan endres. KI lager ikke flere stasjoner som trenger en voksen enn det kommer trenere.
+- Stikkord for hele økta i evalueringen: god progresjon, flyt mellom øvelsene, tid til organisering, aktivitet, mestring, om opplegget passet antall spillere og trenere, og om temaet kom fram. «Fortell om økta» fyller dem ut også.
+- Hvert KI-opplegg lagres med hva det ble laget for: aldersgruppe, antall spillere og grupper, lengde, trenere, tema og ønsket til treneren. Det gjør at økter kan sammenlignes, slik at KI senere kan lære av økter som har fungert.
+
 ## [1.0.0] – 2026-10-31
 
 Koden er offentlig. Felles øvelsesbank på tvers av grupper, og øvelser som forbedres per aldersgruppe.

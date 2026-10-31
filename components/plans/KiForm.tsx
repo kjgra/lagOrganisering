@@ -16,6 +16,8 @@ export interface KiFormProps {
   theme: string;
   themeNote: string;
   minutes: number | null;
+  /** Trainers who said yes in Spond; the trainer can change it. */
+  coaches: number;
   /** The team's pitches from «Trening › Laget»; one or more are chosen per session. */
   pitches: { id: number; name: string; facts: string }[];
   /** The team's note about the pitches. */
@@ -38,6 +40,7 @@ export function KiForm(p: KiFormProps) {
   const [pending, start] = useTransition();
   const [theme, setTheme] = useState(p.theme);
   const [minutes, setMinutes] = useState(p.minutes ? String(p.minutes) : "");
+  const [coaches, setCoaches] = useState(p.coaches ? String(p.coaches) : "");
   const [wish, setWish] = useState("");
   const [links, setLinks] = useState("");
   const [model, setModel] = useState(p.model);
@@ -53,6 +56,7 @@ export function KiForm(p: KiFormProps) {
     baseId: p.baseId,
     theme,
     minutes: minutes ? Math.round(Number(minutes)) : null,
+    coaches: coaches ? Math.round(Number(coaches)) : null,
     wish,
     links,
     commentIds: picked,
@@ -110,12 +114,19 @@ export function KiForm(p: KiFormProps) {
         value={pitchIds}
         onChange={setPitchIds}
       />
-      {!p.baseId ? (
+      <div className="nm-form-row">
+        {!p.baseId ? (
+          <label className="nm-field">
+            <span className="nm-field__label">Lengde på økta (min)</span>
+            <input className="nm-input" type="number" inputMode="numeric" min={15} max={240} value={minutes} onChange={(e) => setMinutes(e.target.value)} />
+          </label>
+        ) : null}
         <label className="nm-field">
-          <span className="nm-field__label">Lengde på økta (min)</span>
-          <input className="nm-input" type="number" inputMode="numeric" min={15} max={240} value={minutes} onChange={(e) => setMinutes(e.target.value)} />
+          <span className="nm-field__label">Trenere på økta</span>
+          <input className="nm-input" type="number" inputMode="numeric" min={0} max={20} value={coaches} onChange={(e) => setCoaches(e.target.value)} />
+          <span className="nm-hint">{p.coaches ? `${p.coaches} har svart ja i Spond.` : "Ingen trenere har svart ja i Spond ennå."} Kan stå tomt.</span>
         </label>
-      ) : null}
+      </div>
       <label className="nm-field">
         <span className="nm-field__label">{p.baseId ? "Hva skal endres?" : "Ønsker (valgfritt)"}</span>
         <textarea

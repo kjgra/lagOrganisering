@@ -198,6 +198,10 @@ test("admin: save the team's pitches, and choose among them for a session", asyn
   await page.getByRole("button", { name: "Lag opplegg med KI" }).click();
   await expect(page.locator(".nm-alert")).toContainText("Velg minst én bane for økta.");
   await pitches.getByRole("checkbox", { name: /Nymark Kunstgress 03 7er A/ }).check();
+  // Trainers who said yes in Spond are filled in; the trainer can change it.
+  const coaches = page.getByLabel("Trenere på økta");
+  await expect(page.getByText(/har svart ja i Spond|Ingen trenere har svart ja/)).toBeVisible();
+  await coaches.fill("3");
   await page.getByRole("button", { name: "Lag opplegg med KI" }).click();
   await expect(page).toHaveURL(/opplegg=/, { timeout: 30_000 });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateBankFeedback, validateFeedback } from "@/lib/plans/feedback";
+import { tagLabel, validateBankFeedback, validateFeedback } from "@/lib/plans/feedback";
 import { validatePlan } from "@/lib/plans/plan";
 import reference from "@/lib/plans/reference-plan.json";
 
@@ -23,7 +23,16 @@ describe("evaluation", () => {
     expect(() => validateFeedback([{ exercise_no: 1, rating: null, tags: ["goy"] }], plan, [])).toThrow(/velg Bra, OK eller Dårlig/);
   });
 
-  it("from the bank: the same checks for one exercise, empty means remove", () => {
+  it("the session has its own keywords, kept apart from the exercises'", () => {
+    const rows = validateFeedback([{ exercise_no: null, rating: null, tags: ["god_flyt", "for_faa_trenere", "god_flyt"], body: "" }], plan, []);
+    expect(rows).toEqual([expect.objectContaining({ exercise_no: null, rating: null, tags: ["god_flyt", "for_faa_trenere"] })]);
+    expect(() => validateFeedback([{ exercise_no: null, rating: 2, tags: ["goy"] }], plan, [])).toThrow(/Hele økta: ukjent stikkord/);
+    expect(() => validateFeedback([{ exercise_no: 1, rating: 2, tags: ["god_flyt"] }], plan, [])).toThrow(/Øvelse 1: ukjent stikkord/);
+    expect(tagLabel("god_flyt")).toBe("god flyt mellom øvelsene");
+    expect(tagLabel("ko")).toBe("mye venting/kø");
+  });
+
+    it("from the bank: the same checks for one exercise, empty means remove", () => {
     expect(validateBankFeedback({ exercise_no: null, rating: 1, tags: ["ko", "ko"], actual_minutes: "20", actual_players: "9", use_again: "no" }, "rondo", [])).toEqual({
       exercise_no: null,
       exercise_code: "rondo",

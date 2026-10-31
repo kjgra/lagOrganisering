@@ -59,6 +59,8 @@ export interface KiInput {
   commentIds: number[];
   /** The pitches for this session, from the team's pitches. */
   pitchIds: number[];
+  /** Adults at the session; null when the trainer left it empty. */
+  coaches?: number | null;
 }
 
 function checkWish(wish: string, names: string[]) {
@@ -92,6 +94,8 @@ export async function orderContext(d: Db, user: CurrentUser, group: Group, event
   const theme = input.theme.trim() || season?.theme || "";
   if (!theme) throw new AiError("Skriv et tema for økta.");
   if (theme.length > 80) throw new AiError("Temaet kan ha maks 80 tegn.");
+  const year = osloParts(event.start ?? new Date()).year;
+  const band = teamBand(team.birth_year, year);
   const nPlayers = eventParticipants(event, group).filter((p) => placeable(p.status, event.notSent) && isPlayerKind(p.kind)).length;
   return {
     commentIds: chosen.map((c) => c.id),
@@ -101,8 +105,10 @@ export async function orderContext(d: Db, user: CurrentUser, group: Group, event
       minutes: input.minutes ?? team.session_minutes,
       theme,
       themeDescription: season && season.theme.toLowerCase() === theme.toLowerCase() ? season.description : "",
-      team: { age_group: teamAgeText(team.birth_year, team.gender, osloParts(event.start ?? new Date()).year, team.age_group), pitch: pitchText(chosenPitches, team.pitch), equipment: team.equipment, principles },
-      fagplan: fagplanText(teamBand(team.birth_year, osloParts(event.start ?? new Date()).year), theme),
+      team: { age_group: teamAgeText(team.birth_year, team.gender, year, team.age_group), pitch: pitchText(chosenPitches, team.pitch), equipment: team.equipment, principles },
+      fagplan: fagplanText(band, theme),
+      band,
+      coaches: input.coaches ?? null,
       nPlayers,
       groupSizes: groups.map((g) => g.players.length),
       wish,

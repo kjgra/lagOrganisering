@@ -9,7 +9,7 @@ import { findEvent } from "@/lib/events-data";
 import { dayLabel, decimal, osloMonthStart } from "@/lib/format";
 import { eventSub, themeForEvent } from "@/lib/plan-data";
 import { pitchFacts } from "@/lib/plans/plan";
-import { eventIsPast } from "@/lib/spond/events";
+import { eventIsPast, responseCounts } from "@/lib/spond/events";
 import { aiSpend, getAiSettings } from "@/lib/store/ai";
 import { getPlan, getTeamSettings, listPlanComments, teamPitches } from "@/lib/store/training";
 
@@ -52,6 +52,7 @@ export default async function KiPage(props: PageProps<"/g/[groupId]/[sub]/arrang
         theme={theme}
         themeNote={!base && season ? `Månedens tema i årshjulet${season.description ? `: ${season.description}` : ""}` : ""}
         minutes={team.session_minutes}
+        coaches={responseCounts(event, ctx.group).coachesComing}
         pitches={pitches.map((x) => ({ id: x.id, name: x.name, facts: pitchFacts(x) }))}
         pitchNote={team.pitch}
         standardHref={ctx.path("/trening/laget")}

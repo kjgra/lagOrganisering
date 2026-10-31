@@ -9,7 +9,7 @@ import type { GroupContext } from "@/lib/context";
 import { db } from "@/lib/db";
 import { trainingEventsBefore } from "@/lib/events-data";
 import { dayLabel, savedAt } from "@/lib/format";
-import { FEEDBACK_TAGS, RATINGS, ratingsText } from "@/lib/plans/feedback";
+import { RATINGS, ratingsText, tagLabel } from "@/lib/plans/feedback";
 import { bankCandidates, schedule, type PlanExercise } from "@/lib/plans/plan";
 import { profileName } from "@/lib/proposal-view";
 import { eventIsPast } from "@/lib/spond/events";
@@ -229,7 +229,7 @@ export async function PlanSection({ ctx, event, selected }: { ctx: GroupContext;
                   if (!rows.length) return null;
                   const counts: Record<string, number> = {};
                   for (const r of rows) if (r.rating) counts[r.rating] = (counts[r.rating] ?? 0) + 1;
-                  const tags = [...new Set(rows.flatMap((r) => r.tags))].map((t) => FEEDBACK_TAGS[t] ?? t);
+                  const tags = [...new Set(rows.flatMap((r) => r.tags))].map(tagLabel);
                   return (
                     <li key={no ?? 0}>
                       <strong>{no === null ? "Hele økta" : `${no}. ${p.ovelser[no - 1].navn}`}</strong>: {[ratingsText(counts), ...rows.filter((r) => r.actual_players !== null).map((r) => `${r.actual_players} spillere kom`)].filter(Boolean).join(" · ") || "–"}

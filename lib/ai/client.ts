@@ -130,7 +130,12 @@ async function mockCall(c: CallInput, t0: number): Promise<CallResult> {
     const players = Number(/(\d+) (?:spillere|stykker|barn)/i.exec(said)?.[1] ?? 0);
     text = JSON.stringify({
       ovelser: nos.map((nr) => ({ nr, vurdering, stikkord, faktisk_minutter: 0, bruke_igjen: vurdering === 1 ? "changes" : "yes", kommentar })),
-      okt: { vurdering, antall_spillere: players, kommentar: "" },
+      okt: {
+        vurdering,
+        stikkord: [/flyt/i.test(said) ? "god_flyt" : "", /trener/i.test(said) && /få|for lite/i.test(said) ? "for_faa_trenere" : "", /aktiv/i.test(said) ? "mye_aktivitet" : ""].filter(Boolean),
+        antall_spillere: players,
+        kommentar: "",
+      },
     });
     usage.output_tokens = 300;
   } else if (c.kind === "observations") {

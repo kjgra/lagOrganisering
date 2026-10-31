@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { vapid } from "@/lib/env";
 import { findEvent } from "@/lib/events-data";
 import { dayLabel } from "@/lib/format";
-import { FEEDBACK_TAGS, RATINGS, USE_AGAIN } from "@/lib/plans/feedback";
+import { FEEDBACK_TAGS, RATINGS, SESSION_TAGS, USE_AGAIN } from "@/lib/plans/feedback";
 import { eventIsPast, responseCounts } from "@/lib/spond/events";
 import { getPlan, listFeedback } from "@/lib/store/training";
 
@@ -47,6 +47,7 @@ export default async function FeedbackPage(props: PageProps<"/g/[groupId]/[sub]/
         rows={rows}
         ratings={Object.fromEntries(Object.entries(RATINGS).map(([k, v]) => [k, v]))}
         tags={FEEDBACK_TAGS}
+        sessionTags={SESSION_TAGS}
         useAgain={USE_AGAIN}
         ki={ctx.user.rights.ai}
       />

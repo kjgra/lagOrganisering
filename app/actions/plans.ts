@@ -193,6 +193,7 @@ const kiInput = z.object({
   baseId: id.nullable(),
   theme: z.string().max(80),
   minutes: z.number().int().min(15).max(240).nullable(),
+  coaches: z.number().int().min(0).max(20).nullable().optional(),
   wish: z.string().max(1000),
   links: z.string().max(1000),
   commentIds: z.array(id).max(50),

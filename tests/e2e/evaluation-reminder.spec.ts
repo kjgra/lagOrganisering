@@ -11,7 +11,12 @@ test("a training with a plan that I have not evaluated is shown, and goes away w
   await reminder.click();
   await expect(page).toHaveURL(/\/opplegg\/\d+\/evaluering$/);
 
-  await page.locator("fieldset", { hasText: "Hele økta" }).getByRole("button", { name: "👍 Bra" }).click();
+  const session = page.locator("fieldset", { hasText: "Hele økta" });
+  await session.getByRole("button", { name: "👍 Bra" }).click();
+  // The session has its own keywords.
+  const flow = session.getByRole("group", { name: "Stikkord for hele økta" }).getByRole("button", { name: "god flyt mellom øvelsene" });
+  await flow.click();
+  await expect(flow).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Lagre evalueringen" }).click();
   await expect(page.locator(".nm-toast")).toContainText("Evalueringen er lagret");
   await page.goto("/g/G-FOTBALL/alle/arrangementer");
