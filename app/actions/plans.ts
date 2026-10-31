@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { runAction, type ActionResult } from "@/lib/actions";
 import { findGroup, requireUser } from "@/lib/auth/current";
@@ -8,6 +9,7 @@ import { estimateKi, fillFeedbackWithKi, prepareKi, runKi } from "@/lib/ai/servi
 import { AI_MODELS } from "@/lib/ai/plan-ai";
 import { db } from "@/lib/db";
 import { findEvent } from "@/lib/events-data";
+import { analyseGroup } from "@/lib/observe";
 import { orderContext } from "@/lib/plan-data";
 import { planChanges } from "@/lib/plans/exercise-edits";
 import { FEEDBACK_TEXT_MAX, validateBankFeedback, validateFeedback, type FeedbackFill } from "@/lib/plans/feedback";
@@ -250,9 +252,21 @@ export async function feedbackAction(input: z.input<typeof feedbackInput>): Prom
     // Which subgroups the session was for, so each team's learnings build on its own evaluations.
     const event = await findEvent(user, group.id, pl.eventId);
     const activated = await saveFeedback(d, user.access, pl.id, rows, v.registered, event?.subgroupIds ?? []);
+    analyseLater(group.id);
     refresh();
     const act = activated.length ? ` ${activated.length === 1 ? "Én øvelse" : `${activated.length} øvelser`} er nå aktive i banken.` : "";
     return { data: undefined, message: `Evalueringen er lagret.${act}` };
+  });
+}
+
+/** «Dette sier trenerne» is updated after the answer is sent, so saving does not wait for KI. */
+function analyseLater(groupId: string) {
+  after(async () => {
+    try {
+      await analyseGroup(await db(), groupId);
+    } catch (err) {
+      console.error("Analyse av innspill feilet:", (err as Error).message);
+    }
   });
 }
 
@@ -269,6 +283,7 @@ export async function bankFeedbackAction(input: z.input<typeof bankFeedbackInput
     const ex = await getExercise(d, user.access, group.id, v.exerciseId);
     const row = validateBankFeedback({ ...v.row, exercise_no: null }, ex.code, memberNames(group.members));
     const activated = await saveBankFeedback(d, user.access, group.id, ex.id, row);
+    analyseLater(group.id);
     refresh();
     if (!row) return { data: undefined, message: "Evalueringen din er fjernet." };
     return { data: undefined, message: `Evalueringen er lagret.${activated ? " Øvelsen er nå aktiv i banken." : ""}` };

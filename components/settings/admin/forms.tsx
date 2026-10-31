@@ -46,6 +46,14 @@ export function AiSettingsForm({ initial, models, editable }: { initial: Record<
         <Field label="Nettsteder KI kan hente lenker fra" hint="Kommaseparert, f.eks. tiim.no, fotball.no">
           <input className="nm-input" value={v.link_domains} onChange={set("link_domains")} />
         </Field>
+        <div className="nm-form-row">
+          <Field label="Mønster: antall økter" hint="Samme innspill fra så mange økter er et mønster">
+            <input className="nm-input" inputMode="numeric" value={v.pattern_min_sessions} onChange={set("pattern_min_sessions")} />
+          </Field>
+          <Field label="Mønster: antall trenere" hint="… eller fra så mange ulike trenere">
+            <input className="nm-input" inputMode="numeric" value={v.pattern_min_trainers} onChange={set("pattern_min_trainers")} />
+          </Field>
+        </div>
       </fieldset>
       {errorBox}
       {editable ? <SaveButton pending={pending} /> : <p className="nm-hint">Bare superadmin kan endre KI-innstillingene.</p>}

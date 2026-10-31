@@ -117,6 +117,10 @@ En trener som ikke har evaluert en trening med opplegg, ser en påminnelse på A
 
 På iPhone virker varsler bare når appen er lagt på hjemskjermen (iOS 16.4 eller nyere). «Send testvarsel» på evalueringssiden sjekker at alt er riktig, også i preview (der sendes påminnelsene etter trening ikke automatisk).
 
+## 8. «Dette sier trenerne» (analyse av innspill)
+
+Etter hver lagrede evaluering går appen gjennom innspillene for laget: KI (Haiku, innenfor KI-budsjettet) gjør kommentarene om til observasjoner, og appen regner ut et mønster per øvelse som vises øverst på øvelsessiden. Det virker uten oppsett. I tillegg kjører workflowen «Analyse av innspill» hver natt for alle lag og tar igjen kommentarer som ikke ble gått gjennom (f.eks. fordi budsjettet var brukt opp). Den bruker samme `CRON_SECRET` og `APP_URL` som i §7. Tersklene for et mønster stilles under KI-innstillinger. KI-kallene står som «Appen (automatisk)» i KI-oversikten.
+
 ## Sjekkliste
 
 - [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt

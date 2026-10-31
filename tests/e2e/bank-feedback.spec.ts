@@ -187,3 +187,32 @@ test("tell KI how an exercise went, and it fills in the evaluation", async ({ pa
   await page.getByRole("button", { name: "Lagre evalueringen" }).click();
   await expect(page.locator(".nm-toast")).toContainText("Evalueringen er lagret");
 });
+
+test("a comment on an exercise shows up in «Dette sier trenerne»", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/g/G-FOTBALL/alle/trening/ovelser/ny");
+  const name = `Innspill ${Date.now()}`;
+  await page.getByLabel("Navn").fill(name);
+  await page.locator(".nm-field", { has: page.locator(".nm-field__label", { hasText: /^Kategori$/ }) }).locator("select").selectOption("smaaspill");
+  await page.getByLabel("Gjennomføring").fill("Spill 4 mot 4");
+  await page.getByRole("button", { name: "Lagre øvelsen" }).click();
+  await expect(page).toHaveURL(/\/trening\/ovelser$/);
+
+  await page.locator(".nm-pick a", { hasText: name }).click();
+  await expect(page).toHaveURL(/\/evaluering$/);
+  const evaluation = page.url();
+  await page.getByRole("button", { name: "👎 Dårlig" }).click();
+  await page.getByRole("textbox", { name: "Kommentar" }).fill("Mye kø, del i to ruter neste gang");
+  await page.getByRole("button", { name: "Lagre evalueringen" }).click();
+  await expect(page.locator(".nm-toast")).toContainText("Evalueringen er lagret");
+
+  // The analysis runs right after saving; one trainer once is not a pattern yet.
+  const exercise = evaluation.replace(/\/evaluering$/, "");
+  await expect(async () => {
+    await page.goto(exercise);
+    await expect(page.getByRole("heading", { name: "Dette sier trenerne" })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
+  await expect(page.getByText("Nevnt av færre: mye venting/kø (1)")).toBeVisible();
+  await expect(page.getByText(/Vektet snitt .* fra 1 vurdering/)).toBeVisible();
+});

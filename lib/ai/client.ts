@@ -23,7 +23,7 @@ export interface CallInput {
   /** A JSON schema for structured output, or none for plain text. */
   schema?: Record<string, unknown>;
   maxTokens: number;
-  kind: "draft" | "revision" | "learning" | "exercise" | "feedback";
+  kind: "draft" | "revision" | "learning" | "exercise" | "feedback" | "observations";
 }
 
 export interface CallResult {
@@ -133,6 +133,18 @@ async function mockCall(c: CallInput, t0: number): Promise<CallResult> {
       okt: { vurdering, antall_spillere: players, kommentar: "" },
     });
     usage.output_tokens = 300;
+  } else if (c.kind === "observations") {
+    // Simple keyword rules: kø, trang/liten bane, gøy, and «del i …» as the trainer's suggestion.
+    const innspill = [...c.user.matchAll(/^- id (\d+) .*\n {2}Kommentar: (.*)$/gm)].map(([, id, said]) => ({
+      id: Number(id),
+      observasjoner: [
+        /kø|vent/i.test(said) ? { type: "ko", del: "organisering", styrke: "tydelig", forslag: /(del [^.,]*)/i.exec(said)?.[1] ?? "" } : null,
+        /trang|liten bane/i.test(said) ? { type: "bane_liten", del: "organisering", styrke: "tydelig", forslag: "" } : null,
+        /gøy|moro/i.test(said) ? { type: "goy", del: "", styrke: "svak", forslag: "" } : null,
+      ].filter(Boolean),
+    }));
+    text = JSON.stringify({ innspill });
+    usage.output_tokens = 40 * innspill.length;
   } else if (c.kind === "learning") {
     text =
       "- Guttene liker konkurranse med poeng; bruk det i avslutningen.\n" +
