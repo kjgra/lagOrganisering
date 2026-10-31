@@ -2,11 +2,15 @@
 
 Alle merkbare endringer i appen står her, nyeste først.
 
-Formatet følger [Keep a Changelog](https://keepachangelog.com/no/1.1.0/), og versjonsnumrene følger [semantisk versjonering](https://semver.org/lang/no/). Appen er på 0.x fram til repoet blir offentlig, da blir den 1.0.0.
+Formatet følger [Keep a Changelog](https://keepachangelog.com/no/1.1.0/), og versjonsnumrene følger [semantisk versjonering](https://semver.org/lang/no/). Appen var på 0.x fram til repoet ble offentlig, og ble 1.0.0 da. Prosjektet er fortsatt eksperimentelt, så ting kan endre seg raskt.
 
 Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes de til en ny overskrift, og `version` i `package.json` settes til det samme nummeret.
 
 ## [Ikke utgitt]
+
+## [1.0.0] – 2026-10-31
+
+Koden er offentlig. Felles øvelsesbank på tvers av grupper, og øvelser som forbedres per aldersgruppe.
 
 ### Lagt til
 
@@ -18,6 +22,10 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 - Versjoner av øvelser: hver endring blir en ny versjon med eget snitt, og du kan gå tilbake til en tidligere versjon fra øvelsessiden.
 - Appen går tilbake av seg selv når en ny versjon fra «Forbedringer» får klart dårligere vurderinger enn den før.
 - «Små forbedringer» under KI-innstillinger: forslag som bare legger til linjer kan brukes automatisk (av som standard).
+
+### Endret
+
+- Koden ligger åpent på GitHub (MIT-lisens). Prosjektet er merket som eksperimentelt.
 
 ## [0.4.0] – 2026-10-31
 

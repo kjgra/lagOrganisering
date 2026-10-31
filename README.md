@@ -2,7 +2,9 @@
 
 [![CI](https://github.com/kjgra/lagOrganisering/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kjgra/lagOrganisering/actions/workflows/ci.yml?query=branch%3Amain)
 [![Prosjektstatus: aktiv](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
-[![Versjonslogg](https://img.shields.io/badge/versjonslogg-CHANGELOG-blue)](CHANGELOG.md)
+[![Livssyklus: eksperimentell](https://img.shields.io/badge/livssyklus-eksperimentell-orange)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![Versjon](https://img.shields.io/github/package-json/v/kjgra/lagOrganisering?label=versjon)](CHANGELOG.md)
+[![Lisens: MIT](https://img.shields.io/github/license/kjgra/lagOrganisering?label=lisens)](LICENSE)
 
 Webapp for trenere i Nymark: logg inn med Spond, se påmeldte, fordel spillere på lag, lag treningsopplegg (selv eller med KI) og evaluer øktene. Erstatter den gamle Shiny-appen (SpondNymark).
 
