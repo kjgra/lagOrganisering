@@ -107,6 +107,16 @@ Workflowen «Fast preview-adresse» peker `lagorganisering-preview.vercel.app` t
 
 Den gjelder fra neste preview som bygges på en branch laget etter at workflowen kom inn i `main`. Adressen følger den preview-en som sist ble ferdig, så med to åpne PR-er viser den den nyeste. Preview er beskyttet med Vercel-innlogging (Deployment Protection), så logg inn i Vercel i Safari før du legger den på hjemskjermen.
 
+## 7. Påminnelse etter trening (valgfritt)
+
+En trener som ikke har evaluert en trening med opplegg, ser en påminnelse på Arrangementer i en uke etterpå. Det virker uten oppsett. I tillegg kan de slå på varsler på mobilen (Web Push) nederst på evalueringssiden; da får de et varsel 15 minutter til 6 timer etter treningen. Det krever:
+
+1. Nøkler, laget én gang: `npx web-push generate-vapid-keys`.
+2. Miljøvariabler i Vercel (Production, og Preview hvis du vil teste der): `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (f.eks. `mailto:din@epost.no`) og `CRON_SECRET` (`openssl rand -base64 32`). Bytt ikke nøklene senere, da må alle slå på varslene på nytt.
+3. GitHub: secret `CRON_SECRET` (samme verdi) og variabel `APP_URL` (Settings → Secrets and variables → Actions → Variables), f.eks. `https://lagorganisering.vercel.app`. Workflowen «Påminnelser» kaller da appen hvert kvarter. Uten dem hopper den over.
+
+På iPhone virker varsler bare når appen er lagt på hjemskjermen (iOS 16.4 eller nyere). «Send testvarsel» på evalueringssiden sjekker at alt er riktig, også i preview (der sendes påminnelsene etter trening ikke automatisk).
+
 ## Sjekkliste
 
 - [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt
@@ -114,4 +124,5 @@ Den gjelder fra neste preview som bygges på en branch laget etter at workflowen
 - [ ] Eventuelt `pnpm copy:test-to-prod --apply`
 - [ ] Miljøvariabler i Vercel (Production og Preview)
 - [ ] Eventuelt preview-database (avsnitt 5) og fast preview-adresse (avsnitt 6)
+- [ ] Eventuelt varsler etter trening (avsnitt 7)
 - [ ] Deploy fra `main`, logg inn, sjekk Innstillinger → Generelt (ingen «simulert»)

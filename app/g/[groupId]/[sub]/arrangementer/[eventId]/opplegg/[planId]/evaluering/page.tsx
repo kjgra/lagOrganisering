@@ -1,8 +1,10 @@
 import { notFound, redirect } from "next/navigation";
+import { PushToggle } from "@/components/notifications/PushToggle";
 import { FeedbackForm, type FeedbackDraft } from "@/components/plans/FeedbackForm";
 import { AppShell } from "@/components/shell/AppShell";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
+import { vapid } from "@/lib/env";
 import { findEvent } from "@/lib/events-data";
 import { dayLabel } from "@/lib/format";
 import { FEEDBACK_TAGS, RATINGS, USE_AGAIN } from "@/lib/plans/feedback";
@@ -36,6 +38,7 @@ export default async function FeedbackPage(props: PageProps<"/g/[groupId]/[sub]/
       use_again: f?.use_again ?? "",
     };
   };
+  const push = vapid();
   const rows = [...pl.plan.ovelser.map((e, i) => draft(i + 1, `${i + 1}. ${e.navn}`)), draft(null, "Hele økta")];
   return (
     <AppShell ctx={ctx} title={`Evaluering · ${event.start ? dayLabel(event.start) : event.heading}`} section="events" back={eventPath}>
@@ -47,6 +50,7 @@ export default async function FeedbackPage(props: PageProps<"/g/[groupId]/[sub]/
         useAgain={USE_AGAIN}
         ki={ctx.user.rights.ai}
       />
+      {push ? <PushToggle publicKey={push.publicKey} mode="full" /> : null}
     </AppShell>
   );
 }

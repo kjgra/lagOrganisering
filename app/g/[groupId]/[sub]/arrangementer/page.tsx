@@ -1,16 +1,20 @@
-import { Play, RefreshCw } from "lucide-react";
+import { ClipboardCheck, Play, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { EventCard } from "@/components/events/EventCard";
+import { PushToggle } from "@/components/notifications/PushToggle";
 import { PlanBadge, ProposalBadge } from "@/components/proposals/ProposalBadge";
 import { AppShell } from "@/components/shell/AppShell";
 import { Icon } from "@/components/ui/icon";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
+import { vapid } from "@/lib/env";
 import { forSubgroup, pastEvents, upcomingEvents } from "@/lib/events-data";
-import { clock, osloDate, pastSection, weekSection } from "@/lib/format";
+import { clock, dayLabel, osloDate, pastSection, weekSection } from "@/lib/format";
+import { evaluationPath } from "@/lib/push";
 import { eventSentTo, responseCounts } from "@/lib/spond/events";
 import type { SpondEvent } from "@/lib/spond/types";
 import { activeLocks, listProposals, pendingProposals } from "@/lib/store/proposals";
+import { pendingEvaluations, syncPlanTimes } from "@/lib/store/reminders";
 import { latestPlans } from "@/lib/store/training";
 
 const UNSENT_STEP = 5;
@@ -61,6 +65,12 @@ export default async function EventsPage(props: PageProps<"/g/[groupId]/[sub]/ar
     latestPlans(d, ctx.user.access, ctx.group.id, events.filter((e) => !e.match).map((e) => e.id)),
   ]);
 
+  // The plans learn when their training ends (for reminders), then: trainings this trainer has not evaluated.
+  const withPlan = events.filter((e) => plans.some((p) => p.spond_event_id === e.id));
+  await syncPlanTimes(d, ctx.user.access, ctx.group.id, withPlan).catch((err) => console.error("Oppdatering av treningstider feilet:", (err as Error).message));
+  const toEvaluate = past ? [] : await pendingEvaluations(d, ctx.user.access, ctx.group.id);
+  const push = vapid();
+
   const todayKey = osloDate(new Date());
   const today = past ? [] : events.filter((e) => e.start && !e.cancelled && !e.notSent && osloDate(e.start) === todayKey);
 
@@ -107,6 +117,19 @@ export default async function EventsPage(props: PageProps<"/g/[groupId]/[sub]/ar
           </Link>
         </div>
       ) : null}
+
+      {toEvaluate.map((x) => (
+        <Link key={x.planId} href={evaluationPath(ctx.group.id, x.eventId, x.planId)} className="nm-note" style={{ marginTop: "var(--space-3)" }}>
+          <span style={{ flex: 1 }}>
+            Hvordan gikk «{x.title}»{x.eventStart ? ` (${dayLabel(x.eventStart)})` : ""}? Du har ikke evaluert økta ennå.
+          </span>
+          <span style={{ fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "var(--space-1)" }}>
+            <Icon icon={ClipboardCheck} size={20} />
+            Evaluer
+          </span>
+        </Link>
+      ))}
+      {toEvaluate.length && push ? <PushToggle publicKey={push.publicKey} mode="offer" /> : null}
 
       {today.map((e) => (
         <Link key={e.id} href={ctx.path(`/arrangementer/${encodeURIComponent(e.id)}/dagens-okt`)} className="nm-today">

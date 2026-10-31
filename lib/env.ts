@@ -41,6 +41,10 @@ const schema = z.object({
     "Hjelper",
   ]),
   TAG_SUGGESTIONS: list(["Keeper", "Kaptein", "Forsvar", "Midtbane", "Angrep", "Ny"]),
+  VAPID_PUBLIC_KEY: z.string().optional().default(""),
+  VAPID_PRIVATE_KEY: z.string().optional().default(""),
+  VAPID_SUBJECT: z.string().optional().default(""),
+  CRON_SECRET: z.string().optional().default(""),
   VERCEL_ENV: z.string().optional().default(""),
   NODE_ENV: z.string().optional().default("development"),
 });
@@ -108,4 +112,12 @@ export function aiMode(): "real" | "mock" | "off" {
   if (e.ANTHROPIC_API_KEY) return "real";
   if (e.AI_MOCK) return "mock";
   return "off";
+}
+
+/** Web Push keys, or null when push is not set up (then the app only reminds in the app). */
+export function vapid(): { publicKey: string; privateKey: string; subject: string } | null {
+  const e = env();
+  const subject = e.VAPID_SUBJECT.trim();
+  if (!e.VAPID_PUBLIC_KEY || !e.VAPID_PRIVATE_KEY || !/^(mailto:|https:)/.test(subject)) return null;
+  return { publicKey: e.VAPID_PUBLIC_KEY.trim(), privateKey: e.VAPID_PRIVATE_KEY.trim(), subject };
 }

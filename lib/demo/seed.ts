@@ -140,9 +140,9 @@ async function seedTraining(d: Db): Promise<void> {
       .sort((a, b) => (b.startTimestamp ?? "").localeCompare(a.startTimestamp ?? ""))[0];
     if (last) {
       await t.query(
-        `INSERT INTO training_plans (spond_group_id, spond_event_id, version, plan, source, status, created_by, approved_by, approved_at)
-         VALUES ('G-FOTBALL', $1, 1, $2::jsonb, 'manual', 'approved', 'P-ANN', 'P-KJETIL', now())`,
-        [last.id, planJson(ref)],
+        `INSERT INTO training_plans (spond_group_id, spond_event_id, version, plan, source, status, created_by, approved_by, approved_at, event_start, event_end)
+         VALUES ('G-FOTBALL', $1, 1, $2::jsonb, 'manual', 'approved', 'P-ANN', 'P-KJETIL', now(), $3::timestamptz, $4::timestamptz)`,
+        [last.id, planJson(ref), last.startTimestamp ?? null, last.endTimestamp ?? null],
       );
     }
     await t.query(

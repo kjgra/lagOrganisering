@@ -577,18 +577,19 @@ export async function savePlan(
   groupId: string,
   eventId: string,
   plan: Plan,
-  opts: { source?: "manual" | "ai"; model?: string; costUsd?: number | null } = {},
+  opts: { source?: "manual" | "ai"; model?: string; costUsd?: number | null; eventStart?: string | null; eventEnd?: string | null } = {},
 ): Promise<{ id: number; version: number }> {
   assertGroup(access, groupId);
   if (!eventId) throw new UserError("Mangler arrangement.");
   const json = planJson(wrap(() => validatePlan(plan)));
+  // The event's time, so a reminder to evaluate can be sent after it (without Spond).
   const insert = () =>
     d.query<{ id: number; version: number }>(
-      `INSERT INTO training_plans (spond_group_id, spond_event_id, version, plan, source, created_by, model, cost_usd)
-       SELECT $1, $2, coalesce(max(version), 0) + 1, $3::jsonb, $4, $5, NULLIF($6, ''), $7
+      `INSERT INTO training_plans (spond_group_id, spond_event_id, version, plan, source, created_by, model, cost_usd, event_start, event_end)
+       SELECT $1, $2, coalesce(max(version), 0) + 1, $3::jsonb, $4, $5, NULLIF($6, ''), $7, $8::timestamptz, $9::timestamptz
          FROM training_plans WHERE spond_group_id = $1 AND spond_event_id = $2
        RETURNING id, version`,
-      [groupId, eventId, json, opts.source ?? "manual", access.profileId, opts.model ?? "", opts.costUsd ?? null],
+      [groupId, eventId, json, opts.source ?? "manual", access.profileId, opts.model ?? "", opts.costUsd ?? null, opts.eventStart ?? null, opts.eventEnd ?? null],
     );
   try {
     return (await insert())[0];
