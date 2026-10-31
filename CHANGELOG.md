@@ -18,7 +18,16 @@ Tilbakemeldinger fra trenerne gjør øvelsene bedre.
 - Påminnelse på telefonen om å evaluere etter trening (#39).
 - Appen logger hva trenerne endrer i KI-forslag og øvelser, så KI kan lære av det (#40).
 - «Dette sier trenerne»: observasjoner og mønstre per øvelse i øvelsesbanken (#41).
+- «Forbedringer» under Trening: appen foreslår selv bedre øvelser når trenernes innspill viser et mønster, og du velger «Bruk», «Endre først» eller «Avvis». Trenerne får varsel når forslag venter (#43).
 - «Hva er nytt» under Innstillinger, med versjonsnummeret under «Om appen».
+
+### Endret
+
+- Koden er MIT-lisensiert, klar for et offentlig repo (#42).
+
+### Sikkerhet
+
+- Demo-innlogging stoppes hvis appen er koblet til en ekte database, og loggen viser ikke hele databaseadressen (#42).
 
 ## [0.3.0] – 2026-10-27
 
