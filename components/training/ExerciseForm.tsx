@@ -35,6 +35,8 @@ export function ExerciseForm(p: {
   listHref: string;
   /** Admins may delete an exercise, after «Er du sikker?». */
   canDelete: boolean;
+  /** KI's version («Juster med KI»), so what the trainer changes in it is logged. */
+  kiDraft?: ExerciseValues;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -49,7 +51,7 @@ export function ExerciseForm(p: {
   const save = () =>
     start(async () => {
       setError(null);
-      const r = await saveExerciseAction(p.groupId, p.id, { ...v, themes: v.themes.split(",").map((t) => t.trim()).filter(Boolean) });
+      const r = await saveExerciseAction(p.groupId, p.id, { ...v, themes: v.themes.split(",").map((t) => t.trim()).filter(Boolean) }, p.kiDraft);
       if (!r.ok) return setError(r.error);
       if (r.message) toast(r.message);
       router.push(p.listHref);

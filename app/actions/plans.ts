@@ -9,11 +9,13 @@ import { AI_MODELS } from "@/lib/ai/plan-ai";
 import { db } from "@/lib/db";
 import { findEvent } from "@/lib/events-data";
 import { orderContext } from "@/lib/plan-data";
+import { planChanges } from "@/lib/plans/exercise-edits";
 import { FEEDBACK_TEXT_MAX, validateBankFeedback, validateFeedback, type FeedbackFill } from "@/lib/plans/feedback";
 import { bankCandidates, buildPlan, exerciseFromBank, type PlanExercise } from "@/lib/plans/plan";
 import { memberNames, namesProblem } from "@/lib/sensitive";
 import { eventIsPast } from "@/lib/spond/events";
 import { UserError } from "@/lib/store/access";
+import { logEdit } from "@/lib/store/edits";
 import {
   addPlanComment,
   approvePlan,
@@ -93,6 +95,11 @@ export async function savePlanAction(input: z.input<typeof planInput>): Promise<
     });
     const plan = buildPlan(ex, v.settings, base ? { kilde: base.plan.kilde, stikkord_merknad: base.plan.stikkord_merknad } : {});
     const saved = await savePlan(d, user.access, group.id, event.id, plan, { source: "manual", eventStart: event.start, eventEnd: event.end });
+    // A trainer's own version of a plan KI made for this event: which exercises were kept, removed and added.
+    if (base?.source === "ai" && base.eventId === event.id) {
+      const changes = planChanges(base.plan.ovelser.map((e) => e.kode), plan.ovelser.map((e) => e.kode));
+      if (changes.fjernet.length || changes.lagt_til.length) await logEdit(d, user.access, group.id, { kind: "opplegg_etter_ki", planId: saved.id, changes });
+    }
     refresh();
     return { data: saved, message: `Versjon ${saved.version} er lagret.` };
   });

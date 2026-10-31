@@ -4,9 +4,12 @@ import { AppShell } from "@/components/shell/AppShell";
 import { ExerciseForm, type ExerciseValues } from "@/components/training/ExerciseForm";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
-import { osloParts } from "@/lib/format";
+import { osloParts, shortDate } from "@/lib/format";
 import { teamBand } from "@/lib/nff/bands";
+import { changedFieldsText, EDIT_KINDS } from "@/lib/plans/exercise-edits";
 import { exerciseValues } from "@/lib/plans/exercise-values";
+import { profileName } from "@/lib/proposal-view";
+import { exerciseEdits } from "@/lib/store/edits";
 import { feedbackSummary } from "@/lib/plans/feedback";
 import { CATEGORIES, EXERCISE_STATUSES } from "@/lib/plans/plan";
 import { getExercise, getTeamSettings } from "@/lib/store/training";
@@ -28,6 +31,7 @@ export default async function ExercisePage(props: PageProps<"/g/[groupId]/[sub]/
         // A new exercise is for the team's own band to begin with.
         bands: [teamBand((await getTeamSettings(d, ctx.user.access, ctx.group.id, ctx.subgroup?.id ?? "")).birth_year, osloParts(new Date()).year)].filter((x) => x !== null),
       };
+  const edits = b ? await exerciseEdits(d, ctx.user.access, ctx.group.id, b.code) : [];
   const listHref = ctx.path("/trening/ovelser");
   return (
     <AppShell ctx={ctx} title={b ? b.name : "Ny øvelse"} section="training" back={listHref}>
@@ -54,6 +58,20 @@ export default async function ExercisePage(props: PageProps<"/g/[groupId]/[sub]/
         </p>
       ) : null}
       <ExerciseForm groupId={ctx.group.id} id={b?.id ?? null} initial={initial} categories={CATEGORIES} statuses={EXERCISE_STATUSES} listHref={listHref} canDelete={ctx.user.rights.admin} />
+      {edits.length ? (
+        <section aria-labelledby="edits-h" style={{ maxWidth: 760, marginTop: "var(--space-5)" }}>
+          <h2 id="edits-h" className="nm-h3">
+            Endringer
+          </h2>
+          <ul className="nm-hint" style={{ margin: 0, paddingLeft: "var(--space-4)" }}>
+            {edits.map((e) => (
+              <li key={e.id}>
+                {shortDate(e.created_at)} · {e.kind === "ki_forslag" ? "KI" : profileName(ctx.group, e.author)} · {EDIT_KINDS[e.kind]}: {changedFieldsText(e.changes)}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </AppShell>
   );
 }
