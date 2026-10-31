@@ -16,11 +16,12 @@ export async function getAiSettings(d: Db): Promise<AiSettings> {
     link_domains: string[];
     pattern_min_sessions: number;
     pattern_min_trainers: number;
+    auto_approve_small: boolean;
     updated_by: string;
     updated_at: Date;
   }>(
     `SELECT model, group_limit_nok::float8 AS group_limit_nok, total_limit_usd::float8 AS total_limit_usd, max_new_exercises,
-            usd_nok::float8 AS usd_nok, link_domains, pattern_min_sessions, pattern_min_trainers, updated_by, updated_at FROM ai_settings WHERE id`,
+            usd_nok::float8 AS usd_nok, link_domains, pattern_min_sessions, pattern_min_trainers, auto_approve_small, updated_by, updated_at FROM ai_settings WHERE id`,
   );
   return rows[0] ? { ...rows[0] } : { ...DEFAULT_AI_SETTINGS };
 }
@@ -50,12 +51,12 @@ export async function saveAiSettings(d: Db, rights: Rights, actor: string, s: Re
   }
   await d.query(
     `INSERT INTO ai_settings (id, model, group_limit_nok, total_limit_usd, max_new_exercises, usd_nok, link_domains, updated_by,
-                             pattern_min_sessions, pattern_min_trainers)
-     VALUES (true, $1, $2, $3, $4, $5, $6::text[], $7, $8, $9)
+                             pattern_min_sessions, pattern_min_trainers, auto_approve_small)
+     VALUES (true, $1, $2, $3, $4, $5, $6::text[], $7, $8, $9, $10)
      ON CONFLICT (id) DO UPDATE SET model = EXCLUDED.model, group_limit_nok = EXCLUDED.group_limit_nok,
        total_limit_usd = EXCLUDED.total_limit_usd, max_new_exercises = EXCLUDED.max_new_exercises, usd_nok = EXCLUDED.usd_nok,
        link_domains = EXCLUDED.link_domains, updated_by = EXCLUDED.updated_by, updated_at = now(),
-       pattern_min_sessions = EXCLUDED.pattern_min_sessions, pattern_min_trainers = EXCLUDED.pattern_min_trainers`,
+       pattern_min_sessions = EXCLUDED.pattern_min_sessions, pattern_min_trainers = EXCLUDED.pattern_min_trainers, auto_approve_small = EXCLUDED.auto_approve_small`,
     [
       model,
       num(s.group_limit_nok, "Grensen per lag", 0, 10000),
@@ -66,6 +67,7 @@ export async function saveAiSettings(d: Db, rights: Rights, actor: string, s: Re
       actor,
       whole(s.pattern_min_sessions, DEFAULT_AI_SETTINGS.pattern_min_sessions, "Økter for et mønster", 1, 20),
       whole(s.pattern_min_trainers, DEFAULT_AI_SETTINGS.pattern_min_trainers, "Trenere for et mønster", 1, 10),
+      s.auto_approve_small === undefined ? DEFAULT_AI_SETTINGS.auto_approve_small : s.auto_approve_small === "true" || s.auto_approve_small === true,
     ],
   );
 }

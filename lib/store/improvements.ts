@@ -28,14 +28,18 @@ const SELECT = `
     FROM improvement_proposals p
     LEFT JOIN exercises e ON e.spond_group_id = p.spond_group_id AND e.code = p.exercise_code`;
 
-/** Waiting proposals first (oldest first), then the latest handled ones. */
-export async function listProposals(d: Db, access: Access, groupId: string, handled = 10): Promise<{ open: Proposal[]; handled: Proposal[] }> {
+/** Waiting proposals first (oldest first), what the app did by itself lately, then the latest handled ones. */
+export async function listProposals(d: Db, access: Access, groupId: string, handled = 10): Promise<{ open: Proposal[]; auto: Proposal[]; handled: Proposal[] }> {
   assertGroup(access, groupId);
-  const [open, done] = await Promise.all([
+  const [open, auto, done] = await Promise.all([
     d.query<Proposal>(`${SELECT} WHERE p.spond_group_id = $1 AND p.status = 'ny' ORDER BY p.created_at, p.id`, [groupId]),
+    d.query<Proposal>(
+      `${SELECT} WHERE p.spond_group_id = $1 AND p.status = 'auto' AND p.decided_at > now() - make_interval(days => $2::int) ORDER BY p.decided_at DESC, p.id DESC`,
+      [groupId, QUIET_DAYS],
+    ),
     d.query<Proposal>(`${SELECT} WHERE p.spond_group_id = $1 AND p.status IN ('brukt', 'endret', 'avvist') ORDER BY p.decided_at DESC, p.id DESC LIMIT $2::int`, [groupId, handled]),
   ]);
-  return { open, handled: done };
+  return { open, auto, handled: done };
 }
 
 export async function getProposal(d: Db, access: Access, groupId: string, id: number): Promise<Proposal> {
@@ -104,7 +108,7 @@ export async function rejectionsFor(d: Db, groupId: string, code: string): Promi
 export async function saveProposal(
   d: Db,
   groupId: string,
-  p: { code: string; kind: ProposalKind; reason: string; signature: string; base: ExerciseValues; proposed: ExerciseValues; model: string | null; costUsd: number; status?: "ny" | "utdatert" },
+  p: { code: string; kind: ProposalKind; reason: string; signature: string; base: ExerciseValues; proposed: ExerciseValues; model: string | null; costUsd: number; status?: "ny" | "utdatert" | "auto" },
 ): Promise<number | null> {
   const r = await d.query<{ id: number }>(
     `INSERT INTO improvement_proposals (spond_group_id, exercise_code, kind, status, reason, signature, base_values, proposed, model, cost_usd, decided_at)

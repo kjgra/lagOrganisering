@@ -6,7 +6,7 @@ import { runAction, type ActionResult } from "@/lib/actions";
 import { findGroup, requireUser } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { exerciseChanges } from "@/lib/plans/exercise-edits";
-import { exerciseValues } from "@/lib/plans/exercise-values";
+import { exerciseInputFrom, exerciseValues } from "@/lib/plans/exercise-values";
 import { REJECTION_MAX } from "@/lib/plans/improvements";
 import { isSensitive, memberNames, namesProblem } from "@/lib/sensitive";
 import { UserError } from "@/lib/store/access";
@@ -35,8 +35,7 @@ export async function applyProposalAction(groupId: string, proposalId: number): 
     if (Object.keys(exerciseChanges(now, p.base_values)).length) {
       throw new UserError("Øvelsen er endret siden forslaget ble laget. Velg «Endre først» for å se over forslaget.");
     }
-    const input = { ...p.proposed, themes: p.proposed.themes.split(",").map((t) => t.trim()).filter(Boolean) };
-    await saveExercise(d, user.access, group.id, input, p.exercise_id, { kiDraft: p.proposed });
+    await saveExercise(d, user.access, group.id, exerciseInputFrom(p.proposed), p.exercise_id, { kiDraft: p.proposed, source: "forbedring", proposalId: p.id });
     await decideProposal(d, user.access, group.id, p.id, "brukt");
     refresh();
     return { data: p.exercise_id, message: p.kind === "arkiver" ? `«${p.exercise_name}» er arkivert.` : `«${p.proposed.name}» er oppdatert.` };

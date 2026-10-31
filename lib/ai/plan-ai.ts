@@ -78,6 +78,8 @@ export interface AiSettings {
   /** A kind of observation is a pattern when this many sessions, or this many trainers, said it. */
   pattern_min_sessions: number;
   pattern_min_trainers: number;
+  /** Proposals that only add lines under easier, harder, questions or learning points are used without a trainer. */
+  auto_approve_small: boolean;
   updated_by: string | null;
   updated_at: Date | null;
 }
@@ -92,6 +94,7 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   link_domains: ["tiim.no", "fotball.no"],
   pattern_min_sessions: 3,
   pattern_min_trainers: 2,
+  auto_approve_small: false,
   updated_by: null,
   updated_at: null,
 };

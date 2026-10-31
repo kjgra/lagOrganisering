@@ -8,10 +8,11 @@ import { AI_MODELS } from "@/lib/ai/plan-ai";
 import { estimateKi, prepareExerciseKi, reviseExerciseKi, runExerciseKi, updateLearningsWithKi } from "@/lib/ai/service";
 import { db } from "@/lib/db";
 import { exerciseOrderContext } from "@/lib/plan-data";
-import { adjustedValues, type ExerciseValues } from "@/lib/plans/exercise-values";
+import { adjustedValues, exerciseInputFrom, type ExerciseValues } from "@/lib/plans/exercise-values";
 import { UserError } from "@/lib/store/access";
 import { decideProposal, getProposal } from "@/lib/store/improvements";
-import { deleteExercise, saveExercise, saveLearning, savePrinciples, saveSeason, saveTeamSettings, followMainGroup, type Part } from "@/lib/store/training";
+import { exerciseVersions } from "@/lib/store/versions";
+import { deleteExercise, getExercise, saveExercise, saveLearning, savePrinciples, saveSeason, saveTeamSettings, followMainGroup, type Part } from "@/lib/store/training";
 
 /** «Trening»: season plan, the team, principles, learnings and the exercise bank, for every trainer on the team. */
 
@@ -134,10 +135,28 @@ export async function saveExerciseAction(
       .parse({ groupId, id, input, kiDraft, proposalId });
     const { user, d } = await trainer(v.groupId);
     if (v.proposalId && (await getProposal(d, user.access, v.groupId, v.proposalId)).status !== "ny") throw new UserError("Forslaget er allerede behandlet.");
-    const newId = await saveExercise(d, user.access, v.groupId, v.input, v.id, { kiDraft: v.kiDraft as ExerciseValues | undefined });
+    const newId = await saveExercise(d, user.access, v.groupId, v.input, v.id, {
+      kiDraft: v.kiDraft as ExerciseValues | undefined,
+      ...(v.proposalId ? { source: "forbedring" as const, proposalId: v.proposalId } : {}),
+    });
     if (v.proposalId) await decideProposal(d, user.access, v.groupId, v.proposalId, "endret");
     refresh();
     return { data: newId, message: `«${v.input.name.trim()}» er lagret.` };
+  });
+}
+
+/** Go back to an earlier version of an exercise: its content becomes a new version. */
+export async function rollbackExerciseAction(groupId: string, id: number, version: number): Promise<ActionResult> {
+  return runAction("Tilbake til versjon", async () => {
+    const v = z.object({ groupId: sid, id: z.number().int().positive(), version: z.number().int().positive() }).parse({ groupId, id, version });
+    const { user, d } = await trainer(v.groupId);
+    const ex = await getExercise(d, user.access, v.groupId, v.id);
+    const target = (await exerciseVersions(d, user.access, v.groupId, ex.code)).find((x) => x.version === v.version);
+    if (!target) throw new UserError("Fant ikke versjonen.");
+    if (target.version === ex.version) throw new UserError("Det er allerede denne versjonen.");
+    await saveExercise(d, user.access, v.groupId, exerciseInputFrom(target.vals), ex.id, { source: "tilbakerulling" });
+    refresh();
+    return { data: undefined, message: `«${target.vals.name}» er tilbake til innholdet i versjon ${target.version}.` };
   });
 }
 
