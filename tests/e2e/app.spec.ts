@@ -256,3 +256,17 @@ test("admin: the tags right can be turned off per trainer", async ({ page }) => 
   await tags.click();
   await expect(tags).toBeChecked();
 });
+
+test("settings show the version and «Hva er nytt»", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/innstillinger");
+  const link = page.locator("main").getByRole("link", { name: /Hva er nytt/ });
+  await expect(link).toContainText(/Versjon \d+\.\d+\.\d+/);
+  await link.click();
+  await expect(page).toHaveURL(/\/innstillinger\/nytt/);
+  await expect(page.getByRole("heading", { name: "Hva er nytt" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Versjon 0\.1\.0/ })).toBeVisible();
+  // PR numbers are for developers, not for the trainers.
+  await expect(page.locator("main")).not.toContainText("(#");
+});

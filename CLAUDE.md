@@ -54,6 +54,7 @@ Rules to follow without exception:
 - Short and concise answers. Ask if an instruction is unclear. Technical suggestions for improvement are welcome.
 - Run `pnpm lint`, `pnpm typecheck` and `pnpm test` yourself before reporting that something is done. Check the UI at both mobile and desktop width.
 - Small, focused changes. Work on a feature branch, PR to `main`.
+- Every PR adds its user-facing changes to `CHANGELOG.md` under «Ikke utgitt» (Norwegian, Keep a Changelog: Lagt til / Endret / Fikset / Sikkerhet). Kjetil decides when a version is released; then the entries move under a new `## [x.y.z] – YYYY-MM-DD` and `version` in `package.json` is set to match (a unit test checks this). The app is 0.x until the repo goes public, then 1.0.0.
 
 ## Commands
 - `pnpm dev` – local development

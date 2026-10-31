@@ -13,8 +13,8 @@ const nextConfig: NextConfig = {
   turbopack: {
     rules: { "*.css": { loaders: ["@tailwindcss/turbopack"], as: "*.css" } },
   },
-  // The simulated database runs the SQL migrations at start-up.
-  outputFileTracingIncludes: { "/**": ["./supabase/migrations/*.sql", "./lib/pdf/fonts/*.ttf"] },
+  // The simulated database runs the SQL migrations at start-up; «Hva er nytt» reads CHANGELOG.md.
+  outputFileTracingIncludes: { "/**": ["./supabase/migrations/*.sql", "./lib/pdf/fonts/*.ttf", "./CHANGELOG.md"] },
 };
 
 export default nextConfig;

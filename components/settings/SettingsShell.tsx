@@ -35,7 +35,7 @@ export function SettingsShell({
 }: {
   user: CurrentUser;
   back: string;
-  tab: AdminTab | "generelt";
+  tab: AdminTab | "generelt" | "nytt";
   groupId?: string;
   actions?: ReactNode;
   children: ReactNode;
@@ -56,6 +56,9 @@ export function SettingsShell({
               {t.label}
             </Link>
           ))}
+          <Link href={`/innstillinger/nytt${q()}`} aria-current={tab === "nytt" ? "page" : undefined}>
+            Hva er nytt
+          </Link>
         </nav>
         <div className="nm-side__user">
           Innlogget som <strong>{user.data.profile.firstName}</strong> &nbsp;
