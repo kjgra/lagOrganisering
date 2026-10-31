@@ -482,3 +482,13 @@ body:has(.nm-actions):has(.nm-bottomnav) .nm-toast { bottom: calc(158px + env(sa
 .nm-month__name { display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-1); font-family: var(--font-display); font-size: var(--fs-heading); font-weight: 800; }
 .nm-month-past > summary { min-height: var(--touch-min); display: flex; align-items: center; font-weight: 700; cursor: pointer; }
 .nm-month-past > .nm-form { margin-top: var(--space-3); }
+
+/* «Forbedringer»: before and after per field, side by side from 768 px. Removed lines are struck through, new lines marked. */
+.nm-diff { display: grid; gap: var(--space-4); margin: 0; }
+.nm-diff__field { display: grid; gap: var(--space-2); }
+.nm-diff__pair { display: grid; gap: var(--space-2); }
+.nm-diff__side { padding: var(--space-3); border: var(--border-2) solid var(--line); border-radius: var(--radius-md); background: var(--surface-raised); white-space: pre-wrap; overflow-wrap: anywhere; }
+.nm-diff__side > span { display: block; }
+.nm-diff del { background: var(--danger-bg); color: var(--ink); }
+.nm-diff ins { background: var(--success-bg); color: var(--ink); text-decoration: none; }
+@media (min-width: 768px) { .nm-diff__pair { grid-template-columns: 1fr 1fr; } }

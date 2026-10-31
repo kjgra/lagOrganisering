@@ -136,3 +136,8 @@ export async function markReminded(d: Db, r: Pick<DueReminder, "groupId" | "even
 export async function forgetPushSubscription(d: Db, endpoint: string): Promise<void> {
   await d.query("DELETE FROM push_subscriptions WHERE endpoint = $1", [endpoint]);
 }
+
+/** The devices of trainers with push for a group (the weekly note about proposals). */
+export async function groupPushSubscriptions(d: Db, groupId: string): Promise<PushKeys[]> {
+  return d.query<PushKeys>("SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE $1 = ANY(group_ids)", [groupId]);
+}

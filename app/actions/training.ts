@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import { exerciseOrderContext } from "@/lib/plan-data";
 import { adjustedValues, type ExerciseValues } from "@/lib/plans/exercise-values";
 import { UserError } from "@/lib/store/access";
+import { decideProposal, getProposal } from "@/lib/store/improvements";
 import { deleteExercise, saveExercise, saveLearning, savePrinciples, saveSeason, saveTeamSettings, followMainGroup, type Part } from "@/lib/store/training";
 
 /** «Trening»: season plan, the team, principles, learnings and the exercise bank, for every trainer on the team. */
@@ -124,13 +125,17 @@ export async function saveExerciseAction(
   id: number | null,
   input: z.input<typeof exerciseInput>,
   kiDraft?: z.input<typeof kiDraftInput>,
+  /** A proposal from «Forbedringer» that the trainer changed before saving. */
+  proposalId?: number,
 ): Promise<ActionResult<number>> {
   return runAction("Lagring av øvelse", async () => {
     const v = z
-      .object({ groupId: sid, id: z.number().int().positive().nullable(), input: exerciseInput, kiDraft: kiDraftInput.optional() })
-      .parse({ groupId, id, input, kiDraft });
+      .object({ groupId: sid, id: z.number().int().positive().nullable(), input: exerciseInput, kiDraft: kiDraftInput.optional(), proposalId: z.number().int().positive().optional() })
+      .parse({ groupId, id, input, kiDraft, proposalId });
     const { user, d } = await trainer(v.groupId);
+    if (v.proposalId && (await getProposal(d, user.access, v.groupId, v.proposalId)).status !== "ny") throw new UserError("Forslaget er allerede behandlet.");
     const newId = await saveExercise(d, user.access, v.groupId, v.input, v.id, { kiDraft: v.kiDraft as ExerciseValues | undefined });
+    if (v.proposalId) await decideProposal(d, user.access, v.groupId, v.proposalId, "endret");
     refresh();
     return { data: newId, message: `«${v.input.name.trim()}» er lagret.` };
   });
