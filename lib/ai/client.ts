@@ -163,7 +163,15 @@ async function mockCall(c: CallInput, t0: number): Promise<CallResult> {
       text = JSON.stringify({ ...base, gjennomforing: [...base.gjennomforing, `Justert med simulert KI${wish ? `: ${wish}` : ""}.`.slice(0, 400)] });
       usage.output_tokens = 1500;
     } else if (c.kind === "exercise") {
-      const e = ref.ovelser[1];
+      // Its own content, so it is not too much like the reference exercises in the demo bank.
+      const e = {
+        ...ref.ovelser[1],
+        navn: "Simulert KI-øvelse",
+        organisering: ["Simulert: sett opp en sone med kjegler.", "Del gruppa i to like store lag."],
+        gjennomforing: ["Simulert: lagene konkurrerer om å holde sonen lengst.", `Eksempeltekst fra simulert KI${wish ? `: ${wish}` : ""}.`.slice(0, 400)],
+        laeringsmomenter: ["Simulert: snakk sammen."],
+        sporsmal: ["Simulert: hva fungerte?"],
+      };
       text = JSON.stringify({
         ...e,
         kilde: "ny",

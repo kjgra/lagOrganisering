@@ -127,6 +127,8 @@ Hver endring av en øvelse blir en ny versjon, og hver evaluering knyttes til ve
 
 Felles øvelsesbank: banken er én for hele appen og eies ikke av noen gruppe (spond_group_id 'felles' i tabellene for øvelser, versjoner, observasjoner, mønstre og forslag). Opplegg, evalueringer, lærdommer og laginnstillinger hører til lagets gruppe. Analysen går gjennom banken én gang, med evalueringer fra alle lagene. Migreringen 20261101150000_shared_bank.sql flytter eksisterende øvelser inn i banken; har to grupper samme kode, får den nyeste id-en sin bak koden.
 
+Sperre mot doble øvelser: før en ny øvelse lagres (skjema, KI eller godkjent opplegg), sammenlignes den med banken (navn, kategori, tema og tegning, `similarExercises` i lib/plans/plan.ts). Fra 75 % likhet blir den ikke lagret; varianter (basert på en øvelse) er unntatt. Fra 60 % vises bare et hint ved godkjenning.
+
 ## Sjekkliste
 
 - [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt

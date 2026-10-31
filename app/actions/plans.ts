@@ -29,6 +29,7 @@ import {
   saveFeedback,
   savePlan,
   savePlanExercise,
+  TooSimilarError,
   unapprovePlan,
 } from "@/lib/store/training";
 
@@ -124,16 +125,24 @@ export async function approvePlanAction(input: z.input<typeof approveInput>): Pr
     const bank = await listExercises(d, user.access, pl.groupId);
     const candidates = bankCandidates(pl.plan, bank);
     let saved = 0;
+    let similar = 0;
     for (const c of candidates) {
       const choice = v.bank.find((b) => b.index === c.index)?.choice ?? c.default;
       if (choice === "skip") continue;
       const e = pl.plan.ovelser[c.index - 1];
       const ex = choice === "variant" && c.match ? { ...e, basert_pa: c.match.code } : e;
-      if ((await savePlanExercise(d, user.access, pl.groupId, ex, [pl.plan.tema], pl.source)) !== null) saved++;
+      try {
+        if ((await savePlanExercise(d, user.access, pl.groupId, ex, [pl.plan.tema], pl.source)) !== null) saved++;
+      } catch (err) {
+        // Too much like an exercise in the bank (also one saved from this plan): not saved, the plan is approved anyway.
+        if (!(err instanceof TooSimilarError)) throw err;
+        similar++;
+      }
     }
     refresh();
     const bankText = saved ? ` ${saved} ${saved === 1 ? "øvelse er lagt" : "øvelser er lagt"} i øvelsesbanken som kandidat.` : "";
-    return { data: undefined, message: `Versjon ${pl.version} er godkjent.${bankText}` };
+    const similarText = similar ? ` ${similar === 1 ? "Én øvelse ble" : `${similar} øvelser ble`} ikke lagret fordi ${similar === 1 ? "den ligner" : "de ligner"} for mye på øvelser i banken.` : "";
+    return { data: undefined, message: `Versjon ${pl.version} er godkjent.${bankText}${similarText}` };
   });
 }
 

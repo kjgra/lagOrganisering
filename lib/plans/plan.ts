@@ -630,7 +630,10 @@ export function pitchTree(pitches: Pitch[]): { pitch: Pitch; depth: number }[] {
 
 // Similarity, so the bank does not fill up with nearly identical exercises ------------------
 
+/** Similar enough to point out when a plan is approved. */
 export const SIMILARITY_THRESHOLD = 0.6;
+/** So similar that a new exercise is not saved as one of its own (a variant of it is fine). */
+export const TOO_SIMILAR = 0.75;
 const STOP = new Set(["og", "med", "som", "til", "den", "det", "der", "for", "fra", "har", "ikke", "kan", "men", "når", "seg", "sin", "skal", "slik", "the", "eller", "etter", "før", "hver", "inn", "mot", "opp", "over", "også", "alle", "blir", "dem", "deg", "din", "dere", "han", "hun", "meg", "mer", "noe", "nye", "ved", "vil", "være", "spiller", "spillere", "ballen", "ball"]);
 
 function words(...x: unknown[]): Set<string> {
@@ -644,26 +647,63 @@ function shape(d: Drawing | null) {
   return { players: s.objekter.filter((o) => o.type === "spiller").length, area: s.bane.bredde * s.bane.lengde };
 }
 
-/** How similar a plan exercise is to each bank exercise (0–1), most similar first. */
-export function similarity(e: PlanExercise, bank: BankExercise[], theme = ""): { code: string; name: string; score: number }[] {
-  const key = categoryKey(e.kategori);
-  const w1 = words(e.navn, e.organisering, e.gjennomforing);
-  const sh1 = shape(e.tegning);
+/** What similarity looks at: the bank's fields, for a plan exercise or one from the form. */
+export interface SimilarInput {
+  name: string;
+  category: string;
+  themes: string[];
+  organisation: string | string[];
+  execution: string | string[];
+  drawing: Drawing | null;
+}
+
+export interface SimilarMatch {
+  code: string;
+  name: string;
+  score: number;
+}
+
+const norm = (x: string) => x.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
+/** How similar an exercise is to each bank exercise (0–1), most similar first. The same name counts as 1. */
+export function similarExercises(x: SimilarInput, bank: BankExercise[], except = ""): SimilarMatch[] {
+  const w1 = words(x.name, x.organisation, x.execution);
+  const sh1 = shape(x.drawing);
+  const themes = new Set(x.themes.map((t) => t.toLowerCase().trim()).filter(Boolean));
   const ratio = (a: number, b: number) => (a <= 0 || b <= 0 ? Number(a === b) : Math.min(a, b) / Math.max(a, b));
   return bank
-    .filter((b) => b.status !== "archived")
+    .filter((b) => b.status !== "archived" && b.code !== except)
     .map((b) => {
+      if (norm(b.name) && norm(b.name) === norm(x.name)) return { code: b.code, name: b.name, score: 1 };
       const w2 = words(b.name, b.organisation, b.execution);
       const union = new Set([...w1, ...w2]);
       const inter = [...w1].filter((w) => w2.has(w)).length;
       const wordsScore = union.size ? inter / union.size : 0;
-      const cat = Number(key === b.category);
-      const th = Number(!!theme && b.themes.some((t) => t.toLowerCase() === theme.toLowerCase()));
+      const cat = Number(x.category === b.category);
+      const th = Number(b.themes.some((t) => themes.has(t.toLowerCase().trim())));
       const sh2 = shape(b.drawing);
       const shp = !sh1 || !sh2 ? 0.5 : (ratio(sh1.players, sh2.players) + ratio(sh1.area, sh2.area)) / 2;
       return { code: b.code, name: b.name, score: Math.round((0.4 * wordsScore + 0.2 * cat + 0.2 * th + 0.2 * shp) * 100) / 100 };
     })
     .sort((a, b) => b.score - a.score);
+}
+
+/** How similar a plan exercise is to each bank exercise (0–1), most similar first. */
+export function similarity(e: PlanExercise, bank: BankExercise[], theme = ""): SimilarMatch[] {
+  return similarExercises(
+    { name: e.navn, category: categoryKey(e.kategori), themes: theme ? [theme] : [], organisation: e.organisering, execution: e.gjennomforing, drawing: e.tegning },
+    bank,
+  );
+}
+
+/** The bank exercise a new one is too similar to, so it should not be saved as an exercise of its own; null if none. */
+export function tooSimilar(x: SimilarInput, bank: BankExercise[], except = ""): SimilarMatch | null {
+  const top = similarExercises(x, bank, except)[0];
+  return top && top.score >= TOO_SIMILAR ? top : null;
+}
+
+export function tooSimilarText(m: SimilarMatch): string {
+  return `Øvelsen ligner for mye på «${m.name}», som allerede er i øvelsesbanken (${Math.round(m.score * 100)} % lik). Juster heller «${m.name}», eller lag en øvelse som er tydelig annerledes.`;
 }
 
 export interface BankCandidate {
@@ -672,7 +712,9 @@ export interface BankCandidate {
   navn: string;
   kilde: ExerciseSource;
   basert_pa: string;
-  match: { code: string; name: string; score: number } | null;
+  match: SimilarMatch | null;
+  /** Too similar to the match to be saved as a new exercise: only as a variant of it, or not at all. */
+  blocked: boolean;
   default: "save" | "skip";
 }
 
@@ -687,7 +729,8 @@ export function bankCandidates(p: Plan, bank: BankExercise[]): BankCandidate[] {
     if (e.kilde === "bank" || codes.has(e.kode)) return [];
     const top = e.kilde === "ny" ? similarity(e, bank, p.tema)[0] : undefined;
     const match = top && top.score >= SIMILARITY_THRESHOLD ? top : null;
-    return [{ index: i + 1, kode: e.kode, navn: e.navn, kilde: e.kilde, basert_pa: e.basert_pa, match, default: e.kilde === "ny" && !match ? "save" : "skip" }];
+    const blocked = !!match && match.score >= TOO_SIMILAR;
+    return [{ index: i + 1, kode: e.kode, navn: e.navn, kilde: e.kilde, basert_pa: e.basert_pa, match, blocked, default: e.kilde === "ny" && !match ? "save" : "skip" }];
   });
 }
 

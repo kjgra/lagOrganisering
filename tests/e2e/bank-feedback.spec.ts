@@ -45,6 +45,18 @@ test("make a new exercise with KI from the bank", async ({ page }) => {
   await expect(page.getByText(/laget med KI/).first()).toBeVisible();
   await expect(page.getByLabel("Status")).toHaveValue("candidate");
   await expect(page.getByLabel("Min. spillere")).toHaveValue("6");
+  // The same exercise again is too much like this one: it is not saved twice.
+  await page.goto("/g/G-FOTBALL/alle/trening/ovelser/ki");
+  await page.getByLabel("Tema").fill("Samhandling");
+  await page.getByRole("button", { name: "Lag øvelse med KI" }).click();
+  await expect(page.getByText(/ligner for mye på «Simulert KI-øvelse»/)).toBeVisible({ timeout: 30_000 });
+  // Cleaned up, so the next run can make it again.
+  await page.goto("/g/G-FOTBALL/alle/trening/ovelser");
+  await page.getByRole("link", { name: "Juster Simulert KI-øvelse med KI" }).click();
+  await page.getByRole("link", { name: "Endre manuelt i stedet" }).click();
+  await page.getByRole("button", { name: "Slett" }).click();
+  await page.getByRole("button", { name: "Ja, slett" }).click();
+  await expect(page.locator(".nm-toast")).toContainText("Øvelsen er slettet");
 });
 
 test("adjust an exercise with KI, look it over and save it", async ({ page }) => {

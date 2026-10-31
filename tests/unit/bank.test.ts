@@ -2,13 +2,13 @@ import { readFile } from "node:fs/promises";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Db } from "@/lib/db";
 import { exerciseInputFrom, exerciseValues } from "@/lib/plans/exercise-values";
-import { validatePlan } from "@/lib/plans/plan";
+import { bankCandidates, tooSimilar, validatePlan } from "@/lib/plans/plan";
 import reference from "@/lib/plans/reference-plan.json";
 import type { Access } from "@/lib/store/access";
 import { BANK } from "@/lib/store/bank";
 import { exerciseEdits } from "@/lib/store/edits";
 import { patternInputs } from "@/lib/store/observations";
-import { getExercise, listExercises, saveBankFeedback, saveExercise, savePlanExercise } from "@/lib/store/training";
+import { getExercise, listExercises, saveBankFeedback, saveExercise, savePlanExercise, TooSimilarError } from "@/lib/store/training";
 import { exerciseVersions } from "@/lib/store/versions";
 import { testDb } from "../helpers/db";
 
@@ -74,5 +74,23 @@ describe("the shared exercise bank", () => {
     ]);
     expect((await m.query<{ c: string }>("SELECT exercise_code AS c FROM exercise_feedback"))[0].c).toBe(b);
     await m.close();
+  });
+
+  it("does not let a new exercise be too much like one in the bank, but a variant of it is fine", async () => {
+    const e = plan.ovelser[2];
+    await savePlanExercise(d, kjetil, "BARN", e, ["Samhandling"], "manual");
+    const bank = await listExercises(d, ann, "UNGDOM");
+    // A copy under another code, or the same name from the form, is refused for every group.
+    const copy = { ...e, kode: "kopi-av-ovelse" };
+    await expect(savePlanExercise(d, ann, "UNGDOM", copy, [], "ai")).rejects.toBeInstanceOf(TooSimilarError);
+    await expect(saveExercise(d, ann, "UNGDOM", { name: `${e.navn.toUpperCase()}!`, category: "annet", themes: [], status: "active" }, null)).rejects.toThrow(/ligner for mye på/);
+    // As a variant of it, it is saved.
+    expect(await savePlanExercise(d, ann, "UNGDOM", { ...copy, basert_pa: e.kode }, [], "ai")).not.toBeNull();
+    // Something else is saved too.
+    expect(await saveExercise(d, ann, "UNGDOM", { name: "Hodespill i par", category: "annet", themes: [], status: "active", execution: "To og to header ballen til hverandre." }, null)).toBeGreaterThan(0);
+
+    expect(tooSimilar({ name: e.navn, category: "annet", themes: [], organisation: "", execution: "", drawing: null }, bank)?.code).toBe(e.kode);
+    const approve = bankCandidates({ ...plan, ovelser: [{ ...e, kode: "enda-en-kopi", kilde: "ny" }] }, bank);
+    expect(approve[0]).toMatchObject({ blocked: true, default: "skip", match: { code: e.kode } });
   });
 });
