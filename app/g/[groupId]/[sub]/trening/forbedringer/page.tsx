@@ -13,7 +13,7 @@ import { listProposals } from "@/lib/store/improvements";
 /** «Forbedringer»: proposals for better exercises, made from the trainers' evaluations. */
 export default async function ImprovementsPage(props: PageProps<"/g/[groupId]/[sub]/trening/forbedringer">) {
   const ctx = await contextFromParams(props.params);
-  const { open, handled } = await listProposals(await db(), ctx.user.access, ctx.group.id);
+  const { open, auto, handled } = await listProposals(await db(), ctx.user.access, ctx.group.id);
   const base = ctx.path("/trening/forbedringer");
   return (
     <AppShell ctx={ctx} title="Forbedringer" section="training" back={ctx.path("/trening/ovelser")}>
@@ -43,6 +43,28 @@ export default async function ImprovementsPage(props: PageProps<"/g/[groupId]/[s
       ) : (
         <EmptyState icon={Sparkles} text="Ingen forslag venter. Nye forslag kommer når trenerne har evaluert nok." />
       )}
+      {auto.length ? (
+        <section className="nm-section" aria-labelledby="auto-h" style={{ maxWidth: 760 }}>
+          <h2 id="auto-h" className="nm-section-label">
+            Gjort automatisk
+          </h2>
+          <ul className="nm-list" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+            {auto.map((p) => (
+              <li key={p.id} className="nm-pick">
+                <div>
+                  <Link href={`${base}/${p.id}`} style={{ fontWeight: 700, textDecoration: "underline" }}>
+                    {p.exercise_name}
+                  </Link>
+                  <div className="nm-hint">
+                    {p.kind === "tilbakerulling" ? "Gått tilbake til forrige versjon" : "Liten forbedring brukt automatisk"} · {p.decided_at ? shortDate(p.decided_at) : ""}
+                  </div>
+                  <div className="nm-hint">{p.reason}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {handled.length ? (
         <section className="nm-section" aria-labelledby="handled-h" style={{ maxWidth: 760 }}>
           <h2 id="handled-h" className="nm-section-label">

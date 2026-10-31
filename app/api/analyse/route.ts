@@ -20,6 +20,6 @@ export async function POST(req: Request) {
   if (!secret || !same(auth, `Bearer ${secret}`)) return new Response("Ikke tilgang", { status: 401 });
   const d = await db();
   const r = await analyseAll(d);
-  const groups = r.map(({ comments, observations, exercises, waiting, proposed }) => ({ comments, observations, exercises, proposed, waiting }));
+  const groups = r.map(({ comments, observations, exercises, waiting, proposed, rolledBack }) => ({ comments, observations, exercises, proposed, rolledBack, waiting }));
   return Response.json({ groups, digests: await weeklyDigest(d) }, { headers: { "Cache-Control": "no-store" } });
 }

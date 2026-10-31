@@ -81,3 +81,8 @@ export function adjustedValues(
     nff_tags: e.nff_tags ?? b.nff_tags,
   };
 }
+
+/** Form values as the input saveExercise takes (themes as a list). */
+export function exerciseInputFrom(v: ExerciseValues) {
+  return { ...v, themes: v.themes.split(",").map((t) => t.trim()).filter(Boolean) };
+}

@@ -6,15 +6,18 @@ import { aiMode } from "@/lib/env";
 import { osloParts } from "@/lib/format";
 import { exerciseOrderContext } from "@/lib/plan-data";
 import { exerciseChanges } from "@/lib/plans/exercise-edits";
-import { adjustedValues, exerciseValues } from "@/lib/plans/exercise-values";
+import { adjustedValues, exerciseInputFrom, exerciseValues } from "@/lib/plans/exercise-values";
 import { proposalPlan, proposalWish, reasonText } from "@/lib/plans/improvements";
 import type { ExercisePattern } from "@/lib/plans/observations";
+import { isSmallChange, rollbackDecision } from "@/lib/plans/versions";
 import { sendPush } from "@/lib/push";
 import { ctxPath } from "@/lib/routes";
 import { UserError, type Access } from "@/lib/store/access";
-import { busyProposals, rejectionsFor, saveProposal, waitingPerGroup } from "@/lib/store/improvements";
+import { getAiSettings } from "@/lib/store/ai";
+import { busyProposals, decideProposal, rejectionsFor, saveProposal, waitingPerGroup } from "@/lib/store/improvements";
 import { groupPushSubscriptions } from "@/lib/store/reminders";
-import { listExercises } from "@/lib/store/training";
+import { listExercises, saveExercise } from "@/lib/store/training";
+import { versionsToMeasure } from "@/lib/store/versions";
 
 /**
  * Proposals for better exercises, made by the app after each analysis: when
@@ -32,6 +35,7 @@ export interface ProposeResult {
 }
 
 export async function proposeImprovements(d: Db, access: Access, groupId: string, patterns: ExercisePattern[], now = new Date()): Promise<ProposeResult> {
+  const settings = await getAiSettings(d);
   const bank = new Map((await listExercises(d, access, groupId)).filter((b) => b.status !== "archived").map((b) => [b.code, b]));
   const busy = await busyProposals(d, groupId, now);
   // The worst first.
@@ -66,7 +70,14 @@ export async function proposeImprovements(d: Db, access: Access, groupId: string
       const values = adjustedValues(r.base, r.exercise, r.extra);
       // KI changed nothing: kept as handled, so it is not asked again for a while.
       const same = !Object.keys(exerciseChanges(base, values)).length;
-      if (await saveProposal(d, groupId, { ...common, proposed: values, model: prep.model, costUsd: r.costUsd, status: same ? "utdatert" : "ny" })) if (!same) proposed++;
+      const pid = await saveProposal(d, groupId, { ...common, proposed: values, model: prep.model, costUsd: r.costUsd, status: same ? "utdatert" : "ny" });
+      if (!pid || same) continue;
+      proposed++;
+      // Only new lines under easier, harder, questions or learning points: used right away when that is turned on.
+      if (settings.auto_approve_small && isSmallChange(base, values)) {
+        await saveExercise(d, access, groupId, exerciseInputFrom(values), b!.id, { kiDraft: values, source: "automatisk", proposalId: pid });
+        await decideProposal(d, access, groupId, pid, "auto");
+      }
     } catch (err) {
       if (err instanceof AiError || err instanceof UserError) {
         // Budget used up, or KI failed: the same pattern is tried again next time.
@@ -78,6 +89,34 @@ export async function proposeImprovements(d: Db, access: Access, groupId: string
     }
   }
   return { proposed, waiting };
+}
+
+/**
+ * A new version from Forbedringer that is clearly worse than the one before,
+ * after enough ratings, goes back to the one before; it is told in «Forbedringer».
+ */
+export async function measureVersions(d: Db, access: Access, groupId: string): Promise<number> {
+  let back = 0;
+  for (const x of await versionsToMeasure(d, groupId)) {
+    const r = rollbackDecision(x.stats, x.version);
+    const target = r && x.stats.find((s) => s.version === r.to);
+    const current = x.stats.find((s) => s.version === x.version);
+    if (!r || !target || !current) continue;
+    await saveExercise(d, access, groupId, exerciseInputFrom(target.vals), x.id, { source: "tilbakerulling" });
+    await saveProposal(d, groupId, {
+      code: x.code,
+      kind: "tilbakerulling",
+      reason: r.reason,
+      signature: `tilbakerulling:${r.from}`,
+      base: current.vals,
+      proposed: target.vals,
+      model: null,
+      costUsd: 0,
+      status: "auto",
+    });
+    back++;
+  }
+  return back;
 }
 
 export const improvementsPath = (groupId: string) => ctxPath(groupId, null, "/trening/forbedringer");

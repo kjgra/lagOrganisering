@@ -195,6 +195,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
               link_domains: settings.link_domains.join(", "),
               pattern_min_sessions: String(settings.pattern_min_sessions),
               pattern_min_trainers: String(settings.pattern_min_trainers),
+              auto_approve_small: String(settings.auto_approve_small),
             }}
           />
         </section>

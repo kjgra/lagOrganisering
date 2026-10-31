@@ -280,6 +280,8 @@ export interface BankExercise {
   based_on: string;
   status: "active" | "candidate" | "archived";
   updated_at: Date;
+  /** Each change is a new version (lib/plans/versions.ts); from the bank always set. */
+  version?: number;
   /** NFF bands the exercise suits, and its NFF tags (lib/nff/fagplan.ts). */
   bands: BandKey[];
   nff_activity: string;

@@ -23,8 +23,10 @@ import { teamBand } from "@/lib/nff/bands";
 import type { BandKey } from "@/lib/nff/fagplan";
 import { exerciseChanges, type ExerciseChanges } from "@/lib/plans/exercise-edits";
 import { exerciseValues, type ExerciseValues } from "@/lib/plans/exercise-values";
+import type { VersionSource } from "@/lib/plans/versions";
 import { assertAdmin, assertGroup, UserError, type Access, type Rights } from "./access";
 import { hasEdits, logEdit } from "./edits";
+import { recordVersion } from "./versions";
 
 /**
  * Season plan, team settings, the exercise bank, training plans with
@@ -269,6 +271,7 @@ interface ExerciseRow {
   based_on: string;
   status: "active" | "candidate" | "archived";
   updated_at: Date;
+  version: number;
   bands: BandKey[];
   nff_activity: string;
   nff_tags: string[];
@@ -292,7 +295,7 @@ const EXERCISE_SELECT = `
          coalesce(e.area, '') AS area, coalesce(e.organisation, '') AS organisation, coalesce(e.execution, '') AS execution,
          coalesce(e.learning_points, '') AS learning_points, coalesce(e.questions, '') AS questions,
          coalesce(e.easier, '') AS easier, coalesce(e.harder, '') AS harder, coalesce(e.nff_url, '') AS nff_url,
-         e.drawing::text AS drawing, e.source, coalesce(e.based_on, '') AS based_on, e.status, e.updated_at,
+         e.drawing::text AS drawing, e.source, coalesce(e.based_on, '') AS based_on, e.status, e.updated_at, e.version,
          e.bands, coalesce(e.nff_activity, '') AS nff_activity, e.nff_tags,
          coalesce(s.fb_n, 0) AS fb_n, coalesce(s.fb_sessions, 0) AS fb_sessions, coalesce(s.fb_bank, 0) AS fb_bank, coalesce(s.fb_good, 0) AS fb_good,
          coalesce(s.fb_ok, 0) AS fb_ok, coalesce(s.fb_bad, 0) AS fb_bad, coalesce(s.fb_yes, 0) AS fb_yes,
@@ -358,7 +361,7 @@ export async function saveExercise(
   groupId: string,
   input: Partial<ExerciseInput>,
   id: number | null,
-  opts: { kiDraft?: ExerciseValues } = {},
+  opts: { kiDraft?: ExerciseValues; source?: VersionSource; proposalId?: number | null } = {},
 ): Promise<number> {
   assertGroup(access, groupId);
   const v = wrap(() => validateExercise(input));
@@ -389,7 +392,15 @@ export async function saveExercise(
     [id, groupId, ...fields],
   );
   if (!n.length) throw new UserError("Fant ikke øvelsen.");
-  if (before) await logExerciseChange(d, access, groupId, before, input, opts.kiDraft);
+  if (before) {
+    await logExerciseChange(d, access, groupId, before, input, opts.kiDraft);
+    // A change is a new version, so evaluations before and after can be compared.
+    const old = exerciseValues(before);
+    const now = exerciseValues(await getExercise(d, access, groupId, id));
+    if (Object.keys(exerciseChanges(old, now)).length) {
+      await recordVersion(d, groupId, before.code, { before: old, beforeVersion: before.version ?? 1, after: now, source: opts.source ?? "endret", actor: access.profileId, proposalId: opts.proposalId });
+    }
+  }
   return id;
 }
 
@@ -776,8 +787,13 @@ export async function saveFeedback(
     for (const r of rows) {
       await t.query(
         `INSERT INTO exercise_feedback (spond_group_id, spond_event_id, plan_id, exercise_no, exercise_code, rating, tags,
-                                        actual_minutes, actual_players, body, use_again, author, registered_players, spond_subgroup_ids)
-         VALUES ($1, $2, $3, $4, NULLIF($5, ''), $6, $7::text[], $8, $9, NULLIF($10, ''), NULLIF($11, ''), $12, $13, $14::text[])`,
+                                        actual_minutes, actual_players, body, use_again, author, registered_players, spond_subgroup_ids,
+                                        exercise_version)
+         VALUES ($1, $2, $3, $4, NULLIF($5, ''), $6, $7::text[], $8, $9, NULLIF($10, ''), NULLIF($11, ''), $12, $13, $14::text[],
+                 -- The version the plan had: the newest one made before the plan.
+                 coalesce((SELECT max(v.version) FROM exercise_versions v
+                            WHERE v.spond_group_id = $1 AND v.exercise_code = NULLIF($5, '')
+                              AND v.created_at <= (SELECT created_at FROM training_plans WHERE id = $3)), 1))`,
         [pl.groupId, pl.eventId, planId, r.exercise_no, r.exercise_code, r.rating, r.tags, r.actual_minutes, r.actual_players, r.body, r.use_again, access.profileId, r.exercise_no === null ? registered : null, subgroupIds],
       );
     }
@@ -819,8 +835,9 @@ export async function saveBankFeedback(d: Db, access: Access, groupId: string, e
     await t.query("DELETE FROM exercise_feedback WHERE spond_group_id = $1 AND exercise_code = $2 AND author = $3 AND plan_id IS NULL", [groupId, code, access.profileId]);
     if (!row) return false;
     await t.query(
-      `INSERT INTO exercise_feedback (spond_group_id, exercise_code, rating, tags, actual_minutes, body, use_again, author)
-       VALUES ($1, $2, $3, $4::text[], $5, NULLIF($6, ''), NULLIF($7, ''), $8)`,
+      `INSERT INTO exercise_feedback (spond_group_id, exercise_code, rating, tags, actual_minutes, body, use_again, author, exercise_version)
+       VALUES ($1, $2, $3, $4::text[], $5, NULLIF($6, ''), NULLIF($7, ''), $8,
+               (SELECT version FROM exercises WHERE spond_group_id = $1 AND code = $2))`,
       [groupId, code, row.rating, row.tags, row.actual_minutes, row.body, row.use_again, access.profileId],
     );
     if (row.rating !== 3 || row.use_again !== "yes") return false;
