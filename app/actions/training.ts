@@ -116,11 +116,21 @@ const exerciseInput = z.object({
   nff_tags: z.array(z.string().max(80)).max(200),
 });
 
-export async function saveExerciseAction(groupId: string, id: number | null, input: z.input<typeof exerciseInput>): Promise<ActionResult<number>> {
+// KI's version from «Juster med KI», as the form had it, so the trainer's changes to it can be logged.
+const kiDraftInput = exerciseInput.extend({ themes: z.string().max(2000) });
+
+export async function saveExerciseAction(
+  groupId: string,
+  id: number | null,
+  input: z.input<typeof exerciseInput>,
+  kiDraft?: z.input<typeof kiDraftInput>,
+): Promise<ActionResult<number>> {
   return runAction("Lagring av øvelse", async () => {
-    const v = z.object({ groupId: sid, id: z.number().int().positive().nullable(), input: exerciseInput }).parse({ groupId, id, input });
+    const v = z
+      .object({ groupId: sid, id: z.number().int().positive().nullable(), input: exerciseInput, kiDraft: kiDraftInput.optional() })
+      .parse({ groupId, id, input, kiDraft });
     const { user, d } = await trainer(v.groupId);
-    const newId = await saveExercise(d, user.access, v.groupId, v.input, v.id);
+    const newId = await saveExercise(d, user.access, v.groupId, v.input, v.id, { kiDraft: v.kiDraft as ExerciseValues | undefined });
     refresh();
     return { data: newId, message: `«${v.input.name.trim()}» er lagret.` };
   });

@@ -91,6 +91,7 @@ export function ExerciseReviseForm(p: ExerciseReviseFormProps) {
           groupId={p.groupId}
           id={p.id}
           initial={result.values}
+          kiDraft={result.values}
           categories={p.categories}
           statuses={p.statuses}
           listHref={p.listHref}

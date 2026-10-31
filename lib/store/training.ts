@@ -21,7 +21,10 @@ import { compactDrawing, validateDrawing } from "@/lib/plans/drawing";
 import { osloParts } from "@/lib/format";
 import { teamBand } from "@/lib/nff/bands";
 import type { BandKey } from "@/lib/nff/fagplan";
+import { exerciseChanges, type ExerciseChanges } from "@/lib/plans/exercise-edits";
+import { exerciseValues, type ExerciseValues } from "@/lib/plans/exercise-values";
 import { assertAdmin, assertGroup, UserError, type Access, type Rights } from "./access";
+import { hasEdits, logEdit } from "./edits";
 
 /**
  * Season plan, team settings, the exercise bank, training plans with
@@ -344,10 +347,22 @@ export async function getExercise(d: Db, access: Access, groupId: string, id: nu
   return toBank(rows[0]);
 }
 
-/** Create or update an exercise (any trainer on the team). The code is made from the name once and never changes. */
-export async function saveExercise(d: Db, access: Access, groupId: string, input: Partial<ExerciseInput>, id: number | null): Promise<number> {
+/**
+ * Create or update an exercise (any trainer on the team). The code is made from the name once and never changes.
+ * A change is logged (edit_log); `kiDraft` is KI's version from «Juster med KI», so both what KI suggested and
+ * what the trainer changed in it are logged.
+ */
+export async function saveExercise(
+  d: Db,
+  access: Access,
+  groupId: string,
+  input: Partial<ExerciseInput>,
+  id: number | null,
+  opts: { kiDraft?: ExerciseValues } = {},
+): Promise<number> {
   assertGroup(access, groupId);
   const v = wrap(() => validateExercise(input));
+  const before = id ? await getExercise(d, access, groupId, id) : null;
   const drawing = v.drawing ? JSON.stringify(compactDrawing(v.drawing)) : null;
   const fields = [v.name, v.category, v.themes, v.min_players, v.max_players, v.duration_minutes, v.area, v.organisation, v.execution, v.learning_points, v.questions, v.easier, v.harder, v.nff_url, access.profileId, drawing, v.status, v.bands, v.nff_activity, v.nff_tags];
   if (!id) {
@@ -374,7 +389,23 @@ export async function saveExercise(d: Db, access: Access, groupId: string, input
     [id, groupId, ...fields],
   );
   if (!n.length) throw new UserError("Fant ikke øvelsen.");
+  if (before) await logExerciseChange(d, access, groupId, before, input, opts.kiDraft);
   return id;
+}
+
+async function logExerciseChange(d: Db, access: Access, groupId: string, b: BankExercise, input: Partial<ExerciseInput>, kiDraft?: ExerciseValues) {
+  const old = exerciseValues(b);
+  const saved = { ...old, ...input, status: input.status || old.status } as ExerciseValues;
+  const log = (kind: "ki_forslag" | "retting_av_ki" | "manuell", changes: ExerciseChanges) =>
+    Object.keys(changes).length ? logEdit(d, access, groupId, { kind, exerciseCode: b.code, changes }) : Promise.resolve();
+  if (kiDraft) {
+    await log("ki_forslag", exerciseChanges(old, kiDraft));
+    await log("retting_av_ki", exerciseChanges(kiDraft, saved));
+    return;
+  }
+  // The first change of an exercise KI made is a correction of KI.
+  const kind = b.source === "ai" && !(await hasEdits(d, groupId, b.code)) ? "retting_av_ki" : "manuell";
+  await log(kind, exerciseChanges(old, saved));
 }
 
 export async function deleteExercise(d: Db, access: Access, rights: Rights, groupId: string, id: number): Promise<void> {
