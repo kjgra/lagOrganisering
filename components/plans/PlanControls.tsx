@@ -71,10 +71,12 @@ export function PlanControls({ planId, version, approved, candidates }: { planId
                 </legend>
                 {c.match ? (
                   <p className="nm-hint" style={{ margin: "var(--space-1) 0 var(--space-1)" }}>
-                    Ligner «{c.match.name}» i banken ({Math.round(c.match.score * 100)} %).
+                    {c.blocked
+                      ? `Ligner for mye på «${c.match.name}» i banken (${Math.round(c.match.score * 100)} %) til å bli en egen øvelse.`
+                      : `Ligner «${c.match.name}» i banken (${Math.round(c.match.score * 100)} %).`}
                   </p>
                 ) : null}
-                {(["save", ...(c.match ? (["variant"] as const) : []), "skip"] as Choice[]).map((ch) => (
+                {([...(c.blocked ? [] : (["save"] as const)), ...(c.match ? (["variant"] as const) : []), "skip"] as Choice[]).map((ch) => (
                   <label key={ch} className="nm-check" style={{ minHeight: 36, padding: "var(--space-1) 0" }}>
                     <input type="radio" name={`c${c.index}`} checked={(choices[c.index] ?? c.default) === ch} onChange={() => setChoices((x) => ({ ...x, [c.index]: ch }))} />
                     {ch === "save" ? "Lagre som ny øvelse" : ch === "variant" ? `Lagre som variant av «${c.match?.name}»` : "Ikke lagre"}

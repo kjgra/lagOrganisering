@@ -10,11 +10,14 @@ import {
   categoryKey,
   CODE_RE,
   PlanError,
+  tooSimilar,
+  tooSimilarText,
   type BankExercise,
   type ExerciseInput,
   type Plan,
   type PlanExercise,
   type Pitch,
+  type SimilarMatch,
   type TeamSettings,
 } from "@/lib/plans/plan";
 import { compactDrawing, validateDrawing } from "@/lib/plans/drawing";
@@ -28,6 +31,14 @@ import { assertAdmin, assertGroup, UserError, type Access, type Rights } from ".
 import { BANK } from "./bank";
 import { hasEdits, logEdit } from "./edits";
 import { recordVersion } from "./versions";
+
+/** A new exercise that is too much like one in the bank (see tooSimilar). */
+export class TooSimilarError extends UserError {
+  constructor(public readonly match: SimilarMatch) {
+    super(tooSimilarText(match));
+    this.name = "TooSimilarError";
+  }
+}
 
 /**
  * Season plan, team settings, the exercise bank, training plans with
@@ -371,6 +382,8 @@ export async function saveExercise(
   const drawing = v.drawing ? JSON.stringify(compactDrawing(v.drawing)) : null;
   const fields = [v.name, v.category, v.themes, v.min_players, v.max_players, v.duration_minutes, v.area, v.organisation, v.execution, v.learning_points, v.questions, v.easier, v.harder, v.nff_url, access.profileId, drawing, v.status, v.bands, v.nff_activity, v.nff_tags];
   if (!id) {
+    const like = tooSimilar({ ...v, drawing: v.drawing ?? null }, await listExercises(d, access, groupId));
+    if (like) throw new TooSimilarError(like);
     const taken = (await d.query<{ code: string }>("SELECT code FROM exercises WHERE spond_group_id = $1", [bank])).map((r) => r.code);
     const [{ id: newId }] = await d.query<{ id: number }>(
       `INSERT INTO exercises (spond_group_id, code, name, category, themes, min_players, max_players, duration_minutes, area,
@@ -455,6 +468,14 @@ export async function savePlanExercise(
   if (known.some((k) => k.code === e.kode)) return null;
   const base = known.find((k) => k.code === e.basert_pa);
   const basedOn = !e.basert_pa || !base ? null : base.based_on || e.basert_pa;
+  // A variant is meant to be like its base; anything else must not be too much like an exercise in the bank.
+  if (!basedOn) {
+    const like = tooSimilar(
+      { name: e.navn, category: categoryKey(e.kategori), themes, organisation: e.organisering, execution: e.gjennomforing, drawing: e.tegning },
+      await listExercises(d, access, groupId),
+    );
+    if (like) throw new TooSimilarError(like);
+  }
   const taken = (await d.query<{ code: string }>("SELECT code FROM exercises WHERE spond_group_id = $1", [bank])).map((r) => r.code);
   const code = CODE_RE.test(e.kode) && e.kode.length <= 60 ? e.kode : exerciseCode(e.navn, taken);
   const bands = extra.bands ?? (await teamBands(d, groupId));

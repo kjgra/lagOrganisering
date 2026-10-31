@@ -43,6 +43,8 @@ let d: Db;
 const me: Access = { profileId: "P-1", groupIds: new Set(["G1"]) };
 const sa: Rights = { superadmin: true, admin: true, ai: true, app: true, tags: true };
 const plan = validatePlan(reference);
+// The bank is shared and refuses exercises too much like one it has: these are new ones.
+const unlike = (navn: string) => ({ navn, organisering: [`${navn}: egen organisering`], gjennomforing: [`${navn}: egen gjennomføring`], tegning: null });
 
 beforeAll(async () => {
   d = await testDb();
@@ -115,7 +117,7 @@ describe("training plans", () => {
   it("saves an exercise from «Ny øvelse med KI» with players, minutes and area", async () => {
     const other: Access = { profileId: "P-1", groupIds: new Set(["G9"]) };
     // The bank is shared by every group, so the code must be new.
-    const id = await savePlanExercise(d, other, "G9", { ...plan.ovelser[1], kode: "ki-ny-ovelse" }, ["Samhandling"], "ai", { min_players: 6, max_players: 10, duration_minutes: 15, area: "20 × 15 m" });
+    const id = await savePlanExercise(d, other, "G9", { ...plan.ovelser[1], ...unlike("Kjeglejakt"), kode: "ki-ny-ovelse" }, ["Samhandling"], "ai", { min_players: 6, max_players: 10, duration_minutes: 15, area: "20 × 15 m" });
     const b = (await listExercises(d, other, "G9")).find((x) => x.id === id);
     expect(b).toMatchObject({ id, source: "ai", status: "candidate", min_players: 6, max_players: 10, duration_minutes: 15, area: "20 × 15 m", themes: ["Samhandling"] });
   });
@@ -135,7 +137,7 @@ describe("training plans", () => {
     await expect(saveExercise(d, other, "G8", { ...base, nff_activity: "x" }, id)).rejects.toThrow(/aktivitetskategori/);
 
     await saveTeamSettings(d, other, "G8", "", { birth_year: String(osloParts(new Date()).year - 9) });
-    const ex = { ...plan.ovelser[1], kode: "ki-nff", aktivitet: "spill", nff_tags: ["tema.vinne-ball"] };
+    const ex = { ...plan.ovelser[1], ...unlike("Soneduell"), kode: "ki-nff", aktivitet: "spill", nff_tags: ["tema.vinne-ball"] };
     await savePlanExercise(d, other, "G8", ex, [], "ai");
     b = (await listExercises(d, other, "G8")).find((x) => x.code === "ki-nff")!;
     expect(b).toMatchObject({ bands: ["8-9"], nff_activity: "spill", nff_tags: ["tema.vinne-ball"] });
