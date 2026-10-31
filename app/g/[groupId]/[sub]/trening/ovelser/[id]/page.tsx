@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/shell/AppShell";
 import { ExerciseForm, type ExerciseValues } from "@/components/training/ExerciseForm";
+import { ExerciseVersions } from "@/components/training/ExerciseVersions";
 import { TrainersSay } from "@/components/training/TrainersSay";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
@@ -14,6 +15,8 @@ import { getAiSettings } from "@/lib/store/ai";
 import { exerciseEdits } from "@/lib/store/edits";
 import { openProposalFor } from "@/lib/store/improvements";
 import { exercisePattern } from "@/lib/store/observations";
+import { exerciseVersions } from "@/lib/store/versions";
+import { MEASURE_AFTER, VERSION_SOURCES, versionStatText } from "@/lib/plans/versions";
 import { feedbackSummary } from "@/lib/plans/feedback";
 import { CATEGORIES, EXERCISE_STATUSES } from "@/lib/plans/plan";
 import { getExercise, getTeamSettings } from "@/lib/store/training";
@@ -35,14 +38,21 @@ export default async function ExercisePage(props: PageProps<"/g/[groupId]/[sub]/
         // A new exercise is for the team's own band to begin with.
         bands: [teamBand((await getTeamSettings(d, ctx.user.access, ctx.group.id, ctx.subgroup?.id ?? "")).birth_year, osloParts(new Date()).year)].filter((x) => x !== null),
       };
-  const [edits, pattern, settings, proposalId] = b
+  const [edits, pattern, settings, proposalId, versions] = b
     ? await Promise.all([
         exerciseEdits(d, ctx.user.access, ctx.group.id, b.code),
         exercisePattern(d, ctx.user.access, ctx.group.id, b.code),
         getAiSettings(d),
         openProposalFor(d, ctx.user.access, ctx.group.id, b.code),
+        exerciseVersions(d, ctx.user.access, ctx.group.id, b.code),
       ])
-    : [[], null, null, null];
+    : [[], null, null, null, []];
+  const current = versions.find((v) => v.version === b?.version);
+  // A version from Forbedringer is measured against the one before it.
+  const measuring =
+    current && ["forbedring", "automatisk"].includes(current.source) && current.n < MEASURE_AFTER
+      ? `Versjon ${current.version} måles mot versjon ${current.version - 1} når den har ${MEASURE_AFTER} vurderinger (har ${current.n}). Blir den klart dårligere, går appen tilbake av seg selv.`
+      : "";
   const listHref = ctx.path("/trening/ovelser");
   return (
     <AppShell ctx={ctx} title={b ? b.name : "Ny øvelse"} section="training" back={listHref}>
@@ -79,7 +89,19 @@ export default async function ExercisePage(props: PageProps<"/g/[groupId]/[sub]/
         </div>
       ) : null}
       {pattern && settings ? <TrainersSay p={pattern} minSessions={settings.pattern_min_sessions} minTrainers={settings.pattern_min_trainers} /> : null}
-      <ExerciseForm groupId={ctx.group.id} id={b?.id ?? null} initial={initial} categories={CATEGORIES} statuses={EXERCISE_STATUSES} listHref={listHref} canDelete={ctx.user.rights.admin} />
+      <ExerciseForm key={b?.version ?? 0} groupId={ctx.group.id} id={b?.id ?? null} initial={initial} categories={CATEGORIES} statuses={EXERCISE_STATUSES} listHref={listHref} canDelete={ctx.user.rights.admin} />
+      {b && versions.length > 1 ? (
+        <ExerciseVersions
+          groupId={ctx.group.id}
+          id={b.id}
+          note={measuring}
+          lines={versions.map((v) => ({
+            version: v.version,
+            current: v.version === b.version,
+            text: [v.created_at && v.source !== "tidligere" ? shortDate(v.created_at) : "", VERSION_SOURCES[v.source], versionStatText(v)].filter(Boolean).join(" · "),
+          }))}
+        />
+      ) : null}
       {edits.length ? (
         <section aria-labelledby="edits-h" style={{ maxWidth: 760, marginTop: "var(--space-5)" }}>
           <h2 id="edits-h" className="nm-h3">

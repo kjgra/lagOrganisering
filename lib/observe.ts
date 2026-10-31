@@ -5,7 +5,7 @@ import { aiCost, budgetCheck } from "@/lib/ai/plan-ai";
 import type { Db } from "@/lib/db";
 import { aiMode } from "@/lib/env";
 import { osloMonthStart } from "@/lib/format";
-import { proposeImprovements } from "@/lib/improve";
+import { measureVersions, proposeImprovements } from "@/lib/improve";
 import { analysePatterns, type Observation } from "@/lib/plans/observations";
 import { aiSpend, getAiSettings, logAiUsage } from "@/lib/store/ai";
 import { groupsWithFeedback, patternInputs, savePatterns, saveObservations, unobservedComments } from "@/lib/store/observations";
@@ -32,6 +32,8 @@ export interface AnalyseResult {
   waiting: string;
   /** New proposals in «Forbedringer». */
   proposed: number;
+  /** New versions that were clearly worse and went back to the one before. */
+  rolledBack: number;
 }
 
 export async function analyseGroup(d: Db, groupId: string, opts: { actor?: string; now?: Date } = {}): Promise<AnalyseResult> {
@@ -79,8 +81,9 @@ export async function analyseGroup(d: Db, groupId: string, opts: { actor?: strin
   const input = await patternInputs(d, groupId);
   const patterns = analysePatterns(input.evaluations, input.observations, input.removed, { minSessions: settings.pattern_min_sessions, minTrainers: settings.pattern_min_trainers }, now);
   await savePatterns(d, groupId, patterns);
+  const rolledBack = await measureVersions(d, access, groupId);
   const prop = await proposeImprovements(d, access, groupId, patterns, now);
-  return { groupId, comments, observations, exercises: patterns.length, waiting: [waiting, prop.waiting].filter(Boolean).join("; "), proposed: prop.proposed };
+  return { groupId, comments, observations, exercises: patterns.length, waiting: [waiting, prop.waiting].filter(Boolean).join("; "), proposed: prop.proposed, rolledBack };
 }
 
 /** The nightly run: every group with evaluations. One group failing does not stop the others. */
@@ -91,7 +94,7 @@ export async function analyseAll(d: Db, now = new Date()): Promise<AnalyseResult
       out.push(await analyseGroup(d, g, { now }));
     } catch (err) {
       console.error("Analyse av innspill feilet:", (err as Error).message);
-      out.push({ groupId: g, comments: 0, observations: 0, exercises: 0, waiting: "feilet", proposed: 0 });
+      out.push({ groupId: g, comments: 0, observations: 0, exercises: 0, waiting: "feilet", proposed: 0, rolledBack: 0 });
     }
   }
   return out;

@@ -54,6 +54,12 @@ export function AiSettingsForm({ initial, models, editable }: { initial: Record<
             <input className="nm-input" inputMode="numeric" value={v.pattern_min_trainers} onChange={set("pattern_min_trainers")} />
           </Field>
         </div>
+        <Field label="Små forbedringer" hint="Forslag som bare legger til linjer under enklere, vanskeligere, spørsmål eller læringsmomenter">
+          <select className="nm-input" value={v.auto_approve_small} onChange={set("auto_approve_small")}>
+            <option value="false">Venter på en trener</option>
+            <option value="true">Brukes automatisk</option>
+          </select>
+        </Field>
       </fieldset>
       {errorBox}
       {editable ? <SaveButton pending={pending} /> : <p className="nm-hint">Bare superadmin kan endre KI-innstillingene.</p>}

@@ -123,6 +123,8 @@ Etter hver lagrede evaluering går appen gjennom innspillene for laget: KI (Haik
 
 Når et mønster passerer terskelen, lager KI et forslag til en bedre øvelse (ny versjon, tilpasning for en situasjon, eller arkivering ved lav score over tid). Forslagene venter under Trening → Øvelser → «Forbedringer», maks to nye KI-forslag per lag per kjøring, med standardmodellen. Natt til mandag får trenere med varsler på beskjed om hvor mange forslag som venter. For å prøve i preview med én trener: sett «Mønster: antall økter» til 1 under KI-innstillinger.
 
+Hver endring av en øvelse blir en ny versjon, og hver evaluering knyttes til versjonen den gjaldt. Øvelsessiden viser «Versjoner» med snitt per versjon og «Gå tilbake hit». Når en versjon fra Forbedringer har fått 5 vurderinger og snittet er minst 0,5 lavere enn versjonen før, går appen tilbake av seg selv og viser det under «Gjort automatisk». Under KI-innstillinger kan «Små forbedringer» settes til «Brukes automatisk»: da brukes forslag som bare legger til linjer under enklere, vanskeligere, spørsmål eller læringsmomenter uten at en trener må godkjenne (standard: venter på en trener).
+
 ## Sjekkliste
 
 - [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt

@@ -35,6 +35,13 @@ export default async function ProposalPage(props: PageProps<"/g/[groupId]/[sub]/
           Hvorfor
         </h2>
         <p style={{ margin: 0 }}>{p.reason}</p>
+        {p.status === "auto" ? (
+          <p className="nm-hint" style={{ margin: 0 }}>
+            {p.kind === "tilbakerulling"
+              ? "Appen gikk tilbake av seg selv. Under Versjoner på øvelsen kan du velge en annen versjon."
+              : "Små forbedringer brukes automatisk (KI-innstillinger). Under Versjoner på øvelsen kan du gå tilbake."}
+          </p>
+        ) : null}
         {p.kind === "arkiver" ? (
           <p className="nm-hint" style={{ margin: 0 }}>
             Forslaget er å arkivere øvelsen. Den blir liggende i banken, men KI bruker den ikke lenger.

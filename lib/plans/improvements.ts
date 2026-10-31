@@ -11,6 +11,7 @@ export const PROPOSAL_KINDS = {
   ny_versjon: "Ny versjon",
   tilpasning: "Tilpasning",
   arkiver: "Arkiver",
+  tilbakerulling: "Tilbakerulling",
 } as const;
 export type ProposalKind = keyof typeof PROPOSAL_KINDS;
 
@@ -20,6 +21,7 @@ export const PROPOSAL_STATUSES = {
   endret: "Brukt med endringer",
   avvist: "Avvist",
   utdatert: "Utdatert",
+  auto: "Gjort automatisk",
 } as const;
 export type ProposalStatus = keyof typeof PROPOSAL_STATUSES;
 
