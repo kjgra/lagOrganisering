@@ -114,8 +114,9 @@ describe("training plans", () => {
 
   it("saves an exercise from «Ny øvelse med KI» with players, minutes and area", async () => {
     const other: Access = { profileId: "P-1", groupIds: new Set(["G9"]) };
-    const id = await savePlanExercise(d, other, "G9", plan.ovelser[1], ["Samhandling"], "ai", { min_players: 6, max_players: 10, duration_minutes: 15, area: "20 × 15 m" });
-    const [b] = await listExercises(d, other, "G9");
+    // The bank is shared by every group, so the code must be new.
+    const id = await savePlanExercise(d, other, "G9", { ...plan.ovelser[1], kode: "ki-ny-ovelse" }, ["Samhandling"], "ai", { min_players: 6, max_players: 10, duration_minutes: 15, area: "20 × 15 m" });
+    const b = (await listExercises(d, other, "G9")).find((x) => x.id === id);
     expect(b).toMatchObject({ id, source: "ai", status: "candidate", min_players: 6, max_players: 10, duration_minutes: 15, area: "20 × 15 m", themes: ["Samhandling"] });
   });
 
@@ -128,7 +129,7 @@ describe("training plans", () => {
       nff_activity: "med-og-mot",
       nff_tags: ["tema.spille-framover", "delf.pasning", "lm.8-9.pasning.1", "lm.6-7.foring.1", "tema.finnes-ikke"],
     }, null);
-    let [b] = await listExercises(d, other, "G8");
+    let b = (await listExercises(d, other, "G8")).find((x) => x.id === id)!;
     expect(b).toMatchObject({ id, bands: ["8-9", "10-12"], nff_activity: "med-og-mot", nff_tags: ["tema.spille-framover", "delf.pasning", "lm.8-9.pasning.1"] });
     await expect(saveExercise(d, other, "G8", { ...base, bands: ["13-16"] }, id)).rejects.toThrow(/aldersbånd/);
     await expect(saveExercise(d, other, "G8", { ...base, nff_activity: "x" }, id)).rejects.toThrow(/aktivitetskategori/);
@@ -203,7 +204,7 @@ describe("«Trening» for every trainer, per subgroup", () => {
     const id = await saveExercise(d, t, "G7", { name: "Trenerøvelse", category: "annet", themes: [], status: "active" }, null);
     await expect(deleteExercise(d, t, NO_RIGHTS, "G7", id)).rejects.toThrow(/administratorer/);
     await deleteExercise(d, t, sa, "G7", id);
-    expect(await listExercises(d, t, "G7")).toEqual([]);
+    expect((await listExercises(d, t, "G7")).map((x) => x.id)).not.toContain(id);
     await expect(saveSeason(d, t, "G1", "", 2026, months, Array(12).fill(""))).rejects.toThrow();
   });
 

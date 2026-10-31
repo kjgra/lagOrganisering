@@ -59,15 +59,13 @@ export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]
           </span>
         </div>
       ) : null}
-      {ctx.subgroup ? (
-        <p className="nm-hint" style={{ margin: "0 0 var(--space-2)" }}>
-          Øvelsesbanken er felles for hele {ctx.group.name}.
-        </p>
-      ) : null}
+      <p className="nm-hint" style={{ margin: "0 0 var(--space-2)" }}>
+        Øvelsesbanken er felles for alle lagene i appen, og innspillene fra alle lagene teller.
+      </p>
       {bank.length ? (
         <>
           <p style={{ marginTop: 0 }}>
-            Lagets øvelsesbank. Nye øvelser fra godkjente opplegg kommer inn som <em>kandidater</em>, og blir aktive når en trener gir 👍 og «Bruke igjen: Ja». Trykk på en øvelse for å evaluere den, også uten at den er brukt på en trening, eller på {ctx.user.rights.ai ? "stjernene for å justere den med KI" : "blyanten for å endre den"}.
+            Nye øvelser fra godkjente opplegg kommer inn som <em>kandidater</em>, og blir aktive når en trener gir 👍 og «Bruke igjen: Ja». Trykk på en øvelse for å evaluere den, også uten at den er brukt på en trening, eller på {ctx.user.rights.ai ? "stjernene for å justere den med KI" : "blyanten for å endre den"}.
           </p>
           {buttons}
           {cats.map((c) => (

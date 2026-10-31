@@ -9,7 +9,7 @@ import { mockEvents } from "@/lib/spond/mock";
 /**
  * Demo data for the simulated database (SPOND_MOCK=true without
  * DATABASE_URL): rights for the demo trainers, a few tags, and an exercise
- * bank, season plan and team settings for G-FOTBALL. Each part runs once.
+ * shared exercise bank, and the season plan and team settings for G-FOTBALL. Each part runs once.
  * Ids match lib/spond/mock.ts.
  */
 export async function seedDemo(d: Db): Promise<void> {
@@ -87,7 +87,7 @@ const EXTRA = [
 ];
 
 async function seedTraining(d: Db): Promise<void> {
-  const done = await d.query("SELECT 1 FROM exercises WHERE spond_group_id = 'G-FOTBALL' LIMIT 1");
+  const done = await d.query("SELECT 1 FROM exercises WHERE spond_group_id = 'felles' LIMIT 1");
   if (done.length) return;
   const ref = validatePlan(reference);
   const now = osloParts(new Date());
@@ -96,7 +96,7 @@ async function seedTraining(d: Db): Promise<void> {
       await t.query(
         `INSERT INTO exercises (spond_group_id, code, name, category, themes, organisation, execution, learning_points, questions,
                                 easier, harder, nff_url, drawing, created_by, updated_by)
-         VALUES ('G-FOTBALL', $1, $2, $3, $4::text[], $5, $6, $7, $8, NULLIF($9, ''), NULLIF($10, ''), NULLIF($11, ''), $12::jsonb, 'P-KJETIL', 'P-KJETIL')`,
+         VALUES ('felles', $1, $2, $3, $4::text[], $5, $6, $7, $8, NULLIF($9, ''), NULLIF($10, ''), NULLIF($11, ''), $12::jsonb, 'P-KJETIL', 'P-KJETIL')`,
         [
           e.kode,
           e.navn,
@@ -116,7 +116,7 @@ async function seedTraining(d: Db): Promise<void> {
     for (const e of EXTRA) {
       await t.query(
         `INSERT INTO exercises (spond_group_id, code, name, category, themes, organisation, execution, learning_points, created_by, updated_by)
-         VALUES ('G-FOTBALL', $1, $2, $3, $4::text[], $5, $6, $7, 'P-KJETIL', 'P-KJETIL')`,
+         VALUES ('felles', $1, $2, $3, $4::text[], $5, $6, $7, 'P-KJETIL', 'P-KJETIL')`,
         [e.code, e.name, e.category, e.themes, e.organisation, e.execution, e.learning_points],
       );
     }
@@ -124,7 +124,7 @@ async function seedTraining(d: Db): Promise<void> {
     await t.query(
       `UPDATE exercises SET bands = '{8-9,10-12}', nff_activity = 'med-og-mot',
               nff_tags = '{tema.spille-framover,delf.pasning,delf.mottak,lm.10-12.spille-framover.laget.2}'
-        WHERE spond_group_id = 'G-FOTBALL' AND code = ANY($1::text[])`,
+        WHERE spond_group_id = 'felles' AND code = ANY($1::text[])`,
       [ref.ovelser.map((e) => e.kode)],
     );
     const next = now.month === 12 ? { year: now.year + 1, month: 1 } : { year: now.year, month: now.month + 1 };

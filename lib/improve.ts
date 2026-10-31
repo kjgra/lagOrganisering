@@ -37,7 +37,7 @@ export interface ProposeResult {
 export async function proposeImprovements(d: Db, access: Access, groupId: string, patterns: ExercisePattern[], now = new Date()): Promise<ProposeResult> {
   const settings = await getAiSettings(d);
   const bank = new Map((await listExercises(d, access, groupId)).filter((b) => b.status !== "archived").map((b) => [b.code, b]));
-  const busy = await busyProposals(d, groupId, now);
+  const busy = await busyProposals(d, now);
   // The worst first.
   const todo = patterns
     .map((p) => ({ p, plan: proposalPlan(p), b: bank.get(p.code) }))
@@ -50,7 +50,7 @@ export async function proposeImprovements(d: Db, access: Access, groupId: string
     const base = exerciseValues(b!);
     const common = { code: p.code, kind: plan!.kind, reason: reasonText(p, plan!), signature: plan!.signature, base };
     if (plan!.kind === "arkiver") {
-      if (await saveProposal(d, groupId, { ...common, proposed: { ...base, status: "archived" }, model: null, costUsd: 0 })) proposed++;
+      if (await saveProposal(d, { ...common, proposed: { ...base, status: "archived" }, model: null, costUsd: 0 })) proposed++;
       continue;
     }
     if (ki >= MAX_KI) {
@@ -63,14 +63,14 @@ export async function proposeImprovements(d: Db, access: Access, groupId: string
     }
     ki++;
     try {
-      const wish = proposalWish(plan!, await rejectionsFor(d, groupId, p.code));
+      const wish = proposalWish(plan!, await rejectionsFor(d, p.code));
       const order = await exerciseOrderContext(d, { access }, { id: groupId, members: [] }, { sub: "", theme: "", players: null, minutes: null, category: "", wish, link: "", pitchIds: [] }, now);
       const prep = await prepareExerciseKi(d, { access }, { ai: true }, { id: groupId }, order, { baseId: b!.id, now });
       const r = await reviseExerciseKi(d, { access }, prep);
       const values = adjustedValues(r.base, r.exercise, r.extra);
       // KI changed nothing: kept as handled, so it is not asked again for a while.
       const same = !Object.keys(exerciseChanges(base, values)).length;
-      const pid = await saveProposal(d, groupId, { ...common, proposed: values, model: prep.model, costUsd: r.costUsd, status: same ? "utdatert" : "ny" });
+      const pid = await saveProposal(d, { ...common, proposed: values, model: prep.model, costUsd: r.costUsd, status: same ? "utdatert" : "ny" });
       if (!pid || same) continue;
       proposed++;
       // Only new lines under easier, harder, questions or learning points: used right away when that is turned on.
@@ -97,13 +97,13 @@ export async function proposeImprovements(d: Db, access: Access, groupId: string
  */
 export async function measureVersions(d: Db, access: Access, groupId: string): Promise<number> {
   let back = 0;
-  for (const x of await versionsToMeasure(d, groupId)) {
+  for (const x of await versionsToMeasure(d)) {
     const r = rollbackDecision(x.stats, x.version);
     const target = r && x.stats.find((s) => s.version === r.to);
     const current = x.stats.find((s) => s.version === x.version);
     if (!r || !target || !current) continue;
     await saveExercise(d, access, groupId, exerciseInputFrom(target.vals), x.id, { source: "tilbakerulling" });
-    await saveProposal(d, groupId, {
+    await saveProposal(d, {
       code: x.code,
       kind: "tilbakerulling",
       reason: r.reason,
