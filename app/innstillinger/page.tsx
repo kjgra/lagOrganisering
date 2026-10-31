@@ -1,6 +1,10 @@
+import { ChevronRight, Sparkles } from "lucide-react";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { SettingsShell } from "@/components/settings/SettingsShell";
 import { ThemePicker } from "@/components/settings/ThemePicker";
+import { Icon } from "@/components/ui/icon";
+import { APP_VERSION } from "@/lib/changelog-file";
 import { requireUser } from "@/lib/auth/current";
 import { aiMode, env, envLabel } from "@/lib/env";
 import { safeBack } from "@/lib/settings-nav";
@@ -32,6 +36,18 @@ export default async function SettingsPage(props: PageProps<"/innstillinger">) {
       </section>
       <section className="nm-section">
         <h2 className="nm-h2">Om appen</h2>
+        <ul className="nm-list nm-navlist" style={{ marginBottom: "var(--space-3)" }}>
+          <li>
+            <Link href={`/innstillinger/nytt?fra=${encodeURIComponent(back)}`}>
+              <Icon icon={Sparkles} />
+              <span className="nm-list__name" style={{ flex: 1 }}>
+                Hva er nytt
+              </span>
+              <span className="nm-muted">Versjon {APP_VERSION}</span>
+              <Icon icon={ChevronRight} />
+            </Link>
+          </li>
+        </ul>
         <p style={{ margin: 0 }}>
           Nymark – Gruppeorganisering er et frivillig verktøy for trenere i Nymark. Det er ikke laget, godkjent eller støttet av
           Spond AS, og bruker Sponds uoffisielle API. Appen skriver aldri til Spond.

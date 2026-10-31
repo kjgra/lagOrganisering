@@ -350,7 +350,11 @@ select.nm-input { appearance: auto; }
 .nm-form { display: grid; gap: var(--space-4); }
 .nm-form-row { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
 .nm-hint { font-size: 15px; line-height: 20px; color: var(--ink-muted); }
+.nm-changes__title { margin: 0 0 var(--space-2); font-family: var(--font-display); font-size: 22px; line-height: 28px; font-weight: 800; }
+.nm-changes__title .nm-hint { font-family: var(--font-sans); font-weight: 400; }
+.nm-changes__summary { margin: 0 0 var(--space-3); }
 .nm-plan-list { margin: 0; padding-left: 22px; display: grid; gap: 4px; font-size: 17px; line-height: 24px; }
+.nm-changes__list { margin: var(--space-1) 0 var(--space-4); list-style: disc; }
 .nm-versions { display: flex; flex-wrap: wrap; gap: 6px; }
 .nm-versions a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border-radius: var(--radius-pill); border: var(--border-1) solid var(--line-strong); font-weight: 700; font-size: 15px; }
 .nm-versions a[aria-current="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }

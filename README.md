@@ -1,6 +1,8 @@
 # Nymark – Gruppeorganisering
 
 [![CI](https://github.com/kjgra/lagOrganisering/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kjgra/lagOrganisering/actions/workflows/ci.yml?query=branch%3Amain)
+[![Prosjektstatus: aktiv](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![Versjonslogg](https://img.shields.io/badge/versjonslogg-CHANGELOG-blue)](CHANGELOG.md)
 
 Webapp for trenere i Nymark: logg inn med Spond, se påmeldte, fordel spillere på lag, lag treningsopplegg (selv eller med KI) og evaluer øktene. Erstatter den gamle Shiny-appen (SpondNymark).
 
