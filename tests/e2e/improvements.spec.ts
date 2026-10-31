@@ -3,8 +3,15 @@ import { login } from "./helpers";
 
 async function evaluate(page: Page, exercise: string, comment: string) {
   await page.goto(exercise + "/evaluering");
-  await page.getByRole("button", { name: "👎 Dårlig" }).click();
-  await page.getByRole("textbox", { name: "Kommentar" }).fill(comment);
+  // Click again until the form has hydrated and the rating shows as chosen.
+  const bad = page.getByRole("button", { name: "👎 Dårlig" });
+  await expect(async () => {
+    if ((await bad.getAttribute("aria-pressed")) !== "true") await bad.click();
+    await expect(bad).toHaveAttribute("aria-pressed", "true", { timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
+  const box = page.getByRole("textbox", { name: "Kommentar" });
+  await box.fill(comment);
+  await expect(box).toHaveValue(comment);
   await page.getByRole("button", { name: "Lagre evalueringen" }).click();
   await expect(page.locator(".nm-toast")).toContainText("Evalueringen er lagret");
 }
