@@ -12,6 +12,7 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 - Felles øvelsesbank: alle lag i appen, også i ulike hovedgrupper i Spond (for eksempel barne- og ungdomsfotball), ser og evaluerer de samme øvelsene. Evalueringer fra alle lagene teller når appen leter etter mønstre og lager forslag.
 - Sperre mot doble øvelser: en ny øvelse som ligner for mye på en i banken (samme navn, eller nesten lik i innhold og tegning), blir ikke lagret. Juster den som finnes, eller lagre den nye som variant. Ved godkjenning av KI-opplegg vises hvilken øvelse den ligner på.
+- Trenerlisten under Innstillinger viser trenere fra alle gruppene dine, med gruppe og lag, og du kan søke på navn, gruppe eller lag og filtrere på gruppe.
 - Versjoner av øvelser: hver endring blir en ny versjon med eget snitt, og du kan gå tilbake til en tidligere versjon fra øvelsessiden.
 - Appen går tilbake av seg selv når en ny versjon fra «Forbedringer» får klart dårligere vurderinger enn den før.
 - «Små forbedringer» under KI-innstillinger: forslag som bare legger til linjer kan brukes automatisk (av som standard).

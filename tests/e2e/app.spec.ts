@@ -257,6 +257,25 @@ test("admin: the tags right can be turned off per trainer", async ({ page }) => 
   await expect(tags).toBeChecked();
 });
 
+test("admin: find trainers by name, group or team across main groups", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/innstillinger/trenere?lag=G-FOTBALL");
+  const rows = page.locator(".nm-table tbody tr");
+  await page.getByLabel("Gruppe").selectOption({ label: "Nymark IL – Allidrett" });
+  await expect(rows).toHaveCount(2);
+  await expect(page.getByLabel("KI for Tom Berg")).toBeVisible();
+  await page.getByLabel("Søk").fill("7-åringer");
+  await expect(rows).toHaveCount(1);
+  await expect(page.getByText("Viser 1 av")).toBeVisible();
+  await page.getByLabel("Gruppe").selectOption({ label: "Alle grupper" });
+  await page.getByLabel("Søk").fill("jenter 2015");
+  await expect(page.getByLabel("KI for Emma Haugen")).toBeVisible();
+  await expect(rows).toHaveCount(1);
+  await page.getByLabel("Søk").fill("finnes ikke");
+  await expect(page.getByText("Ingen trenere passer søket.")).toBeVisible();
+});
+
 test("settings show the version and «Hva er nytt»", async ({ page }) => {
   await login(page);
   await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
