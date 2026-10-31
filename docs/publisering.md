@@ -37,7 +37,7 @@ Settings → Environment Variables:
 | `AI_MOCK` | (ikke sett) | `true` for demo |
 | `APP_ENV` | (tom) | `TEST` |
 
-Appen nekter å starte i Production hvis `SPOND_MOCK`/`AI_MOCK` er på, eller hvis `DATABASE_URL` eller `SESSION_SECRET` mangler.
+Appen nekter å starte i Production hvis `SPOND_MOCK`/`AI_MOCK` er på, eller hvis `DATABASE_URL` eller `SESSION_SECRET` mangler. `SPOND_MOCK` sammen med en `DATABASE_URL` som ikke er localhost, stoppes i alle miljøer, så demokontoene aldri når ekte data.
 
 Uten `DATABASE_URL` i Preview brukes en database i minnet med demodata; den nullstilles når funksjonen startes på nytt.
 
@@ -81,7 +81,7 @@ Vercel Preview kan bruke en egen Supabase-database med en kopi av prod i stedet 
 3. **Fyll databasen**: Actions → «Preview-database» → «Run workflow» på `main` med «Nullstill fra prod» krysset av. Den sletter alt i preview, kjører migreringene fra `main` og kopierer alle rader fra prod (samme ID-er; redigeringslåser kopieres ikke). Kjør den igjen når du vil ha ferske data, eller når preview har fått migreringer fra en PR som ikke ble merget.
 4. **Vercel** → Environment Variables, bare **Preview**:
    - `DATABASE_URL`: preview-prosjektets «Transaction pooler» (port 6543)
-   - fjern `SPOND_MOCK`, så logger du inn med ekte Spond
+   - fjern `SPOND_MOCK`, så logger du inn med ekte Spond (appen starter ikke med begge)
    - `AI_MOCK=true` for å slippe KI-kostnader, eller fjern den og sett `ANTHROPIC_API_KEY`
    - `SESSION_SECRET` (egen verdi), `SUPERADMIN_PROFILE_ID`, `APP_ENV=TEST`
 

@@ -43,3 +43,7 @@ Spond-passordet brukes bare til innlogging og lagres aldri. Spond-tokenet ligger
 ## Publisering
 
 Se [docs/publisering.md](docs/publisering.md) for Vercel og Supabase.
+
+## Lisens
+
+[MIT](LICENSE). Bruk koden fritt.
