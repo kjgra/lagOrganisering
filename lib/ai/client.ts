@@ -23,7 +23,7 @@ export interface CallInput {
   /** A JSON schema for structured output, or none for plain text. */
   schema?: Record<string, unknown>;
   maxTokens: number;
-  kind: "draft" | "revision" | "learning" | "exercise";
+  kind: "draft" | "revision" | "learning" | "exercise" | "feedback";
 }
 
 export interface CallResult {
@@ -120,7 +120,20 @@ async function mockCall(c: CallInput, t0: number): Promise<CallResult> {
   const inTokens = Math.round((c.system.join("").length + c.user.length) / 3.5);
   const usage: Usage = { input_tokens: Math.round(inTokens * 0.2), output_tokens: 5200, cache_read_tokens: Math.round(inTokens * 0.8), cache_write_tokens: 0 };
   let text: string;
-  if (c.kind === "learning") {
+  if (c.kind === "feedback") {
+    // Simple keyword rules, so the flow can be tried: every exercise gets the same.
+    const said = /# Treneren forteller\n\n([\s\S]*?)\n\nFyll ut/.exec(c.user)?.[1] ?? "";
+    const nos = [...c.user.matchAll(/^- Øvelse (\d+):/gm)].map((m) => Number(m[1]));
+    const vurdering = /dårlig/i.test(said) ? 1 : /bra|gøy|fint/i.test(said) ? 3 : 2;
+    const stikkord = [/kø|vent/i.test(said) ? "ko" : "", /gøy|moro/i.test(said) ? "goy" : "", /trang|liten/i.test(said) ? "bane_liten" : ""].filter(Boolean);
+    const kommentar = `Simulert KI: ${said.replace(/\s+/g, " ").slice(0, 120)}`;
+    const players = Number(/(\d+) (?:spillere|stykker|barn)/i.exec(said)?.[1] ?? 0);
+    text = JSON.stringify({
+      ovelser: nos.map((nr) => ({ nr, vurdering, stikkord, faktisk_minutter: 0, bruke_igjen: vurdering === 1 ? "changes" : "yes", kommentar })),
+      okt: { vurdering, antall_spillere: players, kommentar: "" },
+    });
+    usage.output_tokens = 300;
+  } else if (c.kind === "learning") {
     text =
       "- Guttene liker konkurranse med poeng; bruk det i avslutningen.\n" +
       "- Øvelser med kø fungerer dårlig; del heller i flere små ruter.\n" +

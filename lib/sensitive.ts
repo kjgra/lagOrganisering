@@ -90,3 +90,10 @@ export function namesProblem(text: string, names: string[], reason = "Navn sende
   if (!found.length) return null;
   return `Teksten nevner ${found.slice(0, 3).map((n) => `«${n}»`).join(", ")}. ${reason}: skriv f.eks. «en av keeperne» i stedet.`;
 }
+
+/** Member names replaced by «en spiller», for spoken text that goes to KI. Longest names first, so a full name goes as one. */
+export function redactNames(text: string, names: string[]): string {
+  return [...names]
+    .sort((a, b) => b.length - a.length)
+    .reduce((t, n) => t.replace(new RegExp(`(?<![\\p{L}\\p{N}])${esc(n)}(?![\\p{L}\\p{N}])`, "giu"), "en spiller"), text);
+}

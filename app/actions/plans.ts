@@ -4,12 +4,12 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import { runAction, type ActionResult } from "@/lib/actions";
 import { findGroup, requireUser } from "@/lib/auth/current";
-import { estimateKi, prepareKi, runKi } from "@/lib/ai/service";
+import { estimateKi, fillFeedbackWithKi, prepareKi, runKi } from "@/lib/ai/service";
 import { AI_MODELS } from "@/lib/ai/plan-ai";
 import { db } from "@/lib/db";
 import { findEvent } from "@/lib/events-data";
 import { orderContext } from "@/lib/plan-data";
-import { validateBankFeedback, validateFeedback } from "@/lib/plans/feedback";
+import { FEEDBACK_TEXT_MAX, validateBankFeedback, validateFeedback, type FeedbackFill } from "@/lib/plans/feedback";
 import { bankCandidates, buildPlan, exerciseFromBank, type PlanExercise } from "@/lib/plans/plan";
 import { memberNames, namesProblem } from "@/lib/sensitive";
 import { eventIsPast } from "@/lib/spond/events";
@@ -265,5 +265,31 @@ export async function bankFeedbackAction(input: z.input<typeof bankFeedbackInput
     refresh();
     if (!row) return { data: undefined, message: "Evalueringen din er fjernet." };
     return { data: undefined, message: `Evalueringen er lagret.${activated ? " Øvelsen er nå aktiv i banken." : ""}` };
+  });
+}
+
+const feedbackFillInput = z.object({
+  target: z.union([z.object({ planId: id }), z.object({ groupId: sid, exerciseId: id })]),
+  text: z.string().max(FEEDBACK_TEXT_MAX),
+});
+
+/** «Fortell om økta»: KI fills in the evaluation form from the trainer's own words. Nothing is saved. */
+export async function feedbackFillAction(input: z.input<typeof feedbackFillInput>): Promise<ActionResult<FeedbackFill[]>> {
+  return runAction("KI", async () => {
+    const v = feedbackFillInput.parse(input);
+    const user = await requireUser();
+    const d = await db();
+    if ("planId" in v.target) {
+      const pl = await getPlan(d, user.access, v.target.planId);
+      const group = findGroup(user, pl.groupId);
+      const planned = pl.plan.tidsplan.stasjoner.minutter;
+      const exercises = pl.plan.ovelser.map((e, i) => ({ no: i + 1, name: e.navn, planned }));
+      const r = await fillFeedbackWithKi(d, user, user.rights, group, exercises, v.text, true);
+      return { data: r.rows, message: `KI har fylt ut evalueringen (${r.costText}). Se over og lagre.` };
+    }
+    const group = findGroup(user, v.target.groupId);
+    const ex = await getExercise(d, user.access, group.id, v.target.exerciseId);
+    const r = await fillFeedbackWithKi(d, user, user.rights, group, [{ no: 1, name: ex.name, planned: ex.duration_minutes }], v.text, false);
+    return { data: r.rows, message: `KI har fylt ut evalueringen (${r.costText}). Se over og lagre.` };
   });
 }

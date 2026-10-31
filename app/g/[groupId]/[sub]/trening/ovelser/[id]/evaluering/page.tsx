@@ -49,7 +49,7 @@ export default async function ExerciseFeedbackPage(props: PageProps<"/g/[groupId
         </Link>
       </p>
       {b.organisation ? <p style={{ whiteSpace: "pre-wrap" }}>{b.organisation}</p> : null}
-      <FeedbackForm target={{ groupId: ctx.group.id, exerciseId: b.id }} rows={[draft]} ratings={RATINGS} tags={FEEDBACK_TAGS} useAgain={USE_AGAIN} />
+      <FeedbackForm target={{ groupId: ctx.group.id, exerciseId: b.id }} rows={[draft]} ratings={RATINGS} tags={FEEDBACK_TAGS} useAgain={USE_AGAIN} ki={ctx.user.rights.ai} />
     </AppShell>
   );
 }

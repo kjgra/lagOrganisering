@@ -103,7 +103,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
       }
       return [...out.entries()].sort((a, b) => b[1].usd - a[1].usd);
     };
-    const KIND: Record<string, string> = { draft: "Nytt opplegg", revision: "Justering", visual: "Tegning", learning: "Lærdommer", exercise: "Ny øvelse" };
+    const KIND: Record<string, string> = { draft: "Nytt opplegg", revision: "Justering", visual: "Tegning", learning: "Lærdommer", exercise: "Øvelse", feedback: "Evaluering" };
     const table = (title: string, rows: [string, { n: number; usd: number; err: number }][]) =>
       rows.length ? (
         <div className="nm-scroll-x" style={{ marginBottom: "var(--space-4)" }}>
