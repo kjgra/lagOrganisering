@@ -10,12 +10,14 @@ import { shortDate } from "@/lib/format";
 import { nffSummary } from "@/lib/nff/fagplan";
 import { feedbackSummary, shouldAvoid } from "@/lib/plans/feedback";
 import { CATEGORIES, EXERCISE_STATUSES } from "@/lib/plans/plan";
+import { openProposalCount } from "@/lib/store/improvements";
 import { listExercises } from "@/lib/store/training";
 
 /** The team's exercise bank, for every trainer. */
 export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]/trening/ovelser">) {
   const ctx = await contextFromParams(props.params);
-  const bank = await listExercises(await db(), ctx.user.access, ctx.group.id);
+  const d = await db();
+  const [bank, proposals] = await Promise.all([listExercises(d, ctx.user.access, ctx.group.id), openProposalCount(d, ctx.user.access, ctx.group.id)]);
   const cats = Object.keys(CATEGORIES).filter((c) => bank.some((b) => b.category === c));
   const status = (s: string) => (s === "active" ? "nm-badge--kommer" : s === "candidate" ? "nm-badge--ikke-svart" : "nm-badge--neutral");
   const base = ctx.path("/trening/ovelser");
@@ -46,6 +48,17 @@ export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]
   return (
     <AppShell ctx={ctx} title="Trening" section="training">
       <TrainingTabs ctx={ctx} current="ovelser" />
+      {proposals ? (
+        <div className="nm-note" role="status" style={{ maxWidth: 760, marginBottom: "var(--space-3)" }}>
+          <Icon icon={Sparkles} />
+          <span>
+            {proposals === 1 ? "Ett forslag" : `${proposals} forslag`} til bedre øvelser venter, laget fra trenernes innspill.{" "}
+            <Link href={ctx.path("/trening/forbedringer")} style={{ textDecoration: "underline" }}>
+              Se forbedringer
+            </Link>
+          </span>
+        </div>
+      ) : null}
       {ctx.subgroup ? (
         <p className="nm-hint" style={{ margin: "0 0 var(--space-2)" }}>
           Øvelsesbanken er felles for hele {ctx.group.name}.

@@ -49,6 +49,9 @@ const MAX_TOKENS = 32000;
 const EXERCISE_MAX_TOKENS = 8000;
 const LEARNING_MODEL = "claude-haiku-5-5";
 
+/** Who a KI call is for: a trainer, or the app itself (proposals at night) with an access for one group. */
+export type KiActor = Pick<CurrentUser, "access">;
+
 export interface KiPrep {
   groupId: string;
   kind: "draft" | "revision" | "exercise";
@@ -61,7 +64,7 @@ export interface KiPrep {
 }
 
 /** Rights, budget, the bank and the team's experience: what every KI call for exercises needs. */
-async function kiBasis(d: Db, user: CurrentUser, rights: Rights, group: Group, sub: string, wanted: string | undefined, now: Date, theme: string) {
+async function kiBasis(d: Db, user: KiActor, rights: Pick<Rights, "ai">, group: Pick<Group, "id">, sub: string, wanted: string | undefined, now: Date, theme: string) {
   if (!rights.ai) throw new AiError("Du har ikke tilgang til KI. Spør en administrator.");
   const settings = await getAiSettings(d);
   const model = wanted && wanted in AI_MODELS ? wanted : settings.model;
@@ -156,9 +159,9 @@ export interface ExerciseKiPrep extends Omit<KiPrep, "answerCtx"> {
 
 export async function prepareExerciseKi(
   d: Db,
-  user: CurrentUser,
-  rights: Rights,
-  group: Group,
+  user: KiActor,
+  rights: Pick<Rights, "ai">,
+  group: Pick<Group, "id">,
   order: ExerciseOrderContext,
   opts: { model?: string; now?: Date; baseId?: number } = {},
 ): Promise<ExerciseKiPrep> {
@@ -180,7 +183,7 @@ export async function prepareExerciseKi(
 }
 
 /** Call the model and log the call (also when it failed, since it may have cost money). */
-async function callExerciseKi(d: Db, user: CurrentUser, prep: ExerciseKiPrep) {
+async function callExerciseKi(d: Db, user: KiActor, prep: ExerciseKiPrep) {
   const r = await callClaude(prep.call);
   let result: ReturnType<typeof exerciseFromAnswer> | null = null;
   let errorCode = r.errorCode;
@@ -202,7 +205,7 @@ async function callExerciseKi(d: Db, user: CurrentUser, prep: ExerciseKiPrep) {
     null,
   );
   if (!result) throw new AiError(message || "Noe gikk galt med KI. Prøv igjen om litt.");
-  return { ...result, costText: formatNok(cost, prep.settings.usd_nok) };
+  return { ...result, costUsd: cost, costText: formatNok(cost, prep.settings.usd_nok) };
 }
 
 /** «Ny øvelse med KI»: call the model and save the exercise in the bank as a candidate made with KI. */
@@ -214,7 +217,7 @@ export async function runExerciseKi(d: Db, user: CurrentUser, prep: ExerciseKiPr
 }
 
 /** «Juster med KI»: the adjusted exercise, not saved. The trainer looks it over in the form and saves it there. */
-export async function reviseExerciseKi(d: Db, user: CurrentUser, prep: ExerciseKiPrep) {
+export async function reviseExerciseKi(d: Db, user: KiActor, prep: ExerciseKiPrep) {
   if (!prep.base) throw new UserError("Fant ikke øvelsen.");
   return { base: prep.base, ...(await callExerciseKi(d, user, prep)) };
 }

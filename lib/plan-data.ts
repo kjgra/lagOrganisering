@@ -127,7 +127,7 @@ export interface ExerciseKiInput {
 }
 
 /** The order for «Ny øvelse med KI»: the team settings, the chosen pitches and the trainer's wishes. */
-export async function exerciseOrderContext(d: Db, user: CurrentUser, group: Group, input: ExerciseKiInput, now = new Date()): Promise<ExerciseOrderContext> {
+export async function exerciseOrderContext(d: Db, user: Pick<CurrentUser, "access">, group: Pick<Group, "id" | "members">, input: ExerciseKiInput, now = new Date()): Promise<ExerciseOrderContext> {
   const names = memberNames(group.members);
   const wish = input.wish.trim();
   checkWish(wish, names);

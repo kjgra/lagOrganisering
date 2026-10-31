@@ -37,6 +37,8 @@ export function ExerciseForm(p: {
   canDelete: boolean;
   /** KI's version («Juster med KI»), so what the trainer changes in it is logged. */
   kiDraft?: ExerciseValues;
+  /** A proposal from «Forbedringer» being changed before it is used. */
+  proposalId?: number;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -51,7 +53,7 @@ export function ExerciseForm(p: {
   const save = () =>
     start(async () => {
       setError(null);
-      const r = await saveExerciseAction(p.groupId, p.id, { ...v, themes: v.themes.split(",").map((t) => t.trim()).filter(Boolean) }, p.kiDraft);
+      const r = await saveExerciseAction(p.groupId, p.id, { ...v, themes: v.themes.split(",").map((t) => t.trim()).filter(Boolean) }, p.kiDraft, p.proposalId);
       if (!r.ok) return setError(r.error);
       if (r.message) toast(r.message);
       router.push(p.listHref);

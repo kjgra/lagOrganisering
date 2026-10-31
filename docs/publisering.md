@@ -121,6 +121,8 @@ På iPhone virker varsler bare når appen er lagt på hjemskjermen (iOS 16.4 ell
 
 Etter hver lagrede evaluering går appen gjennom innspillene for laget: KI (Haiku, innenfor KI-budsjettet) gjør kommentarene om til observasjoner, og appen regner ut et mønster per øvelse som vises øverst på øvelsessiden. Det virker uten oppsett. I tillegg kjører workflowen «Analyse av innspill» hver natt for alle lag og tar igjen kommentarer som ikke ble gått gjennom (f.eks. fordi budsjettet var brukt opp). Den bruker samme `CRON_SECRET` og `APP_URL` som i §7. Tersklene for et mønster stilles under KI-innstillinger. KI-kallene står som «Appen (automatisk)» i KI-oversikten.
 
+Når et mønster passerer terskelen, lager KI et forslag til en bedre øvelse (ny versjon, tilpasning for en situasjon, eller arkivering ved lav score over tid). Forslagene venter under Trening → Øvelser → «Forbedringer», maks to nye KI-forslag per lag per kjøring, med standardmodellen. Natt til mandag får trenere med varsler på beskjed om hvor mange forslag som venter. For å prøve i preview med én trener: sett «Mønster: antall økter» til 1 under KI-innstillinger.
+
 ## Sjekkliste
 
 - [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt
