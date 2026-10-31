@@ -1,4 +1,5 @@
 import type { Db } from "@/lib/db";
+import { teamBand } from "@/lib/nff/bands";
 import type { EvaluationRow, ExercisePattern, Observation } from "@/lib/plans/observations";
 import { assertGroup, type Access } from "./access";
 import { BANK } from "./bank";
@@ -58,11 +59,16 @@ export async function saveObservations(d: Db, found: Map<number, Observation[]>)
 
 /** Everything the pattern needs: evaluations from every group, and the bank's observations. */
 export async function patternInputs(d: Db) {
-  const [evaluations, observations, removed] = await Promise.all([
-    d.query<EvaluationRow>(
+  const [rows, observations, removed] = await Promise.all([
+    d.query<Omit<EvaluationRow, "band"> & { birth_years: number[] | null }>(
       `SELECT f.id AS "feedbackId", f.exercise_code AS code, f.rating, f.tags,
               coalesce(f.spond_event_id, 'bank:' || f.author) AS session, f.author,
-              coalesce(s.actual_players, s.registered_players) AS players, f.updated_at AS at
+              coalesce(s.actual_players, s.registered_players) AS players, f.updated_at AS at,
+              -- The teams' birth years: the teams the training was for, else the whole group's setting.
+              coalesce((SELECT array_agg(DISTINCT t.birth_year) FROM team_settings t
+                         WHERE t.spond_group_id = f.spond_group_id AND t.birth_year IS NOT NULL AND t.spond_subgroup_id = ANY(f.spond_subgroup_ids)),
+                       (SELECT array_agg(t.birth_year) FROM team_settings t
+                         WHERE t.spond_group_id = f.spond_group_id AND t.birth_year IS NOT NULL AND t.spond_subgroup_id = '')) AS birth_years
          FROM exercise_feedback f
          LEFT JOIN exercise_feedback s ON s.plan_id = f.plan_id AND s.author = f.author AND s.exercise_no IS NULL
         WHERE ${EXERCISE_ROWS}`,
@@ -77,6 +83,11 @@ export async function patternInputs(d: Db) {
         WHERE l.kind = 'opplegg_etter_ki'`,
     ),
   ]);
+  const evaluations: EvaluationRow[] = rows.map(({ birth_years, ...r }) => {
+    // One band only: teams in different bands together say nothing about one of them.
+    const bands = new Set((birth_years ?? []).map((y) => teamBand(y, new Date(r.at).getFullYear())));
+    return { ...r, band: bands.size === 1 ? [...bands][0] : null };
+  });
   return { evaluations, observations, removed };
 }
 
@@ -86,8 +97,8 @@ export async function savePatterns(d: Db, patterns: ExercisePattern[]): Promise<
     await t.query("DELETE FROM exercise_patterns WHERE spond_group_id = $1", [BANK]);
     for (const p of patterns) {
       await t.query(
-        `INSERT INTO exercise_patterns (spond_group_id, exercise_code, score, ratings, trend, patterns) VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
-        [BANK, p.code, p.score, p.ratings, p.trend, JSON.stringify(p.patterns)],
+        `INSERT INTO exercise_patterns (spond_group_id, exercise_code, score, ratings, trend, patterns, bands) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb)`,
+        [BANK, p.code, p.score, p.ratings, p.trend, JSON.stringify(p.patterns), JSON.stringify(p.bands)],
       );
     }
   });
@@ -102,7 +113,7 @@ export async function exercisePattern(d: Db, access: Access, groupId: string, co
   assertGroup(access, groupId);
   const bank = BANK;
   const [r] = await d.query<StoredPattern>(
-    `SELECT exercise_code AS code, score::float8 AS score, ratings, trend, patterns, computed_at
+    `SELECT exercise_code AS code, score::float8 AS score, ratings, trend, patterns, bands, computed_at
        FROM exercise_patterns WHERE spond_group_id = $1 AND exercise_code = $2`,
     [bank, code],
   );

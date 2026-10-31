@@ -17,7 +17,9 @@ export default async function ProposalEditPage(props: PageProps<"/g/[groupId]/[s
   return (
     <AppShell ctx={ctx} title={p.exercise_name} section="training" back={`${base}/${p.id}`}>
       <div className="nm-note" role="status" style={{ maxWidth: 760, marginBottom: "var(--space-3)" }}>
-        Dette er forslaget fra KI. Endre det du vil, og trykk «Lagre øvelsen» for å bruke det.
+        {p.kind === "variant"
+          ? "Dette er varianten KI foreslår. Endre det du vil, og trykk «Lagre øvelsen»: den lagres som en ny øvelse basert på den som finnes."
+          : "Dette er forslaget fra KI. Endre det du vil, og trykk «Lagre øvelsen» for å bruke det."}
       </div>
       <ExerciseForm
         groupId={ctx.group.id}

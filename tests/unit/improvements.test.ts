@@ -7,11 +7,12 @@ import { validatePlan } from "@/lib/plans/plan";
 import reference from "@/lib/plans/reference-plan.json";
 import type { Access } from "@/lib/store/access";
 import { decideProposal, listProposals, openProposalFor, rejectionsFor } from "@/lib/store/improvements";
-import { getExercise, saveBankFeedback, savePlanExercise } from "@/lib/store/training";
+import { getExercise, listExercises, saveBankFeedback, saveExercise, savePlanExercise } from "@/lib/store/training";
+import { exerciseInputFrom } from "@/lib/plans/exercise-values";
 import { testDb } from "../helpers/db";
 
 const pat = (x: Partial<Pattern>): Pattern => ({ kind: "ko", positive: false, count: 3, sessions: 3, trainers: 2, pattern: true, part: "organisering", context: "", suggestions: [], ...x });
-const ex = (x: Partial<ExercisePattern>): ExercisePattern => ({ code: "A", score: 2.2, ratings: 3, trend: "", patterns: [], ...x });
+const ex = (x: Partial<ExercisePattern>): ExercisePattern => ({ code: "A", score: 2.2, ratings: 3, trend: "", patterns: [], bands: [], ...x });
 
 describe("which proposal", () => {
   it("proposes a new version for problems, an adaptation when they only happen in one situation, and archiving when rated low by many", () => {
@@ -22,6 +23,22 @@ describe("which proposal", () => {
     expect(proposalPlan(ex({ patterns: [pat({ context: "med 12 eller flere spillere" })] }))!.kind).toBe("tilpasning");
     expect(proposalPlan(ex({ score: 1.4, ratings: 6 }))!.kind).toBe("arkiver");
     expect(proposalPlan(ex({ score: 1.4, ratings: 2 }))).toBeNull();
+  });
+
+  it("proposes a variant when one age band rates it well and another poorly, until that band has one", () => {
+    const bands = [
+      { band: "10-12" as const, mean: 2.7, ratings: 3, trainers: 3 },
+      { band: "6-7" as const, mean: 1.3, ratings: 3, trainers: 2 },
+    ];
+    const plan = proposalPlan(ex({ bands, patterns: [pat({ context: "for 6–7 år", band: "6-7" }), pat({ kind: "uklar", context: "for 10–12 år", band: "10-12" })] }))!;
+    expect(plan).toMatchObject({ kind: "variant", signature: "variant:6-7", band: { band: "6-7" } });
+    // Only the problems from that age band go with it.
+    expect(plan.problems.map((x) => x.kind)).toEqual(["ko"]);
+    expect(reasonText(ex({ bands }), plan)).toMatch(/^Øvelsen fungerer for 10–12 år, snitt 2,7 av 3 \(3 vurderinger\), men ikke for 6–7 år, snitt 1,3 av 3 \(3 vurderinger\)\./);
+    expect(proposalWish(plan, [])).toContain("Lag en variant av øvelsen for 6–7 år");
+    // Too few ratings, or a variant for the band already: no variant.
+    expect(proposalPlan(ex({ bands: [bands[0], { ...bands[1], ratings: 2 }] }))).toBeNull();
+    expect(proposalPlan(ex({ bands }), ["6-7"])).toBeNull();
   });
 
   it("explains it with the numbers, and tells KI what was turned down before", () => {
@@ -73,5 +90,33 @@ describe("proposals from the analysis", () => {
     expect((await analyseBank(d)).proposed).toBe(0);
     expect(await rejectionsFor(d, code)).toEqual(["Vi har ikke plass til to ruter"]);
     expect((await listProposals(d, ann, "G1")).handled.map((p) => [p.status, p.decided_by])).toEqual([["avvist", "P-BO"]]);
+  });
+
+  it("makes a variant for the age band that rates it poorly, saved as a new exercise based on it", async () => {
+    const year = new Date().getFullYear();
+    await d.query(
+      `INSERT INTO team_settings (spond_group_id, spond_subgroup_id, birth_year, updated_by) VALUES ('G1', 'SMA', $1, 'P-ANN'), ('G1', 'STORE', $2, 'P-ANN')`,
+      [year - 6, year - 11],
+    );
+    const id = (await savePlanExercise(d, ann, "G1", plan.ovelser[2], [], "manual"))!;
+    const code = (await getExercise(d, ann, "G1", id)).code;
+    const rate = (rating: number) => ({ ...row(""), tags: [], rating, use_again: "", exercise_code: code });
+    for (const [who, sub, rating] of [["P-A", "SMA", 1], ["P-B", "SMA", 1], ["P-C", "SMA", 2], ["P-D", "STORE", 3], ["P-E", "STORE", 3], ["P-F", "STORE", 3]] as const) {
+      await saveBankFeedback(d, { profileId: who, groupIds: new Set(["G1"]) }, "G1", id, rate(rating), [sub]);
+    }
+    expect((await analyseBank(d)).proposed).toBe(1);
+    const p = (await listProposals(d, ann, "G1")).open.find((x) => x.exercise_code === code)!;
+    expect(p).toMatchObject({ kind: "variant", proposed: { name: `${plan.ovelser[2].navn} (6–7 år)`, bands: ["6-7"] } });
+    expect(p.reason).toContain("men ikke for 6–7 år");
+
+    // «Bruk»: a new exercise based on it, for 6–7 år; the one it is based on is as it was.
+    const vid = await saveExercise(d, ann, "G1", exerciseInputFrom(p.proposed), null, { basedOn: code });
+    await decideProposal(d, ann, "G1", p.id, "brukt");
+    const all = await listExercises(d, ann, "G1");
+    expect(all.find((e) => e.id === vid)).toMatchObject({ based_on: code, bands: ["6-7"] });
+    expect(all.find((e) => e.id === id)!.version).toBe(1);
+    // That band has its variant now: none is proposed again.
+    await d.query("UPDATE improvement_proposals SET decided_at = now() - interval '100 days' WHERE id = $1", [p.id]);
+    expect((await analyseBank(d)).proposed).toBe(0);
   });
 });

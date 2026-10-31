@@ -291,7 +291,8 @@ export async function bankFeedbackAction(input: z.input<typeof bankFeedbackInput
     const d = await db();
     const ex = await getExercise(d, user.access, group.id, v.exerciseId);
     const row = validateBankFeedback({ ...v.row, exercise_no: null }, ex.code, memberNames(group.members));
-    const activated = await saveBankFeedback(d, user.access, group.id, ex.id, row);
+    const mine = group.members.find((m) => m.kind === "coach" && m.profileId === user.session.profileId)?.subgroupIds ?? [];
+    const activated = await saveBankFeedback(d, user.access, group.id, ex.id, row, mine);
     analyseLater();
     refresh();
     if (!row) return { data: undefined, message: "Evalueringen din er fjernet." };
