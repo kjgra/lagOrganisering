@@ -30,6 +30,19 @@ export const FEEDBACK_TAGS: Record<string, string> = {
 
 export const USE_AGAIN: Record<string, string> = { yes: "Ja", changes: "Med endringer", no: "Nei" };
 export const FEEDBACK_BODY_MAX = 300;
+/** «Fortell om økta»: the trainer's own words, which KI turns into the form. */
+export const FEEDBACK_TEXT_MAX = 3000;
+
+/** What KI filled in for one row of the form: only the fields it found. */
+export interface FeedbackFill {
+  exercise_no: number | null;
+  rating?: number;
+  tags?: string[];
+  actual_minutes?: string;
+  actual_players?: string;
+  use_again?: string;
+  body?: string;
+}
 
 export class FeedbackError extends Error {}
 

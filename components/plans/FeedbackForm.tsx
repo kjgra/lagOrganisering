@@ -4,8 +4,10 @@ import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { bankFeedbackAction, feedbackAction } from "@/app/actions/plans";
+import { FeedbackDictation } from "@/components/plans/FeedbackDictation";
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
+import type { FeedbackFill } from "@/lib/plans/feedback";
 
 export interface FeedbackDraft {
   exercise_no: number | null;
@@ -42,6 +44,8 @@ export function FeedbackForm(p: {
   ratings: Record<string, string>;
   tags: Record<string, string>;
   useAgain: Record<string, string>;
+  /** The trainer may use KI: «Fortell om økta» fills in the form. */
+  ki?: boolean;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -49,6 +53,27 @@ export function FeedbackForm(p: {
   const [rows, setRows] = useState(p.rows);
   const [error, setError] = useState<string | null>(null);
   const upd = (i: number, ch: Partial<FeedbackDraft>) => setRows((r) => r.map((x, j) => (j === i ? { ...x, ...ch } : x)));
+  const [filled, setFilled] = useState(0);
+  // KI's fields go over what is there; keywords are added. From the bank, KI's exercise 1 is the only row.
+  const fill = (fills: FeedbackFill[]) => {
+    const plan = "planId" in p.target;
+    setRows((r) =>
+      r.map((x) => {
+        const f = fills.find((y) => (plan ? y.exercise_no === x.exercise_no : y.exercise_no === 1));
+        if (!f) return x;
+        return {
+          ...x,
+          rating: f.rating ?? x.rating,
+          tags: f.tags ? [...new Set([...x.tags, ...f.tags])] : x.tags,
+          actual_minutes: f.actual_minutes ?? x.actual_minutes,
+          actual_players: f.actual_players ?? x.actual_players,
+          use_again: f.use_again ?? x.use_again,
+          body: f.body ?? x.body,
+        };
+      }),
+    );
+    setFilled((n) => n + 1);
+  };
 
   const save = () =>
     start(async () => {
@@ -81,6 +106,12 @@ export function FeedbackForm(p: {
           : "Vurder øvelsen slik den har fungert for laget. Den teller sammen med evalueringene etter trening. Tøm feltene og lagre for å fjerne din evaluering."}{" "}
         Skriv uten navn på spillere.
       </p>
+      {p.ki ? <FeedbackDictation target={"planId" in p.target ? { planId: p.target.planId } : p.target} session={"planId" in p.target} onFill={fill} /> : null}
+      {filled ? (
+        <div className="nm-note" role="status">
+          KI har fylt ut feltene under. Ingenting er lagret ennå: se over, rett om du vil, og trykk «Lagre evalueringen».
+        </div>
+      ) : null}
       {rows.map((x, i) => {
         const session = "planId" in p.target && x.exercise_no === null;
         return (

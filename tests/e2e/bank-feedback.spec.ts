@@ -168,3 +168,22 @@ test("a team has the main group's «Laget» until it saves its own, and can foll
   await expect(page.locator(".nm-toast")).toContainText("Laget følger Nymark IL – Fotball igjen.");
   await expect(page.getByLabel("Øktlengde (min)")).toHaveValue("75");
 });
+
+test("tell KI how an exercise went, and it fills in the evaluation", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/g/G-FOTBALL/alle/trening/ovelser");
+  await page.locator('.nm-pick a[href$="/evaluering"]').nth(1).click();
+  await expect(page).toHaveURL(/\/trening\/ovelser\/\d+\/evaluering/);
+
+  await page.getByRole("textbox", { name: "Fortell om øvelsen" }).fill("Den var gøy, men det ble mye kø.");
+  await page.getByRole("button", { name: "Fyll ut med KI" }).click();
+  await expect(page.locator(".nm-toast")).toContainText("KI har fylt ut evalueringen");
+  await expect(page.getByText("KI har fylt ut feltene under")).toBeVisible();
+  await expect(page.getByRole("button", { name: "👍 Bra" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "mye venting/kø" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Kommentar")).toHaveValue(/Simulert KI: Den var gøy/);
+
+  await page.getByRole("button", { name: "Lagre evalueringen" }).click();
+  await expect(page.locator(".nm-toast")).toContainText("Evalueringen er lagret");
+});

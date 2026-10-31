@@ -45,6 +45,7 @@ export default async function FeedbackPage(props: PageProps<"/g/[groupId]/[sub]/
         ratings={Object.fromEntries(Object.entries(RATINGS).map(([k, v]) => [k, v]))}
         tags={FEEDBACK_TAGS}
         useAgain={USE_AGAIN}
+        ki={ctx.user.rights.ai}
       />
     </AppShell>
   );

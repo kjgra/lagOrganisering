@@ -4,7 +4,7 @@ import type { Db } from "@/lib/db";
 import { osloMonthStart, shortDate } from "@/lib/format";
 import type { BankExercise, Plan } from "@/lib/plans/plan";
 import { FEEDBACK_TAGS, USE_AGAIN } from "@/lib/plans/feedback";
-import { isSensitive, memberNames, namesProblem } from "@/lib/sensitive";
+import { isSensitive, memberNames, namesProblem, redactNames } from "@/lib/sensitive";
 import { UserError, type Rights } from "@/lib/store/access";
 import { aiSpend, getAiSettings, logAiUsage, typicalOutput } from "@/lib/store/ai";
 import {
@@ -20,6 +20,7 @@ import {
 } from "@/lib/store/training";
 import type { Group } from "@/lib/spond/types";
 import { callClaude, countTokens, type CallInput } from "./client";
+import { FEEDBACK_FILL_INSTRUCTIONS, FEEDBACK_FILL_SCHEMA, feedbackFillText, feedbackFromAnswer, type FeedbackFillExercise } from "./feedback-ai";
 import { LEARNING_INSTRUCTIONS } from "./prompts";
 import {
   AI_MODELS,
@@ -283,4 +284,40 @@ export async function updateLearningsWithKi(d: Db, user: CurrentUser, rights: Ri
     throw err;
   }
   return { nRows: rows.length, costText: formatNok(cost, settings.usd_nok) };
+}
+
+// «Fortell om økta»: the trainer's own words fill in the evaluation form. Nothing is saved here.
+
+/** KI's evaluation from the trainer's words, for the form. Names are taken out before the text goes to KI. */
+export async function fillFeedbackWithKi(d: Db, user: CurrentUser, rights: Rights, group: Group, exercises: FeedbackFillExercise[], text: string, session: boolean, now = new Date()) {
+  if (!rights.ai) throw new AiError("Du har ikke tilgang til KI. Spør en administrator.");
+  if (!text.trim()) throw new AiError("Fortell litt om økta først.");
+  if (isSensitive(text)) throw new AiError("Teksten skal ikke inneholde helseopplysninger eller andre sensitive opplysninger.");
+  const settings = await getAiSettings(d);
+  const budget = budgetCheck(await aiSpend(d, user.access, group.id, osloMonthStart(now)), settings);
+  if (!budget.ok) throw new AiError(budget.message);
+  const names = memberNames(group.members);
+  const r = await callClaude({
+    model: LEARNING_MODEL,
+    system: [FEEDBACK_FILL_INSTRUCTIONS],
+    user: feedbackFillText(exercises, redactNames(text, names), session),
+    schema: FEEDBACK_FILL_SCHEMA,
+    maxTokens: 2000,
+    kind: "feedback",
+  });
+  let rows: ReturnType<typeof feedbackFromAnswer> | null = null;
+  let errorCode = r.errorCode;
+  let message = r.message;
+  if (r.ok) {
+    try {
+      rows = feedbackFromAnswer(r.text, exercises, session, names);
+    } catch (err) {
+      errorCode = "ugyldig_svar";
+      message = (err as Error).message;
+    }
+  }
+  const cost = aiCost(r.usage, LEARNING_MODEL);
+  await logAiUsage(d, user.access, group.id, { kind: "feedback", model: LEARNING_MODEL, ...r.usage, cost_usd: cost, duration_ms: r.durationMs, status: rows ? "ok" : "error", error_code: errorCode }, null);
+  if (!rows) throw new AiError(message || "Noe gikk galt med KI. Prøv igjen om litt.");
+  return { rows, costText: formatNok(cost, settings.usd_nok) };
 }
