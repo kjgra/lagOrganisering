@@ -75,6 +75,9 @@ export interface AiSettings {
   max_new_exercises: number;
   usd_nok: number;
   link_domains: string[];
+  /** A kind of observation is a pattern when this many sessions, or this many trainers, said it. */
+  pattern_min_sessions: number;
+  pattern_min_trainers: number;
   updated_by: string | null;
   updated_at: Date | null;
 }
@@ -87,6 +90,8 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   max_new_exercises: 2,
   usd_nok: 10,
   link_domains: ["tiim.no", "fotball.no"],
+  pattern_min_sessions: 3,
+  pattern_min_trainers: 2,
   updated_by: null,
   updated_at: null,
 };

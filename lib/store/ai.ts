@@ -14,11 +14,13 @@ export async function getAiSettings(d: Db): Promise<AiSettings> {
     max_new_exercises: number;
     usd_nok: number;
     link_domains: string[];
+    pattern_min_sessions: number;
+    pattern_min_trainers: number;
     updated_by: string;
     updated_at: Date;
   }>(
     `SELECT model, group_limit_nok::float8 AS group_limit_nok, total_limit_usd::float8 AS total_limit_usd, max_new_exercises,
-            usd_nok::float8 AS usd_nok, link_domains, updated_by, updated_at FROM ai_settings WHERE id`,
+            usd_nok::float8 AS usd_nok, link_domains, pattern_min_sessions, pattern_min_trainers, updated_by, updated_at FROM ai_settings WHERE id`,
   );
   return rows[0] ? { ...rows[0] } : { ...DEFAULT_AI_SETTINGS };
 }
@@ -34,6 +36,12 @@ export async function saveAiSettings(d: Db, rights: Rights, actor: string, s: Re
   if (!(model in AI_MODELS)) throw new UserError("Ukjent modell.");
   const maxNew = num(s.max_new_exercises, "Maks nye øvelser", 0, 6);
   if (!Number.isInteger(maxNew)) throw new UserError("Maks nye øvelser må være et helt tall.");
+  // Missing (an older form) keeps the default.
+  const whole = (x: unknown, fallback: number, what: string, lo: number, hi: number) => {
+    const v = num(x ?? fallback, what, lo, hi);
+    if (!Number.isInteger(v)) throw new UserError(`${what} må være et helt tall.`);
+    return v;
+  };
   let domains: string[];
   try {
     domains = validateDomains(String(s.link_domains ?? ""));
@@ -41,17 +49,29 @@ export async function saveAiSettings(d: Db, rights: Rights, actor: string, s: Re
     throw new UserError((err as Error).message);
   }
   await d.query(
-    `INSERT INTO ai_settings (id, model, group_limit_nok, total_limit_usd, max_new_exercises, usd_nok, link_domains, updated_by)
-     VALUES (true, $1, $2, $3, $4, $5, $6::text[], $7)
+    `INSERT INTO ai_settings (id, model, group_limit_nok, total_limit_usd, max_new_exercises, usd_nok, link_domains, updated_by,
+                             pattern_min_sessions, pattern_min_trainers)
+     VALUES (true, $1, $2, $3, $4, $5, $6::text[], $7, $8, $9)
      ON CONFLICT (id) DO UPDATE SET model = EXCLUDED.model, group_limit_nok = EXCLUDED.group_limit_nok,
        total_limit_usd = EXCLUDED.total_limit_usd, max_new_exercises = EXCLUDED.max_new_exercises, usd_nok = EXCLUDED.usd_nok,
-       link_domains = EXCLUDED.link_domains, updated_by = EXCLUDED.updated_by, updated_at = now()`,
-    [model, num(s.group_limit_nok, "Grensen per lag", 0, 10000), num(s.total_limit_usd, "Grensen totalt", 0, 1000), maxNew, num(s.usd_nok, "Dollarkursen", 1, 100), domains, actor],
+       link_domains = EXCLUDED.link_domains, updated_by = EXCLUDED.updated_by, updated_at = now(),
+       pattern_min_sessions = EXCLUDED.pattern_min_sessions, pattern_min_trainers = EXCLUDED.pattern_min_trainers`,
+    [
+      model,
+      num(s.group_limit_nok, "Grensen per lag", 0, 10000),
+      num(s.total_limit_usd, "Grensen totalt", 0, 1000),
+      maxNew,
+      num(s.usd_nok, "Dollarkursen", 1, 100),
+      domains,
+      actor,
+      whole(s.pattern_min_sessions, DEFAULT_AI_SETTINGS.pattern_min_sessions, "Økter for et mønster", 1, 20),
+      whole(s.pattern_min_trainers, DEFAULT_AI_SETTINGS.pattern_min_trainers, "Trenere for et mønster", 1, 10),
+    ],
   );
 }
 
 export interface UsageRow {
-  kind: "draft" | "revision" | "visual" | "learning" | "exercise" | "feedback";
+  kind: "draft" | "revision" | "visual" | "learning" | "exercise" | "feedback" | "observations";
   model: string;
   input_tokens: number;
   output_tokens: number;

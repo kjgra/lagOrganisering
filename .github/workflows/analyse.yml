@@ -1,0 +1,34 @@
+name: Analyse av innspill
+
+# Ber appen gå gjennom trenernes evalueringer og regne ut mønstre per øvelse
+# («Dette sier trenerne»). Hver natt, eller manuelt fra Actions-fanen. Bruker
+# samme repo-secret CRON_SECRET og repo-variabel APP_URL som «Påminnelser»;
+# uten dem hoppes alt over.
+on:
+  schedule:
+    - cron: "15 2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: analyse
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  analyse:
+    name: Analyser innspill
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      APP_URL: ${{ vars.APP_URL }}
+    steps:
+      - name: Kall appen
+        run: |
+          if [ -z "$CRON_SECRET" ] || [ -z "$APP_URL" ]; then
+            echo "::notice::CRON_SECRET eller APP_URL er ikke satt, hopper over. Se docs/publisering.md."
+            exit 0
+          fi
+          curl -fsS --max-time 90 -X POST -H "Authorization: Bearer $CRON_SECRET" "${APP_URL%/}/api/analyse"

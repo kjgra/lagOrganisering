@@ -11,6 +11,7 @@ import { db } from "@/lib/db";
 import { superadminId } from "@/lib/env";
 import { decimal, MONTH_NAMES, osloMidnight, osloMonthStart, osloParts, savedAt, shortDate } from "@/lib/format";
 import { MAINTENANCE_RULES } from "@/lib/maintenance";
+import { SYSTEM_ACTOR } from "@/lib/observe";
 import { movedPath } from "@/lib/settings-nav";
 import { profileName } from "@/lib/proposal-view";
 import { aiSpend, aiUsagePeriod, getAiSettings } from "@/lib/store/ai";
@@ -103,7 +104,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
       }
       return [...out.entries()].sort((a, b) => b[1].usd - a[1].usd);
     };
-    const KIND: Record<string, string> = { draft: "Nytt opplegg", revision: "Justering", visual: "Tegning", learning: "Lærdommer", exercise: "Øvelse", feedback: "Evaluering" };
+    const KIND: Record<string, string> = { draft: "Nytt opplegg", revision: "Justering", visual: "Tegning", learning: "Lærdommer", exercise: "Øvelse", feedback: "Evaluering", observations: "Observasjoner" };
     const table = (title: string, rows: [string, { n: number; usd: number; err: number }][]) =>
       rows.length ? (
         <div className="nm-scroll-x" style={{ marginBottom: "var(--space-4)" }}>
@@ -173,7 +174,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
           ) : (
             <p className="nm-muted">Ingen KI-kall i {MONTH_NAMES[fp.month - 1].toLowerCase()}.</p>
           )}
-          {table("Trener", by((r) => profileName(group, r.spond_profile_id)))}
+          {table("Trener", by((r) => (r.spond_profile_id === SYSTEM_ACTOR ? "Appen (automatisk)" : profileName(group, r.spond_profile_id))))}
           {table("Modell", by((r) => AI_MODELS[r.model]?.label ?? r.model))}
           {table("Type", by((r) => KIND[r.kind] ?? r.kind))}
           <p className="nm-hint">Bare antall tokens og kostnad lagres, aldri teksten som sendes til eller kommer fra KI.</p>
@@ -192,6 +193,8 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
               max_new_exercises: String(settings.max_new_exercises),
               usd_nok: decimal(settings.usd_nok, 2),
               link_domains: settings.link_domains.join(", "),
+              pattern_min_sessions: String(settings.pattern_min_sessions),
+              pattern_min_trainers: String(settings.pattern_min_trainers),
             }}
           />
         </section>
