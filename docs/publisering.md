@@ -125,6 +125,8 @@ Når et mønster passerer terskelen, lager KI et forslag til en bedre øvelse (n
 
 Hver endring av en øvelse blir en ny versjon, og hver evaluering knyttes til versjonen den gjaldt. Øvelsessiden viser «Versjoner» med snitt per versjon og «Gå tilbake hit». Når en versjon fra Forbedringer har fått 5 vurderinger og snittet er minst 0,5 lavere enn versjonen før, går appen tilbake av seg selv og viser det under «Gjort automatisk». Under KI-innstillinger kan «Små forbedringer» settes til «Brukes automatisk»: da brukes forslag som bare legger til linjer under enklere, vanskeligere, spørsmål eller læringsmomenter uten at en trener må godkjenne (standard: venter på en trener).
 
+Felles øvelsesbank: under Innstillinger → Vedlikehold kan superadmin velge at alle grupper bruker banken til én gruppe. Øvelser, versjoner, mønstre og forslag ligger da på den gruppa, mens opplegg, evalueringer, lærdommer og laginnstillinger hører til hvert lag. Analysen går gjennom den felles banken én gang, med evalueringer fra alle lagene. Velg «Hver gruppe har sin egen» for å gå tilbake; ingenting slettes.
+
 ## Sjekkliste
 
 - [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt

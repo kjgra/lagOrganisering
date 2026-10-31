@@ -10,6 +10,7 @@ import { shortDate } from "@/lib/format";
 import { nffSummary } from "@/lib/nff/fagplan";
 import { feedbackSummary, shouldAvoid } from "@/lib/plans/feedback";
 import { CATEGORIES, EXERCISE_STATUSES } from "@/lib/plans/plan";
+import { getBankSettings } from "@/lib/store/bank";
 import { openProposalCount } from "@/lib/store/improvements";
 import { listExercises } from "@/lib/store/training";
 
@@ -17,7 +18,11 @@ import { listExercises } from "@/lib/store/training";
 export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]/trening/ovelser">) {
   const ctx = await contextFromParams(props.params);
   const d = await db();
-  const [bank, proposals] = await Promise.all([listExercises(d, ctx.user.access, ctx.group.id), openProposalCount(d, ctx.user.access, ctx.group.id)]);
+  const [bank, proposals, shared] = await Promise.all([
+    listExercises(d, ctx.user.access, ctx.group.id),
+    openProposalCount(d, ctx.user.access, ctx.group.id),
+    getBankSettings(d).then((s) => s.sharedGroupId),
+  ]);
   const cats = Object.keys(CATEGORIES).filter((c) => bank.some((b) => b.category === c));
   const status = (s: string) => (s === "active" ? "nm-badge--kommer" : s === "candidate" ? "nm-badge--ikke-svart" : "nm-badge--neutral");
   const base = ctx.path("/trening/ovelser");
@@ -59,7 +64,11 @@ export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]
           </span>
         </div>
       ) : null}
-      {ctx.subgroup ? (
+      {shared ? (
+        <p className="nm-hint" style={{ margin: "0 0 var(--space-2)" }}>
+          Øvelsesbanken er felles for alle gruppene i appen, og innspillene fra alle lagene teller.
+        </p>
+      ) : ctx.subgroup ? (
         <p className="nm-hint" style={{ margin: "0 0 var(--space-2)" }}>
           Øvelsesbanken er felles for hele {ctx.group.name}.
         </p>

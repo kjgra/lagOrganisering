@@ -1,11 +1,13 @@
 import type { Db } from "@/lib/db";
 import type { EvaluationRow, ExercisePattern, Observation } from "@/lib/plans/observations";
 import { assertGroup, type Access } from "./access";
+import { bankOf } from "./bank";
 
 /**
  * Observations and patterns per exercise (see lib/plans/observations.ts).
  * The analysis also runs at night without anyone logged in, so the functions
- * it uses take a group id and no access; the page reads with access.
+ * it uses take the bank's group id (see bank.ts) and no access; the page
+ * reads with access. Evaluations come from every team that uses the bank.
  */
 
 // Exercise rows of an evaluation: an exercise in a training, or an exercise evaluated from the bank.
@@ -24,8 +26,8 @@ export async function unobservedComments(d: Db, groupId: string, limit: number):
   return d.query<CommentRow>(
     `SELECT f.id, coalesce(e.name, f.exercise_code) AS exercise, f.rating, f.tags, f.body
        FROM exercise_feedback f
-       LEFT JOIN exercises e ON e.spond_group_id = f.spond_group_id AND e.code = f.exercise_code
-      WHERE f.spond_group_id = $1 AND f.observed_at IS NULL AND f.body IS NOT NULL AND ${EXERCISE_ROWS}
+       LEFT JOIN exercises e ON e.spond_group_id = $1 AND e.code = f.exercise_code
+      WHERE bank_of(f.spond_group_id) = $1 AND f.observed_at IS NULL AND f.body IS NOT NULL AND ${EXERCISE_ROWS}
       ORDER BY f.id LIMIT $2::int`,
     [groupId, limit],
   );
@@ -37,7 +39,7 @@ export async function saveObservations(d: Db, groupId: string, found: Map<number
   await d.tx(async (t) => {
     for (const [id, obs] of found) {
       const [row] = await t.query<{ exercise_code: string }>(
-        "UPDATE exercise_feedback SET observed_at = now() WHERE id = $1 AND spond_group_id = $2 AND observed_at IS NULL RETURNING exercise_code",
+        "UPDATE exercise_feedback SET observed_at = now() WHERE id = $1 AND bank_of(spond_group_id) = $2 AND observed_at IS NULL RETURNING exercise_code",
         [id, groupId],
       );
       if (!row) continue;
@@ -63,7 +65,7 @@ export async function patternInputs(d: Db, groupId: string) {
               coalesce(s.actual_players, s.registered_players) AS players, f.updated_at AS at
          FROM exercise_feedback f
          LEFT JOIN exercise_feedback s ON s.plan_id = f.plan_id AND s.author = f.author AND s.exercise_no IS NULL
-        WHERE f.spond_group_id = $1 AND ${EXERCISE_ROWS}`,
+        WHERE bank_of(f.spond_group_id) = $1 AND ${EXERCISE_ROWS}`,
       [groupId],
     ),
     d.query<Observation & { feedbackId: number }>(
@@ -73,7 +75,7 @@ export async function patternInputs(d: Db, groupId: string) {
     d.query<{ code: string; at: Date }>(
       `SELECT c.code, l.created_at AS at
          FROM edit_log l, jsonb_array_elements_text(l.changes->'fjernet') AS c(code)
-        WHERE l.spond_group_id = $1 AND l.kind = 'opplegg_etter_ki'`,
+        WHERE bank_of(l.spond_group_id) = $1 AND l.kind = 'opplegg_etter_ki'`,
       [groupId],
     ),
   ]);
@@ -100,16 +102,17 @@ export interface StoredPattern extends ExercisePattern {
 /** «Dette sier trenerne» for one exercise, or null before the first analysis. */
 export async function exercisePattern(d: Db, access: Access, groupId: string, code: string): Promise<StoredPattern | null> {
   assertGroup(access, groupId);
+  const bank = await bankOf(d, groupId);
   const [r] = await d.query<StoredPattern>(
     `SELECT exercise_code AS code, score::float8 AS score, ratings, trend, patterns, computed_at
        FROM exercise_patterns WHERE spond_group_id = $1 AND exercise_code = $2`,
-    [groupId, code],
+    [bank, code],
   );
   return r ?? null;
 }
 
-/** Groups with evaluations: the ones the nightly analysis goes through. */
+/** Banks with evaluations: the ones the nightly analysis goes through. */
 export async function groupsWithFeedback(d: Db): Promise<string[]> {
-  const rows = await d.query<{ g: string }>("SELECT DISTINCT spond_group_id AS g FROM exercise_feedback ORDER BY 1");
+  const rows = await d.query<{ g: string }>("SELECT DISTINCT bank_of(spond_group_id) AS g FROM exercise_feedback ORDER BY 1");
   return rows.map((r) => r.g);
 }

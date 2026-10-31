@@ -7,6 +7,7 @@ import { aiMode } from "@/lib/env";
 import { osloMonthStart } from "@/lib/format";
 import { measureVersions, proposeImprovements } from "@/lib/improve";
 import { analysePatterns, type Observation } from "@/lib/plans/observations";
+import { bankOf } from "@/lib/store/bank";
 import { aiSpend, getAiSettings, logAiUsage } from "@/lib/store/ai";
 import { groupsWithFeedback, patternInputs, savePatterns, saveObservations, unobservedComments } from "@/lib/store/observations";
 
@@ -36,7 +37,9 @@ export interface AnalyseResult {
   rolledBack: number;
 }
 
-export async function analyseGroup(d: Db, groupId: string, opts: { actor?: string; now?: Date } = {}): Promise<AnalyseResult> {
+export async function analyseGroup(d: Db, group: string, opts: { actor?: string; now?: Date } = {}): Promise<AnalyseResult> {
+  // The bank the group uses: with a shared bank, evaluations from every team are analysed together.
+  const groupId = await bankOf(d, group);
   const now = opts.now ?? new Date();
   const access = { profileId: opts.actor ?? SYSTEM_ACTOR, groupIds: new Set([groupId]) };
   const settings = await getAiSettings(d);

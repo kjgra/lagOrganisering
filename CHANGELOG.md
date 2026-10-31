@@ -10,6 +10,10 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ### Lagt til
 
+- Felles øvelsesbank: superadmin kan la alle grupper i appen (for eksempel barne- og ungdomsfotball) bruke samme øvelsesbank under Innstillinger → Vedlikehold. Evalueringer fra alle lagene teller når appen leter etter mønstre og lager forslag.
+
+### Lagt til
+
 - Versjoner av øvelser: hver endring blir en ny versjon med eget snitt, og du kan gå tilbake til en tidligere versjon fra øvelsessiden.
 - Appen går tilbake av seg selv når en ny versjon fra «Forbedringer» får klart dårligere vurderinger enn den før.
 - «Små forbedringer» under KI-innstillinger: forslag som bare legger til linjer kan brukes automatisk (av som standard).
