@@ -100,7 +100,7 @@ test("a trainer without admin edits «Trening», but cannot delete exercises or 
   await page.goto("/g/G-FOTBALL/S-G2016/arrangementer");
   await page.getByRole("navigation", { name: "Hovedmeny" }).getByRole("link", { name: "Trening" }).first().click();
   await expect(page).toHaveURL(/\/g\/G-FOTBALL\/S-G2016\/trening\/ovelser$/);
-  await expect(page.getByText("Øvelsesbanken er felles for hele Nymark IL – Fotball.")).toBeVisible();
+  await expect(page.getByText("Øvelsesbanken er felles for alle lagene i appen")).toBeVisible();
 
   await page.getByRole("navigation", { name: "Trening" }).getByRole("link", { name: "Slik trener vi" }).click();
   await page.getByLabel("Prinsipper").fill(`Alle har ball ${Date.now()}`);

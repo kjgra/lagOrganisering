@@ -2,7 +2,7 @@ import type { Db } from "@/lib/db";
 import type { ExerciseValues } from "@/lib/plans/exercise-values";
 import { QUIET_DAYS, type ProposalKind, type ProposalStatus } from "@/lib/plans/improvements";
 import { assertGroup, UserError, type Access } from "./access";
-import { bankOf } from "./bank";
+import { BANK } from "./bank";
 
 /** Proposals for better exercises («Forbedringer»), see lib/plans/improvements.ts. */
 
@@ -32,7 +32,7 @@ const SELECT = `
 /** Waiting proposals first (oldest first), what the app did by itself lately, then the latest handled ones. */
 export async function listProposals(d: Db, access: Access, groupId: string, handled = 10): Promise<{ open: Proposal[]; auto: Proposal[]; handled: Proposal[] }> {
   assertGroup(access, groupId);
-  const bank = await bankOf(d, groupId);
+  const bank = BANK;
   const [open, auto, done] = await Promise.all([
     d.query<Proposal>(`${SELECT} WHERE p.spond_group_id = $1 AND p.status = 'ny' ORDER BY p.created_at, p.id`, [bank]),
     d.query<Proposal>(
@@ -46,7 +46,7 @@ export async function listProposals(d: Db, access: Access, groupId: string, hand
 
 export async function getProposal(d: Db, access: Access, groupId: string, id: number): Promise<Proposal> {
   assertGroup(access, groupId);
-  const bank = await bankOf(d, groupId);
+  const bank = BANK;
   const [p] = await d.query<Proposal>(`${SELECT} WHERE p.spond_group_id = $1 AND p.id = $2`, [bank, id]);
   if (!p) throw new UserError("Fant ikke forslaget.");
   return p;
@@ -55,14 +55,14 @@ export async function getProposal(d: Db, access: Access, groupId: string, id: nu
 /** The waiting proposal for an exercise, if any. */
 export async function openProposalFor(d: Db, access: Access, groupId: string, code: string): Promise<number | null> {
   assertGroup(access, groupId);
-  const bank = await bankOf(d, groupId);
+  const bank = BANK;
   const [r] = await d.query<{ id: number }>("SELECT id FROM improvement_proposals WHERE spond_group_id = $1 AND exercise_code = $2 AND status = 'ny'", [bank, code]);
   return r?.id ?? null;
 }
 
 export async function openProposalCount(d: Db, access: Access, groupId: string): Promise<number> {
   assertGroup(access, groupId);
-  const bank = await bankOf(d, groupId);
+  const bank = BANK;
   const [r] = await d.query<{ n: number }>("SELECT count(*)::int AS n FROM improvement_proposals WHERE spond_group_id = $1 AND status = 'ny'", [bank]);
   return r.n;
 }
@@ -77,7 +77,7 @@ export async function decideProposal(
   rejection: string | null = null,
 ): Promise<boolean> {
   assertGroup(access, groupId);
-  const bank = await bankOf(d, groupId);
+  const bank = BANK;
   const r = await d.query(
     `UPDATE improvement_proposals SET status = $3, rejection = $4, decided_by = $5, decided_at = now()
       WHERE spond_group_id = $1 AND id = $2 AND status = 'ny' RETURNING id`,
@@ -89,11 +89,11 @@ export async function decideProposal(
 // For the analysis (no one logged in) ----------------------------------------------------------
 
 /** Exercises that should not get a new proposal now: one is waiting, or the same one was handled lately. */
-export async function busyProposals(d: Db, groupId: string, now = new Date()): Promise<{ open: Set<string>; recent: Set<string> }> {
+export async function busyProposals(d: Db, now = new Date()): Promise<{ open: Set<string>; recent: Set<string> }> {
   const rows = await d.query<{ exercise_code: string; signature: string; status: string }>(
     `SELECT exercise_code, signature, status FROM improvement_proposals
       WHERE spond_group_id = $1 AND (status = 'ny' OR coalesce(decided_at, created_at) > $2::timestamptz - make_interval(days => $3::int))`,
-    [groupId, now, QUIET_DAYS],
+    [BANK, now, QUIET_DAYS],
   );
   return {
     open: new Set(rows.filter((r) => r.status === "ny").map((r) => r.exercise_code)),
@@ -102,35 +102,34 @@ export async function busyProposals(d: Db, groupId: string, now = new Date()): P
 }
 
 /** Why trainers turned down earlier proposals for an exercise, newest first. */
-export async function rejectionsFor(d: Db, groupId: string, code: string): Promise<string[]> {
+export async function rejectionsFor(d: Db, code: string): Promise<string[]> {
   const rows = await d.query<{ rejection: string }>(
     `SELECT rejection FROM improvement_proposals WHERE spond_group_id = $1 AND exercise_code = $2 AND status = 'avvist' AND rejection IS NOT NULL
       ORDER BY decided_at DESC LIMIT 3`,
-    [groupId, code],
+    [BANK, code],
   );
   return rows.map((r) => r.rejection);
 }
 
 export async function saveProposal(
   d: Db,
-  groupId: string,
   p: { code: string; kind: ProposalKind; reason: string; signature: string; base: ExerciseValues; proposed: ExerciseValues; model: string | null; costUsd: number; status?: "ny" | "utdatert" | "auto" },
 ): Promise<number | null> {
   const r = await d.query<{ id: number }>(
     `INSERT INTO improvement_proposals (spond_group_id, exercise_code, kind, status, reason, signature, base_values, proposed, model, cost_usd, decided_at)
      VALUES ($1, $2, $3, $4::text, $5, $6, $7::jsonb, $8::jsonb, $9, $10, CASE WHEN $4::text = 'ny' THEN NULL ELSE now() END)
      ON CONFLICT DO NOTHING RETURNING id`,
-    [groupId, p.code, p.kind, p.status ?? "ny", p.reason, p.signature.slice(0, 300), JSON.stringify(p.base), JSON.stringify(p.proposed), p.model, Number(p.costUsd.toFixed(5))],
+    [BANK, p.code, p.kind, p.status ?? "ny", p.reason, p.signature.slice(0, 300), JSON.stringify(p.base), JSON.stringify(p.proposed), p.model, Number(p.costUsd.toFixed(5))],
   );
   return r[0]?.id ?? null;
 }
 
-/** Groups with trainers who get push, and how many proposals wait in the bank they use, for the weekly reminder. */
+/** Groups with trainers who get push, and how many proposals wait in the shared bank, for the weekly reminder. */
 export async function waitingPerGroup(d: Db): Promise<{ groupId: string; n: number }[]> {
   return d.query<{ groupId: string; n: number }>(
     `SELECT g.g AS "groupId", count(*)::int AS n
        FROM (SELECT DISTINCT unnest(group_ids) AS g FROM push_subscriptions) g
-       JOIN improvement_proposals p ON p.spond_group_id = bank_of(g.g) AND p.status = 'ny'
+       JOIN improvement_proposals p ON p.spond_group_id = '${BANK}' AND p.status = 'ny'
       GROUP BY 1 ORDER BY 1`,
   );
 }

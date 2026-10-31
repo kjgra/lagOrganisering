@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { observationsFromAnswer, observeText } from "@/lib/ai/observe-ai";
 import type { Db } from "@/lib/db";
-import { analyseGroup } from "@/lib/observe";
+import { analyseBank } from "@/lib/observe";
 import { analysePatterns, patternText, type EvaluationRow } from "@/lib/plans/observations";
 import { validatePlan } from "@/lib/plans/plan";
 import reference from "@/lib/plans/reference-plan.json";
@@ -105,9 +105,9 @@ describe("the analysis", () => {
     await saveFeedback(d, bo, p2.id, [session(15), row("", ["ko"])], null);
     await logEdit(d, ann, "G1", { kind: "opplegg_etter_ki", planId: p1.id, changes: { beholdt: [], fjernet: [code], lagt_til: [] } });
 
-    const r = await analyseGroup(d, "G1", { now: new Date() });
+    const r = await analyseBank(d, { now: new Date() });
     expect(r).toMatchObject({ comments: 1, observations: 1, waiting: "" });
-    expect((await analyseGroup(d, "G1")).comments).toBe(0);
+    expect((await analyseBank(d)).comments).toBe(0);
 
     const p = (await exercisePattern(d, ann, "G1", code))!;
     expect(p.ratings).toBe(2);
@@ -117,7 +117,7 @@ describe("the analysis", () => {
 
     // Saving the evaluation again goes through the comment again.
     await saveFeedback(d, ann, p1.id, [session(14), row("Gøy, men kø")], null);
-    expect((await analyseGroup(d, "G1")).comments).toBe(1);
+    expect((await analyseBank(d)).comments).toBe(1);
     await expect(exercisePattern(d, { profileId: "X", groupIds: new Set(["G2"]) }, "G1", code)).rejects.toThrow();
   });
 });

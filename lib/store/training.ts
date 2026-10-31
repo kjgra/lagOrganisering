@@ -25,7 +25,7 @@ import { exerciseChanges, type ExerciseChanges } from "@/lib/plans/exercise-edit
 import { exerciseValues, type ExerciseValues } from "@/lib/plans/exercise-values";
 import type { VersionSource } from "@/lib/plans/versions";
 import { assertAdmin, assertGroup, UserError, type Access, type Rights } from "./access";
-import { bankOf } from "./bank";
+import { BANK } from "./bank";
 import { hasEdits, logEdit } from "./edits";
 import { recordVersion } from "./versions";
 
@@ -312,12 +312,12 @@ const EXERCISE_SELECT = `
              (count(*) FILTER (WHERE use_again = 'no'))::int AS fb_no,
              avg(actual_minutes)::float8 AS fb_minutes, max(updated_at) AS fb_last
         FROM exercise_feedback
-       WHERE bank_of(spond_group_id) = $1 AND (exercise_no IS NOT NULL OR plan_id IS NULL) AND exercise_code IS NOT NULL
+       WHERE (exercise_no IS NOT NULL OR plan_id IS NULL) AND exercise_code IS NOT NULL
        GROUP BY exercise_code) s ON s.exercise_code = e.code
     LEFT JOIN (
       SELECT exercise_code, string_agg(tag || ':' || n, ',' ORDER BY n DESC, tag) AS fb_tags
         FROM (SELECT exercise_code, tag, count(*) AS n FROM exercise_feedback, unnest(tags) AS tag
-               WHERE bank_of(spond_group_id) = $1 AND (exercise_no IS NOT NULL OR plan_id IS NULL) AND exercise_code IS NOT NULL
+               WHERE (exercise_no IS NOT NULL OR plan_id IS NULL) AND exercise_code IS NOT NULL
                GROUP BY exercise_code, tag) t0
        GROUP BY exercise_code) t ON t.exercise_code = e.code
    WHERE e.spond_group_id = $1`;
@@ -340,13 +340,13 @@ function toBank(r: ExerciseRow): BankExercise {
 /** The bank a main group uses (its own or the shared one), with the trainers' evaluations from every team using it summed up per code. */
 export async function listExercises(d: Db, access: Access, groupId: string): Promise<BankExercise[]> {
   assertGroup(access, groupId);
-  const rows = await d.query<ExerciseRow>(`${EXERCISE_SELECT} ORDER BY e.category, lower(e.name), e.id`, [await bankOf(d, groupId)]);
+  const rows = await d.query<ExerciseRow>(`${EXERCISE_SELECT} ORDER BY e.category, lower(e.name), e.id`, [BANK]);
   return rows.map(toBank);
 }
 
 export async function getExercise(d: Db, access: Access, groupId: string, id: number): Promise<BankExercise> {
   assertGroup(access, groupId);
-  const rows = await d.query<ExerciseRow>(`${EXERCISE_SELECT} AND e.id = $2`, [await bankOf(d, groupId), id]);
+  const rows = await d.query<ExerciseRow>(`${EXERCISE_SELECT} AND e.id = $2`, [BANK, id]);
   if (!rows.length) throw new UserError("Fant ikke øvelsen.");
   return toBank(rows[0]);
 }
@@ -367,7 +367,7 @@ export async function saveExercise(
   assertGroup(access, groupId);
   const v = wrap(() => validateExercise(input));
   const before = id ? await getExercise(d, access, groupId, id) : null;
-  const bank = await bankOf(d, groupId);
+  const bank = BANK;
   const drawing = v.drawing ? JSON.stringify(compactDrawing(v.drawing)) : null;
   const fields = [v.name, v.category, v.themes, v.min_players, v.max_players, v.duration_minutes, v.area, v.organisation, v.execution, v.learning_points, v.questions, v.easier, v.harder, v.nff_url, access.profileId, drawing, v.status, v.bands, v.nff_activity, v.nff_tags];
   if (!id) {
@@ -425,7 +425,7 @@ export async function deleteExercise(d: Db, access: Access, rights: Rights, grou
   assertGroup(access, groupId);
   assertAdmin(rights);
   // Variants of the deleted exercise become exercises of their own.
-  const bank = await bankOf(d, groupId);
+  const bank = BANK;
   await d.tx(async (t) => {
     const gone = await t.query<{ code: string }>("DELETE FROM exercises WHERE id = $1 AND spond_group_id = $2 RETURNING code", [id, bank]);
     if (gone.length) await t.query("UPDATE exercises SET based_on = NULL WHERE spond_group_id = $1 AND based_on = $2", [bank, gone[0].code]);
@@ -447,7 +447,7 @@ export async function savePlanExercise(
   extra: { min_players?: number | null; max_players?: number | null; duration_minutes?: number | null; area?: string; bands?: BandKey[] } = {},
 ): Promise<number | null> {
   assertGroup(access, groupId);
-  const bank = await bankOf(d, groupId);
+  const bank = BANK;
   const known = await d.query<{ code: string; based_on: string | null }>(
     "SELECT code, based_on FROM exercises WHERE spond_group_id = $1 AND code IN ($2, $3)",
     [bank, e.kode, e.basert_pa],
@@ -796,7 +796,7 @@ export async function saveFeedback(
          VALUES ($1, $2, $3, $4, NULLIF($5, ''), $6, $7::text[], $8, $9, NULLIF($10, ''), NULLIF($11, ''), $12, $13, $14::text[],
                  -- The version the plan had: the newest one made before the plan.
                  coalesce((SELECT max(v.version) FROM exercise_versions v
-                            WHERE v.spond_group_id = bank_of($1) AND v.exercise_code = NULLIF($5, '')
+                            WHERE v.spond_group_id = '${BANK}' AND v.exercise_code = NULLIF($5, '')
                               AND v.created_at <= (SELECT created_at FROM training_plans WHERE id = $3)), 1))`,
         [pl.groupId, pl.eventId, planId, r.exercise_no, r.exercise_code, r.rating, r.tags, r.actual_minutes, r.actual_players, r.body, r.use_again, access.profileId, r.exercise_no === null ? registered : null, subgroupIds],
       );
@@ -805,8 +805,8 @@ export async function saveFeedback(
     if (!good.length) return [];
     const act = await t.query<{ code: string }>(
       `UPDATE exercises SET status = 'active', updated_by = $3, updated_at = now()
-        WHERE spond_group_id = bank_of($1) AND code = ANY($2::text[]) AND status = 'candidate' RETURNING code`,
-      [pl.groupId, good, access.profileId],
+        WHERE spond_group_id = $1 AND code = ANY($2::text[]) AND status = 'candidate' RETURNING code`,
+      [BANK, good, access.profileId],
     );
     return act.map((a) => a.code);
   });
@@ -832,7 +832,7 @@ export async function myBankFeedback(d: Db, access: Access, groupId: string, exe
  */
 export async function saveBankFeedback(d: Db, access: Access, groupId: string, exerciseId: number, row: FeedbackInput | null): Promise<boolean> {
   assertGroup(access, groupId);
-  const ex = await d.query<{ code: string }>("SELECT code FROM exercises WHERE id = $1 AND spond_group_id = bank_of($2)", [exerciseId, groupId]);
+  const ex = await d.query<{ code: string }>("SELECT code FROM exercises WHERE id = $1 AND spond_group_id = $2", [exerciseId, BANK]);
   if (!ex.length) throw new UserError("Fant ikke øvelsen.");
   const code = ex[0].code;
   return d.tx(async (t) => {
@@ -841,14 +841,14 @@ export async function saveBankFeedback(d: Db, access: Access, groupId: string, e
     await t.query(
       `INSERT INTO exercise_feedback (spond_group_id, exercise_code, rating, tags, actual_minutes, body, use_again, author, exercise_version)
        VALUES ($1, $2, $3, $4::text[], $5, NULLIF($6, ''), NULLIF($7, ''), $8,
-               (SELECT version FROM exercises WHERE spond_group_id = bank_of($1) AND code = $2))`,
+               (SELECT version FROM exercises WHERE spond_group_id = '${BANK}' AND code = $2))`,
       [groupId, code, row.rating, row.tags, row.actual_minutes, row.body, row.use_again, access.profileId],
     );
     if (row.rating !== 3 || row.use_again !== "yes") return false;
     const act = await t.query(
       `UPDATE exercises SET status = 'active', updated_by = $3, updated_at = now()
-        WHERE id = $1 AND spond_group_id = bank_of($2) AND status = 'candidate' RETURNING id`,
-      [exerciseId, groupId, access.profileId],
+        WHERE id = $1 AND spond_group_id = $2 AND status = 'candidate' RETURNING id`,
+      [exerciseId, BANK, access.profileId],
     );
     return act.length > 0;
   });
@@ -957,7 +957,7 @@ export async function feedbackSince(d: Db, access: Access, groupId: string, sub:
               f.rating, f.tags, f.actual_minutes, f.actual_players, f.registered_players,
               coalesce(f.body, '') AS body, coalesce(f.use_again, '') AS use_again, f.created_at, f.updated_at, f.id
          FROM exercise_feedback f LEFT JOIN training_plans p ON p.id = f.plan_id
-         LEFT JOIN exercises e ON f.plan_id IS NULL AND e.spond_group_id = bank_of(f.spond_group_id) AND e.code = f.exercise_code
+         LEFT JOIN exercises e ON f.plan_id IS NULL AND e.spond_group_id = '${BANK}' AND e.code = f.exercise_code
         WHERE f.spond_group_id = $1 AND ${FEEDBACK_IN_SCOPE} AND f.updated_at > $3::timestamptz
         ORDER BY f.updated_at DESC, f.id DESC LIMIT $4) x
       ORDER BY created_at, spond_event_id, exercise_no NULLS FIRST, id`,

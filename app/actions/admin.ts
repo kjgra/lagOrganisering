@@ -9,7 +9,6 @@ import { db } from "@/lib/db";
 import { maintenanceResultText, runMaintenanceNow } from "@/lib/maintenance";
 import { assertSuperadmin, UserError } from "@/lib/store/access";
 import { saveAiSettings } from "@/lib/store/ai";
-import { setSharedBank } from "@/lib/store/bank";
 import { confirmArchive } from "@/lib/store/archive";
 import { setRole } from "@/lib/store/roles";
 
@@ -59,17 +58,5 @@ export async function confirmArchiveAction(keys: string[]): Promise<ActionResult
     const r = await confirmArchive(await db(), user.access, user.rights, v, user.session.profileId);
     refresh();
     return { data: undefined, message: `${r.nEvents} treninger med ${r.nVersions} versjoner er slettet.` };
-  });
-}
-
-/** Superadmin: one exercise bank for every group (the bank of `groupId`), or null for one bank per group. */
-export async function setSharedBankAction(groupId: string | null): Promise<ActionResult> {
-  return runAction("Lagring av felles øvelsesbank", async () => {
-    const v = sid.nullable().parse(groupId);
-    const user = await requireAdmin();
-    await setSharedBank(await db(), user.access, user.rights, v);
-    refresh();
-    const name = v ? user.data.groups.find((g) => g.id === v)?.name : null;
-    return { data: undefined, message: name ? `Alle grupper bruker nå øvelsesbanken til ${name}.` : "Hver gruppe har nå sin egen øvelsesbank." };
   });
 }

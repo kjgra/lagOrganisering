@@ -7,18 +7,19 @@ import { aiMode } from "@/lib/env";
 import { osloMonthStart } from "@/lib/format";
 import { measureVersions, proposeImprovements } from "@/lib/improve";
 import { analysePatterns, type Observation } from "@/lib/plans/observations";
-import { bankOf } from "@/lib/store/bank";
+import { BANK } from "@/lib/store/bank";
 import { aiSpend, getAiSettings, logAiUsage } from "@/lib/store/ai";
-import { groupsWithFeedback, patternInputs, savePatterns, saveObservations, unobservedComments } from "@/lib/store/observations";
+import { patternInputs, savePatterns, saveObservations, unobservedComments } from "@/lib/store/observations";
 
 /**
  * Turns the trainers' evaluations into observations and patterns per
- * exercise: after each saved evaluation (for that group) and each night (for
- * all groups, which also catches up on comments KI could not take earlier).
+ * exercise in the shared bank, with evaluations from every team: after each
+ * saved evaluation and each night (which also catches up on comments KI could
+ * not take earlier).
  */
 
 const MODEL = "claude-haiku-5-5";
-/** Comments per KI call, and calls per group per run. */
+/** Comments per KI call, and calls per run. */
 const BATCH = 40;
 const MAX_CALLS = 3;
 /** Who the KI calls are logged on when no trainer is behind them. */
@@ -37,9 +38,8 @@ export interface AnalyseResult {
   rolledBack: number;
 }
 
-export async function analyseGroup(d: Db, group: string, opts: { actor?: string; now?: Date } = {}): Promise<AnalyseResult> {
-  // The bank the group uses: with a shared bank, evaluations from every team are analysed together.
-  const groupId = await bankOf(d, group);
+export async function analyseBank(d: Db, opts: { actor?: string; now?: Date } = {}): Promise<AnalyseResult> {
+  const groupId = BANK;
   const now = opts.now ?? new Date();
   const access = { profileId: opts.actor ?? SYSTEM_ACTOR, groupIds: new Set([groupId]) };
   const settings = await getAiSettings(d);
@@ -48,7 +48,7 @@ export async function analyseGroup(d: Db, group: string, opts: { actor?: string;
   let waiting = "";
 
   for (let call = 0; call < MAX_CALLS; call++) {
-    const items = await unobservedComments(d, groupId, BATCH);
+    const items = await unobservedComments(d, BATCH);
     if (!items.length) break;
     if (aiMode() === "off") {
       waiting = "KI er ikke satt opp";
@@ -76,29 +76,25 @@ export async function analyseGroup(d: Db, group: string, opts: { actor?: string;
       waiting = "KI-kallet feilet";
       break;
     }
-    observations += await saveObservations(d, groupId, found);
+    observations += await saveObservations(d, found);
     comments += items.length;
     if (items.length < BATCH) break;
   }
 
-  const input = await patternInputs(d, groupId);
+  const input = await patternInputs(d);
   const patterns = analysePatterns(input.evaluations, input.observations, input.removed, { minSessions: settings.pattern_min_sessions, minTrainers: settings.pattern_min_trainers }, now);
-  await savePatterns(d, groupId, patterns);
+  await savePatterns(d, patterns);
   const rolledBack = await measureVersions(d, access, groupId);
   const prop = await proposeImprovements(d, access, groupId, patterns, now);
   return { groupId, comments, observations, exercises: patterns.length, waiting: [waiting, prop.waiting].filter(Boolean).join("; "), proposed: prop.proposed, rolledBack };
 }
 
-/** The nightly run: every group with evaluations. One group failing does not stop the others. */
+/** The nightly run. A failure is logged and reported, not thrown. */
 export async function analyseAll(d: Db, now = new Date()): Promise<AnalyseResult[]> {
-  const out: AnalyseResult[] = [];
-  for (const g of await groupsWithFeedback(d)) {
-    try {
-      out.push(await analyseGroup(d, g, { now }));
-    } catch (err) {
-      console.error("Analyse av innspill feilet:", (err as Error).message);
-      out.push({ groupId: g, comments: 0, observations: 0, exercises: 0, waiting: "feilet", proposed: 0, rolledBack: 0 });
-    }
+  try {
+    return [await analyseBank(d, { now })];
+  } catch (err) {
+    console.error("Analyse av innspill feilet:", (err as Error).message);
+    return [{ groupId: BANK, comments: 0, observations: 0, exercises: 0, waiting: "feilet", proposed: 0, rolledBack: 0 }];
   }
-  return out;
 }

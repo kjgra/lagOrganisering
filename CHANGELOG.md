@@ -10,7 +10,7 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ### Lagt til
 
-- Felles øvelsesbank: superadmin kan la alle grupper i appen (for eksempel barne- og ungdomsfotball) bruke samme øvelsesbank under Innstillinger → Vedlikehold. Evalueringer fra alle lagene teller når appen leter etter mønstre og lager forslag.
+- Felles øvelsesbank: alle lag i appen, også i ulike hovedgrupper i Spond (for eksempel barne- og ungdomsfotball), ser og evaluerer de samme øvelsene. Evalueringer fra alle lagene teller når appen leter etter mønstre og lager forslag.
 
 ### Lagt til
 

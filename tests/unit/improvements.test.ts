@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Db } from "@/lib/db";
-import { analyseGroup } from "@/lib/observe";
+import { analyseBank } from "@/lib/observe";
 import { proposalPlan, proposalWish, reasonText } from "@/lib/plans/improvements";
 import type { ExercisePattern, Pattern } from "@/lib/plans/observations";
 import { validatePlan } from "@/lib/plans/plan";
@@ -52,10 +52,10 @@ describe("proposals from the analysis", () => {
     const id = (await savePlanExercise(d, ann, "G1", plan.ovelser[1], ["Samhandling"], "manual"))!;
     const code = (await getExercise(d, ann, "G1", id)).code;
     await saveBankFeedback(d, ann, "G1", id, { ...row("Mye kø, del i to ruter"), exercise_code: code });
-    expect((await analyseGroup(d, "G1")).proposed).toBe(0);
+    expect((await analyseBank(d)).proposed).toBe(0);
     await saveBankFeedback(d, bo, "G1", id, { ...row(""), exercise_code: code });
 
-    const r = await analyseGroup(d, "G1");
+    const r = await analyseBank(d);
     expect(r.proposed).toBe(1);
     const { open } = await listProposals(d, ann, "G1");
     expect(open).toHaveLength(1);
@@ -67,11 +67,11 @@ describe("proposals from the analysis", () => {
     const usage = await d.query<{ kind: string; spond_profile_id: string }>("SELECT kind, spond_profile_id FROM ai_usage WHERE kind = 'exercise'");
     expect(usage).toEqual([{ kind: "exercise", spond_profile_id: "system" }]);
 
-    expect((await analyseGroup(d, "G1")).proposed).toBe(0);
+    expect((await analyseBank(d)).proposed).toBe(0);
     expect(await decideProposal(d, bo, "G1", open[0].id, "avvist", "Vi har ikke plass til to ruter")).toBe(true);
     expect(await decideProposal(d, bo, "G1", open[0].id, "brukt")).toBe(false);
-    expect((await analyseGroup(d, "G1")).proposed).toBe(0);
-    expect(await rejectionsFor(d, "G1", code)).toEqual(["Vi har ikke plass til to ruter"]);
+    expect((await analyseBank(d)).proposed).toBe(0);
+    expect(await rejectionsFor(d, code)).toEqual(["Vi har ikke plass til to ruter"]);
     expect((await listProposals(d, ann, "G1")).handled.map((p) => [p.status, p.decided_by])).toEqual([["avvist", "P-BO"]]);
   });
 });

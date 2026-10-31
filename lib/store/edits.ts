@@ -1,10 +1,11 @@
 import type { Db } from "@/lib/db";
 import type { EditKind, ExerciseChanges, PlanChanges } from "@/lib/plans/exercise-edits";
 import { assertGroup, type Access } from "./access";
+import { BANK } from "./bank";
 
 /**
  * The log of what trainers change in exercises and in KI's suggestions (see lib/plans/exercise-edits.ts).
- * Changes of an exercise are stored on the bank's group, changes of a plan on the team's.
+ * Changes of an exercise are stored on the shared bank, changes of a plan on the team's group.
  */
 
 export async function logEdit(
@@ -15,13 +16,13 @@ export async function logEdit(
 ): Promise<void> {
   assertGroup(access, groupId);
   await d.query(
-    `INSERT INTO edit_log (spond_group_id, kind, exercise_code, plan_id, changes, author) VALUES (CASE WHEN $3::text IS NULL THEN $1 ELSE bank_of($1) END, $2, $3, $4, $5::jsonb, $6)`,
+    `INSERT INTO edit_log (spond_group_id, kind, exercise_code, plan_id, changes, author) VALUES (CASE WHEN $3::text IS NULL THEN $1 ELSE '${BANK}' END, $2, $3, $4, $5::jsonb, $6)`,
     [groupId, e.kind, e.exerciseCode ?? null, e.planId ?? null, JSON.stringify(e.changes), access.profileId],
   );
 }
 
 export async function hasEdits(d: Db, groupId: string, exerciseCode: string): Promise<boolean> {
-  const r = await d.query("SELECT 1 FROM edit_log WHERE spond_group_id = bank_of($1) AND exercise_code = $2 LIMIT 1", [groupId, exerciseCode]);
+  const r = await d.query("SELECT 1 FROM edit_log WHERE spond_group_id = $1 AND exercise_code = $2 LIMIT 1", [BANK, exerciseCode]);
   return r.length > 0;
 }
 
@@ -38,7 +39,7 @@ export async function exerciseEdits(d: Db, access: Access, groupId: string, exer
   assertGroup(access, groupId);
   return d.query<EditRow>(
     `SELECT id, kind, changes, author, created_at FROM edit_log
-      WHERE spond_group_id = bank_of($1) AND exercise_code = $2 ORDER BY created_at DESC, id DESC LIMIT $3`,
-    [groupId, exerciseCode, n],
+      WHERE spond_group_id = $1 AND exercise_code = $2 ORDER BY created_at DESC, id DESC LIMIT $3`,
+    [BANK, exerciseCode, n],
   );
 }

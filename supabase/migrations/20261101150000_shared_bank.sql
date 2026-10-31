@@ -1,21 +1,33 @@
 -- Felles øvelsesbank (trinn 5 i «Fra treneres innspill til bedre øvelser»).
--- Superadmin kan velge én hovedgruppe i Spond hvis øvelsesbank brukes av alle
--- grupper i appen (for eksempel barne- og ungdomsfotball i Nymark). Øvelser,
--- versjoner, observasjoner, mønstre og forslag lagres da på den gruppa, mens
--- evalueringer, opplegg, lærdommer og innstillinger fortsatt hører til laget.
--- bank_of(gruppe) gir gruppa som har banken: den felles banken når den er
--- valgt, ellers gruppa selv. Uten valg er alt som før.
+-- Banken er én for hele appen og eies ikke av noen gruppe: alle grupper ser
+-- og evaluerer de samme øvelsene, og innspillene fra alle lagene teller.
+-- Øvelser, versjoner, observasjoner, forslag og endringslogg for øvelser får
+-- spond_group_id 'felles'. Opplegg, evalueringer, lærdommer og
+-- laginnstillinger hører fortsatt til lagets gruppe.
+--
+-- Har to grupper en øvelse med samme kode, beholder den eldste koden, og den
+-- andre får id-en sin bak koden (også i gruppas evalueringer og logg).
+-- Mønstrene regnes ut på nytt ved neste analyse.
 
-CREATE TABLE bank_settings (
-  id              boolean PRIMARY KEY DEFAULT true CHECK (id),
-  shared_group_id text CHECK (length(shared_group_id) <= 100),
-  updated_by      text NOT NULL,
-  updated_at      timestamptz NOT NULL DEFAULT now()
-);
+CREATE TEMP TABLE bank_codes AS
+SELECT spond_group_id AS g, code AS old, left(code, 50) || '-' || id AS new
+  FROM (SELECT id, spond_group_id, code, row_number() OVER (PARTITION BY code ORDER BY id) AS n FROM exercises) x
+ WHERE n > 1;
 
-ALTER TABLE bank_settings ENABLE ROW LEVEL SECURITY;
+UPDATE exercise_feedback f SET exercise_code = m.new FROM bank_codes m WHERE f.spond_group_id = m.g AND f.exercise_code = m.old;
+UPDATE training_plan_comments c SET exercise_code = m.new FROM bank_codes m WHERE c.spond_group_id = m.g AND c.exercise_code = m.old;
+UPDATE exercise_versions v SET exercise_code = m.new FROM bank_codes m WHERE v.spond_group_id = m.g AND v.exercise_code = m.old;
+UPDATE exercise_observations o SET exercise_code = m.new FROM bank_codes m WHERE o.spond_group_id = m.g AND o.exercise_code = m.old;
+UPDATE improvement_proposals p SET exercise_code = m.new FROM bank_codes m WHERE p.spond_group_id = m.g AND p.exercise_code = m.old;
+UPDATE edit_log l SET exercise_code = m.new FROM bank_codes m WHERE l.spond_group_id = m.g AND l.exercise_code = m.old;
+UPDATE exercises e SET based_on = m.new FROM bank_codes m WHERE e.spond_group_id = m.g AND e.based_on = m.old;
+UPDATE exercises e SET code = m.new FROM bank_codes m WHERE e.spond_group_id = m.g AND e.code = m.old;
 
-CREATE FUNCTION bank_of(g text) RETURNS text
-  LANGUAGE sql STABLE
-  SET search_path = public
-  AS $$ SELECT coalesce((SELECT shared_group_id FROM bank_settings WHERE id), g) $$;
+UPDATE exercises SET spond_group_id = 'felles';
+UPDATE exercise_versions SET spond_group_id = 'felles';
+UPDATE exercise_observations SET spond_group_id = 'felles';
+UPDATE improvement_proposals SET spond_group_id = 'felles';
+UPDATE edit_log SET spond_group_id = 'felles' WHERE exercise_code IS NOT NULL;
+DELETE FROM exercise_patterns;
+
+DROP TABLE bank_codes;

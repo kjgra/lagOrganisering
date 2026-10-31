@@ -4,12 +4,10 @@ import { AiSettingsForm } from "@/components/settings/admin/forms";
 import { GroupSelect } from "@/components/settings/admin/GroupSelect";
 import { MaintenancePanel } from "@/components/settings/admin/MaintenancePanel";
 import { RoleTable } from "@/components/settings/admin/RoleTable";
-import { SharedBankForm } from "@/components/settings/admin/SharedBankForm";
 import { ADMIN_TABS, SettingsShell, type AdminTab } from "@/components/settings/SettingsShell";
 import { adminContext, trainers, type AdminContext } from "@/lib/admin";
 import { AI_MODELS, budgetCheck, formatNok } from "@/lib/ai/plan-ai";
 import { db } from "@/lib/db";
-import { exerciseCounts, getBankSettings } from "@/lib/store/bank";
 import { superadminId } from "@/lib/env";
 import { decimal, MONTH_NAMES, osloMidnight, osloMonthStart, osloParts, savedAt, shortDate } from "@/lib/format";
 import { MAINTENANCE_RULES } from "@/lib/maintenance";
@@ -207,7 +205,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
 
   async vedlikehold({ user }) {
     const d = await db();
-    const [log, pending, bank, counts] = await Promise.all([archiveLog(d), archivePending(d, user.access), getBankSettings(d), exerciseCounts(d)]);
+    const [log, pending] = await Promise.all([archiveLog(d), archivePending(d, user.access)]);
     const m = log.maintenance;
     const names = Object.fromEntries(user.data.groups.map((g) => [g.id, g.name]));
     const runner = (id: string) => {
@@ -233,16 +231,6 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
               </>
             ) : null}
           </p>
-        </section>
-        <section className="nm-section" aria-labelledby="bank-h">
-          <h3 className="nm-h3" id="bank-h" style={{ marginBottom: "var(--space-2)" }}>
-            Felles øvelsesbank
-          </h3>
-          <p style={{ marginTop: 0, marginBottom: "var(--space-3)" }}>
-            Med en felles bank ser og evaluerer trenerne i alle gruppene de samme øvelsene, og innspillene fra alle lagene teller når appen leter etter mønstre og lager
-            forslag. Opplegg, evalueringer, lærdommer og innstillinger hører fortsatt til hvert lag.
-          </p>
-          <SharedBankForm groups={user.data.groups.map((g) => ({ id: g.id, name: g.name, exercises: counts.get(g.id) ?? 0 }))} current={bank.sharedGroupId} />
         </section>
         <section className="nm-section">
           <h3 className="nm-h3" style={{ marginBottom: "var(--space-2)" }}>
