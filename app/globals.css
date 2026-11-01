@@ -502,3 +502,8 @@ body:has(.nm-actions):has(.nm-bottomnav) .nm-toast { bottom: calc(158px + env(sa
 .nm-diff del { background: var(--danger-bg); color: var(--ink); }
 .nm-diff ins { background: var(--success-bg); color: var(--ink); text-decoration: none; }
 @media (min-width: 768px) { .nm-diff__pair { grid-template-columns: 1fr 1fr; } }
+/* «Innsikt» in Forbedringer: the figures at the top. */
+.nm-figures { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: var(--space-4); }
+.nm-figure { display: grid; gap: var(--space-1); padding: var(--space-3) var(--space-4); }
+.nm-figure__value { font-family: var(--font-display); font-weight: 800; font-size: 40px; line-height: 44px; }
+.nm-figure--main { border-color: var(--primary); }

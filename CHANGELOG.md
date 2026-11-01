@@ -8,6 +8,16 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.8.0] – 2026-11-01
+
+Se om KI blir bedre.
+
+### Lagt til
+
+- Ny fane «Innsikt» i Forbedringer. Hovedtallet er hvor mange hurtigopplegg som ble godkjent uten at øvelser ble byttet. I tillegg vises andelen KI-øvelser som var med i det godkjente opplegget, og snittet for hele økta med og uten KI, per måned de siste seks månedene.
+- Innsikt viser også øvelser som fungerer godt sammen per aldersgruppe (fra minst to lag) og om forslag fra Forbedringer ga høyere snitt enn versjonen før.
+- Tallene gjelder alle lagene sammen. Det vises ingen navn eller tekst.
+
 ## [1.7.0] – 2026-11-01
 
 Forbedringer ser over hele øvelsesbanken, ikke bare øvelsene trenerne har kommentert.

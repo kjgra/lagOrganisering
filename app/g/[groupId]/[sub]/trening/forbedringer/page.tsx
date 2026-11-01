@@ -1,6 +1,7 @@
 import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/shell/AppShell";
+import { ImprovementTabs } from "@/components/training/ImprovementTabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/icon";
 import { contextFromParams } from "@/lib/context";
@@ -25,6 +26,7 @@ export default async function ImprovementsPage(props: PageProps<"/g/[groupId]/[s
   const base = ctx.path("/trening/forbedringer");
   return (
     <AppShell ctx={ctx} title="Forbedringer" section="training" back={ctx.path("/trening/ovelser")}>
+      <ImprovementTabs ctx={ctx} current="forslag" />
       <p style={{ marginTop: 0, maxWidth: 760 }}>
         Når flere trenere eller økter peker på det samme problemet med en øvelse, lager KI et forslag til en bedre versjon. Appen ser også over hele banken: nye øvelser der en
         aldersgruppe mangler gode øvelser for et hovedtema, nesten like øvelser og øvelser som mangler info. Se over forslaget og velg «Bruk», «Endre først» eller «Avvis».
