@@ -595,6 +595,8 @@ export interface StoredPlan {
   approvedBy: string | null;
   approvedAt: Date | null;
   plan: Plan;
+  /** PlanContext.kind of a KI plan («draft», «revision» or «hurtig»), or null. */
+  kind: string | null;
 }
 
 export async function getPlan(d: Db, access: Access, id: number): Promise<StoredPlan> {
@@ -612,9 +614,10 @@ export async function getPlan(d: Db, access: Access, id: number): Promise<Stored
     approved_by: string | null;
     approved_at: Date | null;
     plan: string;
+    kind: string | null;
   }>(
     `SELECT id, spond_group_id, spond_event_id, version, status, source, model, cost_usd::float8 AS cost_usd,
-            created_by, created_at, approved_by, approved_at, plan::text AS plan
+            created_by, created_at, approved_by, approved_at, plan::text AS plan, context->>'kind' AS kind
        FROM training_plans WHERE id = $1 AND status <> 'deleted'`,
     [id],
   );
@@ -635,6 +638,7 @@ export async function getPlan(d: Db, access: Access, id: number): Promise<Stored
     approvedBy: r.approved_by,
     approvedAt: r.approved_at ? new Date(r.approved_at) : null,
     plan: wrap(() => validatePlan(JSON.parse(r.plan))),
+    kind: r.kind ?? null,
   };
 }
 
@@ -673,6 +677,20 @@ export async function savePlan(
     if (!/duplicate key|unique/i.test((err as Error).message)) throw err;
     return (await insert())[0];
   }
+}
+
+/** The pitches of the group's newest KI plan that stored them (PlanContext.pitches), for «Hurtigopprett». */
+export async function lastPlanPitches(d: Db, access: Access, groupId: string): Promise<number[]> {
+  assertGroup(access, groupId);
+  const rows = await d.query<{ pitches: unknown }>(
+    `SELECT context->'pitches' AS pitches FROM training_plans
+      WHERE spond_group_id = $1 AND status <> 'deleted' AND jsonb_typeof(context->'pitches') = 'array' AND jsonb_array_length(context->'pitches') > 0
+      ORDER BY created_at DESC, id DESC LIMIT 1`,
+    [groupId],
+  );
+  const v = rows[0]?.pitches;
+  const list = typeof v === "string" ? (JSON.parse(v) as unknown) : v;
+  return Array.isArray(list) ? list.filter((x): x is number => Number.isInteger(x)) : [];
 }
 
 /** Approve one version; another approved version for the event goes back to draft. */

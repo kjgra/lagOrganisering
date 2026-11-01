@@ -8,6 +8,17 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.4.0] – 2026-11-01
+
+Lag og opplegg i ett trykk før trening.
+
+### Lagt til
+
+- «Hurtigopprett» på en trening uten lag og opplegg: KI lager lagforslag og treningsopplegg med lagets vanlige valg, uten flere instruksjoner. Antall lag blir som på forrige trening, ellers ett per trener som kommer, med 4–8 spillere per lag. Fordelingen følger «Fordeling», temaet er månedens tema i årshjulet, lengden er lagets standard og trenerne er de som har svart ja i Spond. Arket viser alt før du trykker «Lag alt», og prisen kan beregnes.
+- Både lagene og opplegget lagres som utkast som du ser over og godkjenner. Går KI-delen galt, beholdes lagene.
+- Banene du velger for et KI-opplegg huskes, så Hurtigopprett kan bruke dem neste gang.
+- Endringer du gjør på et hurtigopplegg merkes for seg, så KI kan lære hva den burde gjort uten å bli bedt om det.
+
 ## [1.3.0] – 2026-11-01
 
 KI bruker det appen har lært når den lager opplegg og øvelser.

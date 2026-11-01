@@ -61,7 +61,7 @@ describe("KI order", () => {
     expect(orderText(order)).not.toContain("Trenere på økta");
     expect(orderText({ ...order, coaches: 2 })).toContain("- Trenere på økta: 2");
     expect(revisionText(plan, { ...order, coaches: 3, wish: "Kortere" })).toContain("- Trenere på økta: 3");
-    const c = planContext({ ...order, coaches: 2, band: "10-12", wish: "  Mer 1 mot 1 ", comments: ["Øvelse 2: for mye kø", " "], sub: "S1" }, "draft");
+    const c = planContext({ ...order, coaches: 2, band: "10-12", wish: "  Mer 1 mot 1 ", comments: ["Øvelse 2: for mye kø", " "], sub: "S1", pitchIds: [4, 7] }, "draft");
     expect(c).toEqual({
       kind: "draft",
       band: "10-12",
@@ -73,6 +73,7 @@ describe("KI order", () => {
       wish: "Mer 1 mot 1",
       comments: ["Øvelse 2: for mye kø"],
       links: 0,
+      pitches: [4, 7],
     });
     // Never names or the subgroup.
     expect(JSON.stringify(c)).not.toMatch(/Emil|S1/);

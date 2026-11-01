@@ -124,7 +124,7 @@ export async function prepareKi(
   rights: Rights,
   group: Group,
   order: OrderContext,
-  opts: { base?: Plan | null; model?: string; now?: Date } = {},
+  opts: { base?: Plan | null; model?: string; now?: Date; quick?: boolean } = {},
 ): Promise<KiPrep> {
   const { settings, model, budget, bank, system } = await kiBasis(d, user, rights, group, order.sub ?? "", opts.model, opts.now ?? new Date(), order.theme, {
     band: order.band ?? null,
@@ -142,7 +142,7 @@ export async function prepareKi(
     bank,
     call: { model, system, user: userText, schema: PLAN_SCHEMA, maxTokens: MAX_TOKENS, kind: base ? "revision" : "draft" },
     answerCtx: { theme: base?.tema ?? order.theme, minutes: order.minutes, maxNew: settings.max_new_exercises, linkUrls: order.links.map((l) => l.url), base },
-    context: planContext({ ...ctx, theme: base?.tema ?? order.theme }, base ? "revision" : "draft"),
+    context: planContext({ ...ctx, theme: base?.tema ?? order.theme }, base ? "revision" : opts.quick ? "hurtig" : "draft"),
   };
 }
 

@@ -11,6 +11,7 @@ import { db } from "@/lib/db";
 import { findEvent } from "@/lib/events-data";
 import { analyseBank } from "@/lib/observe";
 import { orderContext } from "@/lib/plan-data";
+import { quickCreate, quickPrep } from "@/lib/quick";
 import { planChanges } from "@/lib/plans/exercise-edits";
 import { FEEDBACK_TEXT_MAX, validateBankFeedback, validateFeedback, type FeedbackFill } from "@/lib/plans/feedback";
 import { bankCandidates, buildPlan, exerciseFromBank, type PlanExercise } from "@/lib/plans/plan";
@@ -100,7 +101,11 @@ export async function savePlanAction(input: z.input<typeof planInput>): Promise<
     const saved = await savePlan(d, user.access, group.id, event.id, plan, { source: "manual", eventStart: event.start, eventEnd: event.end });
     // A trainer's own version of a plan KI made for this event: which exercises were kept, removed and added.
     if (base?.source === "ai" && base.eventId === event.id) {
-      const changes = planChanges(base.plan.ovelser.map((e) => e.kode), plan.ovelser.map((e) => e.kode));
+      const changes = {
+        ...planChanges(base.plan.ovelser.map((e) => e.kode), plan.ovelser.map((e) => e.kode)),
+        // Changes to a «Hurtigopprett» plan show what KI should have done without being asked.
+        ...(base.kind === "hurtig" ? { hurtig: true } : {}),
+      };
       if (changes.fjernet.length || changes.lagt_til.length) await logEdit(d, user.access, group.id, { kind: "opplegg_etter_ki", planId: saved.id, changes });
     }
     refresh();
@@ -228,6 +233,47 @@ export async function kiRunAction(input: z.input<typeof kiInput>): Promise<Actio
     refresh();
     const warn = r.warnings.length ? ` Merk: ${r.warnings.join(" ")}` : "";
     return { data: { id: r.id, version: r.version }, message: `Versjon ${r.version} er laget med KI (${r.costText}).${warn}` };
+  });
+}
+
+// «Hurtigopprett» --------------------------------------------------------------------------
+
+const quickInput = z.object({
+  groupId: sid,
+  /** The page's subgroup ('' for the main group): its «Fordeling» and earlier trainings are used. */
+  sub: z.string().max(100),
+  eventId: sid,
+  theme: z.string().max(80),
+  pitchIds: z.array(id).max(50),
+  model: z.string().refine((m) => m in AI_MODELS),
+});
+
+async function quickFor(input: z.input<typeof quickInput>) {
+  const v = quickInput.parse(input);
+  const { user, group, event } = await eventFor(v.groupId, v.eventId);
+  if (v.sub && !group.subgroups.some((s) => s.id === v.sub)) throw new UserError("Fant ikke undergruppen.");
+  return { v, user, group, event, sub: v.sub || null };
+}
+
+/** Price estimate for the KI plan of «Hurtigopprett». */
+export async function quickEstimateAction(input: z.input<typeof quickInput>): Promise<ActionResult<Record<string, string> | null>> {
+  return runAction("Prisoverslag", async () => {
+    const { v, user, group, event, sub } = await quickFor(input);
+    const d = await db();
+    return { data: await estimateKi(d, await quickPrep(d, user, group, sub, event, v)) };
+  });
+}
+
+/** Team proposal and KI plan in one go, both drafts. */
+export async function quickCreateAction(input: z.input<typeof quickInput>): Promise<ActionResult<{ proposalId: number; planId: number | null }>> {
+  return runAction("Hurtigoppretting", async () => {
+    const { v, user, group, event, sub } = await quickFor(input);
+    const r = await quickCreate(await db(), user, group, sub, event, v);
+    refresh();
+    const message = r.plan
+      ? `Lag og opplegg er laget som utkast (${r.plan.costText}). Se over og godkjenn.${r.plan.warnings.length ? ` Merk: ${r.plan.warnings.join(" ")}` : ""}`
+      : `Lagene er laget som utkast, men ikke opplegget: ${r.error}`;
+    return { data: { proposalId: r.proposalId, planId: r.plan?.id ?? null }, message };
   });
 }
 
