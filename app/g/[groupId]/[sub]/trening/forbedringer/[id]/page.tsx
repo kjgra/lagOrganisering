@@ -6,7 +6,7 @@ import { ProposalDiff } from "@/components/training/ProposalDiff";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
 import { shortDate } from "@/lib/format";
-import { PROPOSAL_KINDS, PROPOSAL_STATUSES } from "@/lib/plans/improvements";
+import { ARCHIVING_KINDS, PROPOSAL_KINDS, PROPOSAL_STATUSES } from "@/lib/plans/improvements";
 import { getProposal } from "@/lib/store/improvements";
 
 /** One proposal: the reason first, then before and after, then the choice. */
@@ -47,17 +47,27 @@ export default async function ProposalPage(props: PageProps<"/g/[groupId]/[sub]/
             Forslaget er en ny øvelse for én aldersgruppe, basert på denne. Den som finnes blir som den er, for de andre aldersgruppene.
           </p>
         ) : null}
-        {p.kind === "arkiver" ? (
+        {ARCHIVING_KINDS.includes(p.kind) ? (
           <p className="nm-hint" style={{ margin: 0 }}>
             Forslaget er å arkivere øvelsen. Den blir liggende i banken, men KI bruker den ikke lenger.
           </p>
         ) : null}
+        {p.kind === "ny_ovelse" ? (
+          <p className="nm-hint" style={{ margin: 0 }}>
+            Forslaget er en ny øvelse fra KI. Med «Bruk» legges den i banken som kandidat, merket med aldersgruppe og hovedtema.
+          </p>
+        ) : null}
+        {p.kind === "metadata" ? (
+          <p className="nm-hint" style={{ margin: 0 }}>
+            Resten av øvelsen blir som den er.
+          </p>
+        ) : null}
       </section>
       <div style={{ maxWidth: 1040, marginBottom: "var(--space-4)" }}>
-        <ProposalDiff before={p.base_values} after={p.proposed} />
+        <ProposalDiff before={p.base_values} after={p.proposed} fresh={p.kind === "ny_ovelse"} />
       </div>
-      {p.status === "ny" && p.exercise_id ? (
-        <ProposalDecision groupId={ctx.group.id} id={p.id} archive={p.kind === "arkiver"} editHref={`${base}/${p.id}/endre`} doneHref={base} />
+      {p.status === "ny" && (p.exercise_id || p.kind === "ny_ovelse") ? (
+        <ProposalDecision groupId={ctx.group.id} id={p.id} archive={ARCHIVING_KINDS.includes(p.kind)} editHref={`${base}/${p.id}/endre`} doneHref={base} />
       ) : p.status === "ny" ? (
         <p className="nm-hint">Øvelsen finnes ikke lenger i banken.</p>
       ) : null}

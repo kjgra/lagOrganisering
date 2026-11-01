@@ -12,14 +12,16 @@ export default async function ProposalEditPage(props: PageProps<"/g/[groupId]/[s
   const id = Number((await props.params).id);
   if (!Number.isInteger(id) || id <= 0) notFound();
   const p = await getProposal(await db(), ctx.user.access, ctx.group.id, id).catch(() => null);
-  if (!p || p.status !== "ny" || !p.exercise_id) notFound();
+  if (!p || p.status !== "ny" || (!p.exercise_id && p.kind !== "ny_ovelse")) notFound();
   const base = ctx.path("/trening/forbedringer");
   return (
     <AppShell ctx={ctx} title={p.exercise_name} section="training" back={`${base}/${p.id}`}>
       <div className="nm-note" role="status" style={{ maxWidth: 760, marginBottom: "var(--space-3)" }}>
         {p.kind === "variant"
           ? "Dette er varianten KI foreslår. Endre det du vil, og trykk «Lagre øvelsen»: den lagres som en ny øvelse basert på den som finnes."
-          : "Dette er forslaget fra KI. Endre det du vil, og trykk «Lagre øvelsen» for å bruke det."}
+          : p.kind === "ny_ovelse"
+            ? "Dette er den nye øvelsen KI foreslår. Endre det du vil, og trykk «Lagre øvelsen»: den legges i banken."
+            : "Dette er forslaget fra KI. Endre det du vil, og trykk «Lagre øvelsen» for å bruke det."}
       </div>
       <ExerciseForm
         groupId={ctx.group.id}

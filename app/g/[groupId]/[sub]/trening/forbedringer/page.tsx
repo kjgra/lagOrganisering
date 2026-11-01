@@ -26,7 +26,8 @@ export default async function ImprovementsPage(props: PageProps<"/g/[groupId]/[s
   return (
     <AppShell ctx={ctx} title="Forbedringer" section="training" back={ctx.path("/trening/ovelser")}>
       <p style={{ marginTop: 0, maxWidth: 760 }}>
-        Når flere trenere eller økter peker på det samme problemet med en øvelse, lager KI et forslag til en bedre versjon. Se over forslaget og velg «Bruk», «Endre først» eller «Avvis».
+        Når flere trenere eller økter peker på det samme problemet med en øvelse, lager KI et forslag til en bedre versjon. Appen ser også over hele banken: nye øvelser der en
+        aldersgruppe mangler gode øvelser for et hovedtema, nesten like øvelser og øvelser som mangler info. Se over forslaget og velg «Bruk», «Endre først» eller «Avvis».
       </p>
       {open.length ? (
         <ul className="nm-list" style={{ listStyle: "none", margin: 0, padding: 0, maxWidth: 760 }}>

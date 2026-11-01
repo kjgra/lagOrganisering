@@ -178,7 +178,11 @@ async function mockCall(c: CallInput, t0: number): Promise<CallResult> {
     const currentExercise = /# Gjeldende øvelse\n\n(.+)\n/.exec(c.user)?.[1];
     if (c.kind === "exercise" && currentExercise) {
       const base = JSON.parse(currentExercise) as Record<string, unknown> & { gjennomforing: string[] };
-      text = JSON.stringify({ ...base, gjennomforing: [...base.gjennomforing, `Justert med simulert KI${wish ? `: ${wish}` : ""}.`.slice(0, 400)] });
+      // Asked to fill in what is missing («Mangler info»): it does.
+      const fill = /Fyll inn det øvelsen mangler/.test(c.user)
+        ? { min_spillere: 6, maks_spillere: 10, minutter: 15, omrade: "20 × 15 m", aktivitet: "sjef-intro", nff_tags: ["tema.spille-framover"] }
+        : {};
+      text = JSON.stringify({ ...base, ...fill, gjennomforing: [...base.gjennomforing, `Justert med simulert KI${wish ? `: ${wish}` : ""}.`.slice(0, 400)] });
       usage.output_tokens = 1500;
     } else if (c.kind === "exercise") {
       // Its own content, so it is not too much like the reference exercises in the demo bank.

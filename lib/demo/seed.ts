@@ -2,9 +2,14 @@ import "server-only";
 import type { Db } from "@/lib/db";
 import { osloParts } from "@/lib/format";
 import { compactDrawing } from "@/lib/plans/drawing";
+import { HOVEDTEMA, temaTag } from "@/lib/nff/fagplan";
+import { emptyValues, gapCode, gapReason, metadataReason, missingFields } from "@/lib/plans/bank-proposals";
+import { exerciseValues } from "@/lib/plans/exercise-values";
 import { categoryKey, planJson, validatePlan } from "@/lib/plans/plan";
 import reference from "@/lib/plans/reference-plan.json";
 import { mockEvents } from "@/lib/spond/mock";
+import { saveProposal } from "@/lib/store/improvements";
+import { listExercises } from "@/lib/store/training";
 
 /**
  * Demo data for the simulated database (SPOND_MOCK=true without
@@ -151,5 +156,56 @@ async function seedTraining(d: Db): Promise<void> {
     );
     await t.query("INSERT INTO team_principles (spond_group_id, body, created_by) VALUES ('G-FOTBALL', 'Mye ballkontakt, lite kø. Alle skal oppleve mestring.', 'P-KJETIL')");
     await t.query("INSERT INTO team_pitches (spond_group_id, pitch_id) VALUES ('G-FOTBALL', 8876), ('G-FOTBALL', 3985)");
+    await seedProposals(t);
+  });
+}
+
+/** Two proposals for the whole bank in «Forbedringer», as the nightly run makes them, so they can be tried. */
+async function seedProposals(d: Db): Promise<void> {
+  const access = { profileId: "P-KJETIL", groupIds: new Set(["G-FOTBALL"]) };
+  const last = (await listExercises(d, access, "G-FOTBALL")).find((e) => e.code === "sistemann-oppvarming");
+  if (!last) return;
+  const base = exerciseValues(last);
+  const missing = missingFields(base).filter((k) => k !== "bands");
+  await saveProposal(d, {
+    code: last.code,
+    kind: "metadata",
+    reason: metadataReason(missing),
+    signature: `metadata:${missing.join(",")}`,
+    base,
+    proposed: { ...base, min_players: "6", max_players: "16", duration_minutes: "10", area: "20 × 20 m", nff_activity: "sjef-intro", nff_tags: ["delf.foring", "delf.vending"] },
+    model: null,
+    costUsd: 0,
+  });
+  const tema = HOVEDTEMA.find((x) => x.key === "score-mal")!;
+  const gap = { band: "6-7" as const, tema, have: 0 };
+  await saveProposal(d, {
+    code: gapCode(gap),
+    kind: "ny_ovelse",
+    reason: gapReason(gap),
+    signature: "ny_ovelse",
+    base: { ...emptyValues(), bands: ["6-7"] },
+    proposed: {
+      ...emptyValues(),
+      name: "Skattejakt med småmål",
+      category: "avslutning",
+      themes: tema.label,
+      min_players: "4",
+      max_players: "12",
+      duration_minutes: "12",
+      area: "15 × 20 m",
+      organisation: "Fire småmål i hvert hjørne av ruta\nAlle har hver sin ball\nTo lag med vester",
+      execution: "Driv ballen og score i så mange mål du klarer på ett minutt\nTell målene høyt\nNy runde: bare mål med venstre fot",
+      learning_points: "Blikket opp før du skyter\nSkyt med innsiden for å treffe",
+      questions: "Hvilket mål var lettest å score i, og hvorfor?",
+      easier: "Større mål, eller færre spillere i ruta",
+      harder: "En forsvarer som kan ta ballen",
+      status: "candidate",
+      bands: ["6-7"],
+      nff_activity: "sjef-intro",
+      nff_tags: [temaTag(tema.key), "delf.skudd"],
+    },
+    model: null,
+    costUsd: 0,
   });
 }

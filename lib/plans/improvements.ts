@@ -13,8 +13,15 @@ export const PROPOSAL_KINDS = {
   variant: "Variant",
   arkiver: "Arkiver",
   tilbakerulling: "Tilbakerulling",
+  ny_ovelse: "Ny øvelse",
+  overlapp: "Overlapp",
+  metadata: "Mangler info",
 } as const;
 export type ProposalKind = keyof typeof PROPOSAL_KINDS;
+/** Proposals that archive the exercise when used. */
+export const ARCHIVING_KINDS: ProposalKind[] = ["arkiver", "overlapp"];
+/** Proposals that become a new exercise when used, instead of changing the one they are about. */
+export const NEW_EXERCISE_KINDS: ProposalKind[] = ["variant", "ny_ovelse"];
 
 export const PROPOSAL_STATUSES = {
   ny: "Venter",

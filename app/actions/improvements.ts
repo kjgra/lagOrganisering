@@ -7,7 +7,7 @@ import { findGroup, requireUser } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { exerciseChanges } from "@/lib/plans/exercise-edits";
 import { exerciseInputFrom, exerciseValues } from "@/lib/plans/exercise-values";
-import { REJECTION_MAX } from "@/lib/plans/improvements";
+import { ARCHIVING_KINDS, REJECTION_MAX } from "@/lib/plans/improvements";
 import { isSensitive, memberNames, namesProblem } from "@/lib/sensitive";
 import { UserError } from "@/lib/store/access";
 import { decideProposal, getProposal } from "@/lib/store/improvements";
@@ -30,10 +30,21 @@ export async function applyProposalAction(groupId: string, proposalId: number): 
   return runAction("Bruk forslaget", async () => {
     const v = z.object({ groupId: sid, proposalId: id }).parse({ groupId, proposalId });
     const { user, group, d, p } = await proposalFor(v.groupId, v.proposalId);
+    if (p.kind === "ny_ovelse") {
+      // A new exercise for the bank; still stopped if it is too much like one that came in since.
+      const newId = await saveExercise(d, user.access, group.id, exerciseInputFrom(p.proposed), null, { madeByKi: true });
+      await decideProposal(d, user.access, group.id, p.id, "brukt");
+      refresh();
+      return { data: newId, message: `«${p.proposed.name}» er lagt til i banken som kandidat.` };
+    }
     if (!p.exercise_id) throw new UserError("Øvelsen finnes ikke lenger i banken.");
     const now = exerciseValues(await getExercise(d, user.access, group.id, p.exercise_id));
     if (Object.keys(exerciseChanges(now, p.base_values)).length) {
-      throw new UserError("Øvelsen er endret siden forslaget ble laget. Velg «Endre først» for å se over forslaget.");
+      throw new UserError(
+        ARCHIVING_KINDS.includes(p.kind)
+          ? "Øvelsen er endret siden forslaget ble laget. Avvis forslaget, så kommer et nytt hvis det fortsatt trengs."
+          : "Øvelsen er endret siden forslaget ble laget. Velg «Endre først» for å se over forslaget.",
+      );
     }
     if (p.kind === "variant") {
       // A new exercise in the bank, based on this one; the one it is based on stays as it is.
@@ -45,7 +56,14 @@ export async function applyProposalAction(groupId: string, proposalId: number): 
     await saveExercise(d, user.access, group.id, exerciseInputFrom(p.proposed), p.exercise_id, { kiDraft: p.proposed, source: "forbedring", proposalId: p.id });
     await decideProposal(d, user.access, group.id, p.id, "brukt");
     refresh();
-    return { data: p.exercise_id, message: p.kind === "arkiver" ? `«${p.exercise_name}» er arkivert.` : `«${p.proposed.name}» er oppdatert.` };
+    return {
+      data: p.exercise_id,
+      message: ARCHIVING_KINDS.includes(p.kind)
+        ? `«${p.exercise_name}» er arkivert.`
+        : p.kind === "metadata"
+          ? `«${p.proposed.name}» har fått det som manglet.`
+          : `«${p.proposed.name}» er oppdatert.`,
+    };
   });
 }
 

@@ -266,6 +266,11 @@ export async function runExerciseKi(d: Db, user: CurrentUser, prep: ExerciseKiPr
   return { id, name: result.exercise.navn, warnings: result.warnings, costText: result.costText };
 }
 
+/** A new exercise from KI, not saved: for a proposal in «Forbedringer». */
+export async function draftExerciseKi(d: Db, user: KiActor, prep: ExerciseKiPrep) {
+  return callExerciseKi(d, user, prep);
+}
+
 /** «Juster med KI»: the adjusted exercise, not saved. The trainer looks it over in the form and saves it there. */
 export async function reviseExerciseKi(d: Db, user: KiActor, prep: ExerciseKiPrep) {
   if (!prep.base) throw new UserError("Fant ikke øvelsen.");
