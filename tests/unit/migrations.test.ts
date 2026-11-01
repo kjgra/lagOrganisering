@@ -18,6 +18,34 @@ describe("migrations", () => {
     await d.close();
   });
 
+  it("every table has a policy and rights for the app's role, which cannot change the schema", async () => {
+    const d = await testDb({ admin: true });
+    const missing = await d.query<{ relname: string }>(
+      `SELECT c.relname FROM pg_class c
+        WHERE c.relkind = 'r' AND c.relnamespace = 'public'::regnamespace AND c.relname <> 'local_migrations'
+          AND (NOT EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = c.relname AND 'nymark_app' = ANY (p.roles))
+               OR NOT has_table_privilege('nymark_app', c.oid, 'SELECT, INSERT, UPDATE, DELETE'))`,
+    );
+    expect(missing.map((r) => r.relname)).toEqual([]);
+    const [role] = await d.query<{ rolsuper: boolean; rolbypassrls: boolean; rolcreaterole: boolean; rolcreatedb: boolean }>(
+      "SELECT rolsuper, rolbypassrls, rolcreaterole, rolcreatedb FROM pg_roles WHERE rolname = 'nymark_app'",
+    );
+    expect(role).toEqual({ rolsuper: false, rolbypassrls: false, rolcreaterole: false, rolcreatedb: false });
+    await d.close();
+  });
+
+  it("the app's role reads and writes rows, but cannot change the schema", async () => {
+    const d = await testDb();
+    expect(await d.query<{ r: string }>("SELECT current_user AS r")).toEqual([{ r: "nymark_app" }]);
+    await d.query("INSERT INTO member_tags (spond_group_id, spond_member_id, tag, created_by) VALUES ('G1', 'M-1', 'Keeper', 'P-1')");
+    expect(await d.query("SELECT tag FROM member_tags")).toEqual([{ tag: "Keeper" }]);
+    await d.query("DELETE FROM member_tags");
+    await expect(d.query("CREATE TABLE public.x (id int)")).rejects.toThrow(/permission denied/);
+    await expect(d.query("DROP TABLE member_tags")).rejects.toThrow(/must be owner/);
+    await expect(d.query("ALTER TABLE member_tags DISABLE ROW LEVEL SECURITY")).rejects.toThrow(/must be owner/);
+    await d.close();
+  });
+
   it("file names follow the Supabase CLI format", async () => {
     for (const m of await migrationFiles()) expect(m.name).toMatch(/^\d{14}_[a-z0-9_]+\.sql$/);
   });
@@ -74,7 +102,7 @@ describe("team birth year migration", () => {
 
 describe("training per subgroup migration", () => {
   it("moves the principles to their own table, for the main group", async () => {
-    const d = await testDb();
+    const d = await testDb({ admin: true });
     // Put the old column back, and re-run the move from the migration.
     await d.query("ALTER TABLE team_settings ADD COLUMN principles text");
     await d.query(

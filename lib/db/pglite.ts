@@ -36,6 +36,8 @@ export async function createPgliteDb(dir?: string): Promise<Db> {
   await root.waitReady;
   const d = wrap(root, root);
   await migrate(d);
+  // Run as the app's own role, as in production: rows only, no schema changes.
+  await d.query("SET ROLE nymark_app");
   return d;
 }
 

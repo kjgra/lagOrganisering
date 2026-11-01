@@ -10,7 +10,7 @@ let dst: Db;
 const count = async (d: Db, table: string) => (await d.query<{ n: number }>(`SELECT count(*)::int AS n FROM ${table}`))[0].n;
 
 beforeAll(async () => {
-  [src, dst] = await Promise.all([testDb(), testDb()]);
+  [src, dst] = await Promise.all([testDb({ admin: true }), testDb({ admin: true })]);
   await seedDemo(src);
   await src.query(
     `INSERT INTO edit_locks (spond_group_id, editor, session_key) VALUES ('G1', 'P-1', 'k1')`,

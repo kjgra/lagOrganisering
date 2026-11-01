@@ -8,6 +8,16 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.6.1] – 2026-11-01
+
+Strammere sikkerhet rundt databasen.
+
+### Sikkerhet
+
+- Tilkoblingen til databasen er alltid kryptert (TLS).
+- Ny databasebruker for appen med minst mulig rettigheter: den kan lese og skrive data, men ikke endre eller slette tabeller, og radtilgangen i databasen (RLS) gjelder. Tas i bruk ved å bytte bruker i `DATABASE_URL` (se docs/publisering.md).
+- Sikkerhetshoder på alle sider: HTTPS påkrevd (HSTS), appen kan ikke bygges inn i andre sider, og nettleseren nekter kamera, mikrofon og posisjon.
+
 ## [1.6.0] – 2026-11-01
 
 Si fra om feil og kom med forslag rett fra appen.
