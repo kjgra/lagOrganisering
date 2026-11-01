@@ -20,7 +20,9 @@ import {
 } from "@/lib/store/training";
 import type { Group } from "@/lib/spond/types";
 import type { NffBand } from "@/lib/nff/bands";
+import { insightsFor } from "@/lib/plans/insights";
 import { needsFor } from "@/lib/plans/needs";
+import { bandInsights } from "@/lib/store/insights";
 import { needRows } from "@/lib/store/needs";
 import { allPatterns } from "@/lib/store/observations";
 import { callClaude, countTokens, type CallInput } from "./client";
@@ -101,12 +103,17 @@ async function kiBasis(
   const exp = await teamExperience(d, user.access, group.id, new Date(now.getTime() - 365 * 86_400_000));
   const experience = experienceText(exp, bank, await latestLearning(d, user.access, group.id, sub));
   // What the analysis has learnt for the team's age band, from every team (see lib/ai/lessons.ts).
-  const [patterns, needs] = await Promise.all([allPatterns(d), fit.band ? needRows(d) : Promise.resolve([])]);
+  const [patterns, needs, sessions] = await Promise.all([
+    allPatterns(d),
+    fit.band ? needRows(d) : Promise.resolve([]),
+    fit.band ? bandInsights(d, group.id, fit.band) : Promise.resolve({ shared: [], own: [] }),
+  ]);
   const lessons = lessonsText({
     band: fit.band,
     bank,
     patterns,
     needs: needsFor(needs, group.id, fit.band, { minSessions: settings.pattern_min_sessions, minTrainers: settings.pattern_min_trainers }),
+    insights: insightsFor(sessions.shared, sessions.own, fit.band),
   });
   let cat = catalogue(bank, theme, 30, { band: fit.band, players: fit.players, patterns });
   if (experience) cat = `${cat}\n\n${experience}`;
