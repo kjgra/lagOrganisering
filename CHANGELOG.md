@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.8.0] – 2026-11-01
+
+Opplysninger om spillere som har sluttet, slettes.
+
+### Lagt til
+
+- Nivå, tagger og «spiller godt sammen» for en spiller som har sluttet i gruppen i Spond, slettes etter 90 dager. Kommer spilleren tilbake før det, beholdes alt. Sjekken kjører når en trener logger inn, og står under Innstillinger → Vedlikehold.
+
 ## [1.7.0] – 2026-11-01
 
 Forbedringer ser over hele øvelsesbanken, ikke bare øvelsene trenerne har kommentert.
