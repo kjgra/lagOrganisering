@@ -15,6 +15,7 @@ import {
   type Plan,
   type PlanExercise,
 } from "@/lib/plans/plan";
+import { bandLabel, type ExercisePattern } from "@/lib/plans/observations";
 import referencePlan from "@/lib/plans/reference-plan.json";
 import {
   AKTIVITETER,
@@ -29,6 +30,7 @@ import {
   temaTag,
   type BandKey,
 } from "@/lib/nff/fagplan";
+import { bandScore } from "./lessons";
 import { EXERCISE_REVISION_TASK, EXERCISE_TASK, PLAN_INSTRUCTIONS } from "./prompts";
 
 /**
@@ -323,18 +325,38 @@ export function fagplanText(band: BandKey | null, theme: string): string {
   return out.join("\n");
 }
 
+/** What the order is for, so the catalogue shows what fits first. */
+export interface CatalogueFit {
+  band?: BandKey | null;
+  /** Players per group or station; null when unknown. */
+  players?: number | null;
+  /** Each exercise's pattern, for its rating in the team's age band. */
+  patterns?: ExercisePattern[];
+}
+
 /**
  * The bank as a short catalogue. Archived and badly rated exercises are left
- * out; exercises with the month's theme first, then active before candidates.
+ * out; exercises with the month's theme first, then those tagged for the
+ * team's age band and those that fit the group size, then active before
+ * candidates. An exercise's rating is the one for the team's age band when
+ * enough trainers have rated it there.
  */
-export function catalogue(bank: BankExercise[], theme = "", max = 30): string {
+export function catalogue(bank: BankExercise[], theme = "", max = 30, fit: CatalogueFit = {}): string {
+  const band = fit.band ?? null;
+  const byCode = new Map((fit.patterns ?? []).map((p) => [p.code, p]));
+  const forBand = (b: BankExercise) => bandScore(byCode.get(b.code), band);
+  // An exercise rated poorly for the band is in «Fungerer dårlig», not left out: it may be adjusted.
   const usable = bank.filter((b) => b.status !== "archived" && !shouldAvoid(b));
   if (!usable.length) return "# Øvelsesbanken\n\nBanken er tom.";
   const cats = Object.keys(CATEGORIES);
   const hit = (b: BankExercise) => !!theme && b.themes.some((t) => t.toLowerCase() === theme.toLowerCase());
+  const tagged = (b: BankExercise) => !!band && b.bands.includes(band);
+  const fits = (b: BankExercise) => !fit.players || ((b.min_players ?? 0) <= fit.players && fit.players <= (b.max_players ?? 99));
   const sorted = [...usable].sort(
     (a, b) =>
       Number(hit(b)) - Number(hit(a)) ||
+      Number(tagged(b)) - Number(tagged(a)) ||
+      Number(fits(b)) - Number(fits(a)) ||
       Number(a.status !== "active") - Number(b.status !== "active") ||
       cats.indexOf(a.category) - cats.indexOf(b.category) ||
       a.name.localeCompare(b.name, "nb"),
@@ -356,12 +378,18 @@ export function catalogue(bank: BankExercise[], theme = "", max = 30): string {
       b.duration_minutes ? `${b.duration_minutes} min` : "",
       b.based_on ? `variant av ${b.based_on}` : "",
       b.status === "candidate" ? "kandidat" : "",
-      b.fb_n > 0 && b.fb_mean !== null ? `snitt ${meanText(b.fb_mean)}/3 (${b.fb_n})` : "",
+      ratingText(b, forBand(b), band),
       desc ? `kort: ${desc}` : "",
     ].filter(Boolean);
     return `- ${parts.join(" | ")}`;
   });
   return `# Øvelsesbanken\n\nkode | navn | kategori | tema | NFF | spillere | minutter | merknader | kort beskrivelse\n\n${lines.join("\n")}`;
+}
+
+/** «snitt 8–9 år 2,7/3 (5)» when the team's band has enough ratings, else «snitt 2,5/3 (4)» for all. */
+function ratingText(b: BankExercise, s: ReturnType<typeof bandScore>, band: BandKey | null): string {
+  if (s && band) return `snitt ${bandLabel(band)} ${meanText(s.mean)}/3 (${s.ratings})`;
+  return b.fb_n > 0 && b.fb_mean !== null ? `snitt ${meanText(b.fb_mean)}/3 (${b.fb_n})` : "";
 }
 
 const MIN = { sessions: 3, evaluations: 5, tagCount: 2, tagShare: 0.2, minutes: 1, attendance: 0.05 };
@@ -535,6 +563,8 @@ export interface ExerciseOrderContext {
   names: string[];
   /** NFF's fagplan for the team's band (fagplanText), or empty. */
   fagplan?: string;
+  /** The team's NFF age band, for the catalogue and experiences; never sent as such. */
+  band?: BandKey | null;
 }
 
 /** The facts in an order for one exercise, one line each; empty ones left out. */

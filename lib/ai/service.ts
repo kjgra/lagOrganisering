@@ -19,7 +19,12 @@ import {
   teamExperience,
 } from "@/lib/store/training";
 import type { Group } from "@/lib/spond/types";
+import type { NffBand } from "@/lib/nff/bands";
+import { needsFor } from "@/lib/plans/needs";
+import { needRows } from "@/lib/store/needs";
+import { allPatterns } from "@/lib/store/observations";
 import { callClaude, countTokens, type CallInput } from "./client";
+import { lessonsText } from "./lessons";
 import { FEEDBACK_FILL_INSTRUCTIONS, FEEDBACK_FILL_SCHEMA, feedbackFillText, feedbackFromAnswer, type FeedbackFillExercise } from "./feedback-ai";
 import { LEARNING_INSTRUCTIONS } from "./prompts";
 import {
@@ -47,6 +52,8 @@ import {
   type PlanContext,
 } from "./plan-ai";
 
+type BandKey = NffBand["key"];
+
 const MAX_TOKENS = 32000;
 const EXERCISE_MAX_TOKENS = 8000;
 const LEARNING_MODEL = "claude-haiku-5-5";
@@ -67,8 +74,24 @@ export interface KiPrep {
   context?: PlanContext;
 }
 
-/** Rights, budget, the bank and the team's experience: what every KI call for exercises needs. */
-async function kiBasis(d: Db, user: KiActor, rights: Pick<Rights, "ai">, group: Pick<Group, "id">, sub: string, wanted: string | undefined, now: Date, theme: string) {
+/** Players per group for the catalogue: the groups of the approved team proposal, or all who come in one. */
+export function playersPerGroup(nPlayers: number, groupSizes: number[]): number | null {
+  if (groupSizes.length) return Math.round(groupSizes.reduce((a, b) => a + b, 0) / groupSizes.length);
+  return nPlayers || null;
+}
+
+/** Rights, budget, the bank and the experience: what every KI call for exercises needs. */
+async function kiBasis(
+  d: Db,
+  user: KiActor,
+  rights: Pick<Rights, "ai">,
+  group: Pick<Group, "id">,
+  sub: string,
+  wanted: string | undefined,
+  now: Date,
+  theme: string,
+  fit: { band: BandKey | null; players: number | null } = { band: null, players: null },
+) {
   if (!rights.ai) throw new AiError("Du har ikke tilgang til KI. Spør en administrator.");
   const settings = await getAiSettings(d);
   const model = wanted && wanted in AI_MODELS ? wanted : settings.model;
@@ -77,8 +100,17 @@ async function kiBasis(d: Db, user: KiActor, rights: Pick<Rights, "ai">, group: 
   const bank = await listExercises(d, user.access, group.id);
   const exp = await teamExperience(d, user.access, group.id, new Date(now.getTime() - 365 * 86_400_000));
   const experience = experienceText(exp, bank, await latestLearning(d, user.access, group.id, sub));
-  let cat = catalogue(bank, theme);
+  // What the analysis has learnt for the team's age band, from every team (see lib/ai/lessons.ts).
+  const [patterns, needs] = await Promise.all([allPatterns(d), fit.band ? needRows(d) : Promise.resolve([])]);
+  const lessons = lessonsText({
+    band: fit.band,
+    bank,
+    patterns,
+    needs: needsFor(needs, group.id, fit.band, { minSessions: settings.pattern_min_sessions, minTrainers: settings.pattern_min_trainers }),
+  });
+  let cat = catalogue(bank, theme, 30, { band: fit.band, players: fit.players, patterns });
   if (experience) cat = `${cat}\n\n${experience}`;
+  if (lessons) cat = `${cat}\n\n${lessons}`;
   return { settings, model, budget, bank, system: [systemText(), cat] };
 }
 
@@ -94,7 +126,10 @@ export async function prepareKi(
   order: OrderContext,
   opts: { base?: Plan | null; model?: string; now?: Date } = {},
 ): Promise<KiPrep> {
-  const { settings, model, budget, bank, system } = await kiBasis(d, user, rights, group, order.sub ?? "", opts.model, opts.now ?? new Date(), order.theme);
+  const { settings, model, budget, bank, system } = await kiBasis(d, user, rights, group, order.sub ?? "", opts.model, opts.now ?? new Date(), order.theme, {
+    band: order.band ?? null,
+    players: playersPerGroup(order.nPlayers, order.groupSizes),
+  });
   const ctx: OrderContext = { ...order, maxNew: settings.max_new_exercises };
   const base = opts.base ?? null;
   const userText = base ? revisionText(base, ctx) : orderText(ctx);
@@ -170,7 +205,10 @@ export async function prepareExerciseKi(
   order: ExerciseOrderContext,
   opts: { model?: string; now?: Date; baseId?: number } = {},
 ): Promise<ExerciseKiPrep> {
-  const { settings, model, budget, bank, system } = await kiBasis(d, user, rights, group, order.sub ?? "", opts.model, opts.now ?? new Date(), order.theme);
+  const { settings, model, budget, bank, system } = await kiBasis(d, user, rights, group, order.sub ?? "", opts.model, opts.now ?? new Date(), order.theme, {
+    band: order.band ?? null,
+    players: order.players,
+  });
   const base = opts.baseId === undefined ? null : (bank.find((b) => b.id === opts.baseId) ?? null);
   if (opts.baseId !== undefined && !base) throw new UserError("Fant ikke øvelsen.");
   return {

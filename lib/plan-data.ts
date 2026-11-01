@@ -160,6 +160,7 @@ export async function exerciseOrderContext(d: Db, user: Pick<CurrentUser, "acces
     themeDescription: season && theme && season.theme.toLowerCase() === theme.toLowerCase() ? season.description : "",
     team: { age_group: teamAgeText(team.birth_year, team.gender, year, team.age_group), pitch: pitchText(chosen, team.pitch), equipment: team.equipment, principles },
     fagplan: fagplanText(teamBand(team.birth_year, year), theme || season?.theme || ""),
+    band: teamBand(team.birth_year, year),
     players: input.players,
     minutes: input.minutes,
     category: input.category,
