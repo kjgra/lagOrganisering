@@ -8,6 +8,15 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.2.0] – 2026-11-01
+
+KI lærer hva trenerne ber om.
+
+### Lagt til
+
+- Ønskene til KI-opplegg og kommentarene på opplegg gjøres om til faste behov om natta, for eksempel «mindre kø», «færre spillere per gruppe» eller «må fungere med lite utstyr». Bare behovet lagres, ikke teksten.
+- «Dette ber trenerne KI om» i Forbedringer: behov som går igjen per aldersgruppe, med hvor mange ganger og fra hvor mange trenere. Et behov vises først når flere trenere har bedt om det samme.
+
 ## [1.1.0] – 2026-11-01
 
 Første steg mot en KI som lærer av hele økter, ikke bare enkeltøvelser.
