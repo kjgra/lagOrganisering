@@ -472,6 +472,8 @@ export interface OrderContext {
   coaches?: number | null;
   /** The team's NFF age band; stored with the plan, never sent. */
   band?: BandKey | null;
+  /** The chosen pitches (ids); stored with the plan, so «Hurtigopprett» can use them next time. Never sent. */
+  pitchIds?: number[];
 }
 
 /**
@@ -480,7 +482,8 @@ export interface OrderContext {
  * the trainer asked for (checked for names and sensitive words already).
  */
 export interface PlanContext {
-  kind: "draft" | "revision";
+  /** «hurtig»: made by «Hurtigopprett», with no wishes from the trainer. */
+  kind: "draft" | "revision" | "hurtig";
   band: BandKey | null;
   players: number;
   groups: number[];
@@ -490,6 +493,7 @@ export interface PlanContext {
   wish: string;
   comments: string[];
   links: number;
+  pitches: number[];
 }
 
 export function planContext(c: OrderContext, kind: PlanContext["kind"]): PlanContext {
@@ -504,6 +508,7 @@ export function planContext(c: OrderContext, kind: PlanContext["kind"]): PlanCon
     wish: c.wish.trim(),
     comments: (c.comments ?? []).map(txt).filter(Boolean),
     links: c.links.length,
+    pitches: c.pitchIds ?? [],
   };
 }
 

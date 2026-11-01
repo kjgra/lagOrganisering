@@ -71,7 +71,15 @@ function checkWish(wish: string, names: string[]) {
 }
 
 /** Everything the KI order needs, from the event, the team settings and the trainer's wishes. */
-export async function orderContext(d: Db, user: CurrentUser, group: Group, event: SpondEvent, input: KiInput): Promise<{ order: OrderContext; commentIds: number[] }> {
+export async function orderContext(
+  d: Db,
+  user: CurrentUser,
+  group: Group,
+  event: SpondEvent,
+  input: KiInput,
+  /** Group sizes to use instead of the approved team proposal's (for «Hurtigopprett», whose teams are a draft). */
+  groupSizes?: number[],
+): Promise<{ order: OrderContext; commentIds: number[] }> {
   const names = memberNames(group.members);
   const wish = input.wish.trim();
   checkWish(wish, names);
@@ -83,7 +91,7 @@ export async function orderContext(d: Db, user: CurrentUser, group: Group, event
     latestPrinciples(d, user.access, group.id, sub),
     teamPitches(d, user.access, group.id, sub),
     themeForEvent(d, user, group, event),
-    planGroups(d, user, group, event.id),
+    groupSizes ? Promise.resolve([]) : planGroups(d, user, group, event.id),
     listPlanComments(d, user.access, group.id, event.id),
     urls.length ? fetchLinks(urls, settings.link_domains) : Promise.resolve([]),
   ]);
@@ -110,7 +118,8 @@ export async function orderContext(d: Db, user: CurrentUser, group: Group, event
       band,
       coaches: input.coaches ?? null,
       nPlayers,
-      groupSizes: groups.map((g) => g.players.length),
+      groupSizes: groupSizes ?? groups.map((g) => g.players.length),
+      pitchIds: chosenPitches.map((p) => p.id),
       wish,
       maxNew: settings.max_new_exercises,
       links,

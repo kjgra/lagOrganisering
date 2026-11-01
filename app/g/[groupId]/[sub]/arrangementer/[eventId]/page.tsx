@@ -8,16 +8,23 @@ import { AppShell } from "@/components/shell/AppShell";
 import { Icon } from "@/components/ui/icon";
 import { ResponseCounts, Tag } from "@/components/ui/status";
 import { PlanSection } from "@/components/plans/PlanSection";
+import { QuickCreate } from "@/components/plans/QuickCreate";
+import { AI_MODELS, budgetCheck } from "@/lib/ai/plan-ai";
 import { contextFromParams, pairCandidates } from "@/lib/context";
 import { db } from "@/lib/db";
-import { env } from "@/lib/env";
+import { aiMode, env } from "@/lib/env";
 import { findEvent } from "@/lib/events-data";
-import { clock, dayLabel, osloDate, shortDate, timeRange } from "@/lib/format";
+import { clock, dayLabel, decimal, osloDate, osloMonthStart, shortDate, timeRange } from "@/lib/format";
 import { profileName, proposalView } from "@/lib/proposal-view";
 import { isPlayerKind } from "@/lib/spond/data";
 import { eventCoaches, eventIsPast, eventParticipants, eventSentTo, placeable, responseCounts } from "@/lib/spond/events";
 import { activeLocks, listProposals, sortProposals } from "@/lib/store/proposals";
+import { quickDefaults } from "@/lib/quick";
+import { aiSpend, getAiSettings } from "@/lib/store/ai";
 import { listPlayerTags, pairsOf, tagSuggestions } from "@/lib/store/tags";
+
+/** «Hurtigopprett» runs KI, which may take a minute or two; the Server Action runs within this page's limit. */
+export const maxDuration = 300;
 
 /** An event: who is coming, the team proposals, and the training plan. */
 export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arrangementer/[eventId]">) {
@@ -56,6 +63,10 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
   const newLocks = locks.filter((l) => l.eventId === event.id && !l.proposalId && l.editor !== ctx.user.session.profileId);
   const eventPath = ctx.path(`/arrangementer/${encodeURIComponent(event.id)}`);
   const today = !!event.start && osloDate(event.start) === osloDate(new Date());
+  // «Hurtigopprett»: before a training with neither teams nor a plan, for trainers with KI.
+  const quick = !views.length && !newLocks.length && ctx.user.rights.ai ? await quickDefaults(d, ctx.user, ctx.group, ctx.subgroup?.id ?? null, event).catch(() => null) : null;
+  const ai = quick ? await Promise.all([getAiSettings(d), aiSpend(d, ctx.user.access, ctx.group.id, osloMonthStart(new Date()))]) : null;
+  const budget = ai ? budgetCheck(ai[1], ai[0]) : null;
 
   return (
     <AppShell
@@ -178,6 +189,22 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
               {past ? "Det ble ikke laget noen lag for dette arrangementet." : "Ingen lagforslag ennå."}
             </p>
           )}
+          {quick && ai && budget ? (
+            <div className="nm-quick-offer">
+              <p style={{ margin: 0 }}>Ikke tid? La KI lage både lag og opplegg som utkast.</p>
+              <QuickCreate
+                groupId={ctx.group.id}
+                sub={ctx.subgroup?.id ?? ""}
+                eventId={event.id}
+                eventPath={eventPath}
+                {...quick}
+                model={{ id: ai[0].model, label: AI_MODELS[ai[0].model]?.label ?? ai[0].model }}
+                budgetText={budget.ok ? `Laget har brukt ${decimal(budget.groupNok, 2)} av ${ai[0].group_limit_nok} kr til KI denne måneden.` : budget.message}
+                simulated={aiMode() === "mock"}
+                invited={event.notSent}
+              />
+            </div>
+          ) : null}
         </section>
 
         {!event.match ? <PlanSection ctx={ctx} event={event} selected={selectedPlan} /> : null}

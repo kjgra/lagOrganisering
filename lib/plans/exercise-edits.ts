@@ -83,6 +83,8 @@ export interface PlanChanges {
   beholdt: string[];
   fjernet: string[];
   lagt_til: string[];
+  /** The KI plan was made by «Hurtigopprett» (no wishes from the trainer). */
+  hurtig?: boolean;
 }
 
 /** Which exercises (by code) a trainer kept, removed and added in a plan KI made. */
