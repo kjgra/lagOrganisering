@@ -73,7 +73,7 @@ export async function saveAiSettings(d: Db, rights: Rights, actor: string, s: Re
 }
 
 export interface UsageRow {
-  kind: "draft" | "revision" | "visual" | "learning" | "exercise" | "feedback" | "observations";
+  kind: "draft" | "revision" | "visual" | "learning" | "exercise" | "feedback" | "observations" | "needs";
   model: string;
   input_tokens: number;
   output_tokens: number;

@@ -89,3 +89,11 @@ test("each change is a version, and a trainer can go back to an earlier one", as
   await expect(versions).toContainText("Versjon 3 (nå)");
   await expect(page.getByLabel("Gjennomføring")).toHaveValue("Spill 3 mot 3");
 });
+
+test("«Forbedringer» shows what trainers keep asking KI for, as counts only", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/g/G-FOTBALL/alle/trening/forbedringer");
+  await expect(page.getByRole("heading", { name: "Dette ber trenerne KI om" })).toBeVisible();
+  await expect(page.getByText(/Ingen ønsker går igjen ennå|ganger fra \d+ trenere/).first()).toBeVisible();
+});

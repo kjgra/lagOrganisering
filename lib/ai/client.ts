@@ -23,7 +23,7 @@ export interface CallInput {
   /** A JSON schema for structured output, or none for plain text. */
   schema?: Record<string, unknown>;
   maxTokens: number;
-  kind: "draft" | "revision" | "learning" | "exercise" | "feedback" | "observations";
+  kind: "draft" | "revision" | "learning" | "exercise" | "feedback" | "observations" | "needs";
 }
 
 export interface CallResult {
@@ -150,6 +150,19 @@ async function mockCall(c: CallInput, t0: number): Promise<CallResult> {
     }));
     text = JSON.stringify({ innspill });
     usage.output_tokens = 40 * innspill.length;
+  } else if (c.kind === "needs") {
+    // Simple keyword rules, so the flow can be tried.
+    const rules: [RegExp, string][] = [
+      [/kø|vent/i, "mindre_ko"],
+      [/for mange spillere|færre per/i, "faerre_per_gruppe"],
+      [/kjegle|utstyr/i, "lite_utstyr"],
+      [/1 ?mot ?1/i, "mer_1mot1"],
+      [/aktivitet|alle i aktivitet/i, "mer_aktivitet"],
+      [/enklere/i, "enklere"],
+    ];
+    const tekster = [...c.user.matchAll(/^- id (\S+)\n {2}Tekst: (.*)$/gm)].map(([, id, said]) => ({ id, behov: rules.filter(([re]) => re.test(said)).map(([, k]) => k) }));
+    text = JSON.stringify({ tekster });
+    usage.output_tokens = 20 * tekster.length;
   } else if (c.kind === "learning") {
     text =
       "- Guttene liker konkurranse med poeng; bruk det i avslutningen.\n" +

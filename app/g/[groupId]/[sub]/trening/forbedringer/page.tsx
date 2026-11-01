@@ -7,13 +7,21 @@ import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
 import { shortDate } from "@/lib/format";
 import { PROPOSAL_KINDS, PROPOSAL_STATUSES } from "@/lib/plans/improvements";
+import { NEEDS, needPatterns } from "@/lib/plans/needs";
+import { bandLabel } from "@/lib/plans/observations";
 import { profileName } from "@/lib/proposal-view";
+import { getAiSettings } from "@/lib/store/ai";
 import { listProposals } from "@/lib/store/improvements";
+import { needRows } from "@/lib/store/needs";
 
 /** «Forbedringer»: proposals for better exercises, made from the trainers' evaluations. */
 export default async function ImprovementsPage(props: PageProps<"/g/[groupId]/[sub]/trening/forbedringer">) {
   const ctx = await contextFromParams(props.params);
-  const { open, auto, handled } = await listProposals(await db(), ctx.user.access, ctx.group.id);
+  const d = await db();
+  const [{ open, auto, handled }, rows, settings] = await Promise.all([listProposals(d, ctx.user.access, ctx.group.id), needRows(d), getAiSettings(d)]);
+  // Counts only, across all teams: what trainers keep asking KI for, per age band.
+  const asked = needPatterns(rows, { minSessions: settings.pattern_min_sessions, minTrainers: settings.pattern_min_trainers });
+  const askedBands = [...new Set(asked.map((x) => x.band))];
   const base = ctx.path("/trening/forbedringer");
   return (
     <AppShell ctx={ctx} title="Forbedringer" section="training" back={ctx.path("/trening/ovelser")}>
@@ -82,6 +90,36 @@ export default async function ImprovementsPage(props: PageProps<"/g/[groupId]/[s
           </ul>
         </section>
       ) : null}
+      <section className="nm-section" aria-labelledby="asked-h" style={{ maxWidth: 760 }}>
+        <h2 id="asked-h" className="nm-section-label">
+          Dette ber trenerne KI om
+        </h2>
+        {askedBands.length ? (
+          <>
+            <p className="nm-hint" style={{ marginTop: 0 }}>
+              Ønsker og kommentarer til KI-opplegg fra alle lagene, telt per aldersgruppe. Vises når minst {settings.pattern_min_sessions} ønsker fra {settings.pattern_min_trainers} trenere sier det samme.
+            </p>
+            {askedBands.map((band) => (
+              <div key={band}>
+                <h3 style={{ fontSize: "var(--fs-body)", margin: "var(--space-2) 0 var(--space-1)" }}>{bandLabel(band)}</h3>
+                <ul style={{ margin: 0, paddingLeft: "var(--space-4)" }}>
+                  {asked
+                    .filter((x) => x.band === band)
+                    .map((x) => (
+                      <li key={x.need}>
+                        {NEEDS[x.need]} <span className="nm-hint">· {x.sources} ganger fra {x.trainers} trenere</span>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            ))}
+          </>
+        ) : (
+          <p className="nm-hint" style={{ marginTop: 0 }}>
+            Ingen ønsker går igjen ennå. Når flere trenere ber KI om det samme for en aldersgruppe, for eksempel mindre kø eller færre spillere per gruppe, vises det her.
+          </p>
+        )}
+      </section>
     </AppShell>
   );
 }
