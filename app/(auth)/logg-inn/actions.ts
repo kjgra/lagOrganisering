@@ -9,6 +9,7 @@ import { cacheSessionData, loadSessionData, readRights } from "@/lib/auth/curren
 import { loginIdentifier, Throttle, waitText } from "@/lib/auth/login-rules";
 import { writeSession } from "@/lib/auth/session";
 import { runMaintenanceIfDue } from "@/lib/maintenance";
+import { syncDepartedAfterLogin } from "@/lib/store/departed";
 import { spond, SpondError } from "@/lib/spond";
 
 export type LoginState =
@@ -71,5 +72,7 @@ export async function login(_prev: LoginState, form: FormData): Promise<LoginSta
   cacheSessionData(sid, data);
   // Clean-up at most once a day, after the answer has been sent.
   after(() => runMaintenanceIfDue(data.profile.id));
+  // Levels, tags and pairs of players who have left the group are deleted after a while.
+  after(() => syncDepartedAfterLogin(data.groups));
   redirect("/");
 }

@@ -42,7 +42,7 @@ Med `TEST_DATABASE_URL` kjøres migreringstesten også mot ekte Postgres.
 
 ## Personvern
 
-Spond-passordet brukes bare til innlogging og lagres aldri. Spond-tokenet ligger kryptert i en httpOnly-cookie. Databasen lagrer bare Spond-ID-er, ikke navn; navn hentes fra Spond når de vises. Ingenting med navn eller helseopplysninger sendes til KI.
+Spond-passordet brukes bare til innlogging og lagres aldri. Spond-tokenet ligger kryptert i en httpOnly-cookie. Databasen lagrer bare Spond-ID-er, ikke navn; navn hentes fra Spond når de vises. Ingenting med navn eller helseopplysninger sendes til KI. Nivå, tagger og par for spillere som har sluttet i gruppen i Spond, slettes etter 90 dager.
 
 ## Publisering
 
