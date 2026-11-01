@@ -8,7 +8,7 @@ const exercises = [
 ];
 const names = ["Emil Haugen", "Emil", "Sofie"];
 const answer = (x: unknown) => JSON.stringify(x);
-const okt = { vurdering: 0, antall_spillere: 0, kommentar: "" };
+const okt = { vurdering: 0, stikkord: [], antall_spillere: 0, kommentar: "" };
 
 describe("«Fortell om økta»", () => {
   it("takes names out of the spoken text, full names first", () => {
@@ -32,7 +32,7 @@ describe("«Fortell om økta»", () => {
           { nr: 7, vurdering: 2, stikkord: [], faktisk_minutter: 0, bruke_igjen: "", kommentar: "" },
           { nr: 2, vurdering: 0, stikkord: [], faktisk_minutter: 0, bruke_igjen: "kanskje", kommentar: "" },
         ],
-        okt: { vurdering: 2, antall_spillere: 11, kommentar: "" },
+        okt: { vurdering: 2, stikkord: ["god_flyt", "goy", "ukjent"], antall_spillere: 11, kommentar: "" },
       }),
       exercises,
       true,
@@ -40,7 +40,7 @@ describe("«Fortell om økta»", () => {
     );
     expect(rows).toEqual([
       { exercise_no: 1, rating: 3, tags: ["goy", "ko"], actual_minutes: "20", use_again: "yes", body: "Del i to ruter" },
-      { exercise_no: null, rating: 2, actual_players: "11" },
+      { exercise_no: null, rating: 2, tags: ["god_flyt"], actual_players: "11" },
     ]);
   });
 

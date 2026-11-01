@@ -37,12 +37,14 @@ import {
   formatNok,
   orderText,
   PLAN_SCHEMA,
+  planContext,
   planFromAnswer,
   revisionText,
   systemText,
   type AiSettings,
   type ExerciseOrderContext,
   type OrderContext,
+  type PlanContext,
 } from "./plan-ai";
 
 const MAX_TOKENS = 32000;
@@ -61,6 +63,8 @@ export interface KiPrep {
   call: CallInput;
   answerCtx: { theme: string; minutes: number | null; maxNew: number; linkUrls: string[]; base: Plan | null };
   bank: Awaited<ReturnType<typeof listExercises>>;
+  /** Stored with a KI plan, so later sessions can learn from it. */
+  context?: PlanContext;
 }
 
 /** Rights, budget, the bank and the team's experience: what every KI call for exercises needs. */
@@ -103,6 +107,7 @@ export async function prepareKi(
     bank,
     call: { model, system, user: userText, schema: PLAN_SCHEMA, maxTokens: MAX_TOKENS, kind: base ? "revision" : "draft" },
     answerCtx: { theme: base?.tema ?? order.theme, minutes: order.minutes, maxNew: settings.max_new_exercises, linkUrls: order.links.map((l) => l.url), base },
+    context: planContext({ ...ctx, theme: base?.tema ?? order.theme }, base ? "revision" : "draft"),
   };
 }
 
@@ -142,7 +147,7 @@ export async function runKi(d: Db, user: CurrentUser, prep: KiPrep, eventId: str
     eventId,
   );
   if (!result) throw new AiError(message || "Noe gikk galt med KI. Prøv igjen om litt.");
-  const saved = await savePlan(d, user.access, prep.groupId, eventId, result.plan, { source: "ai", model: prep.model, costUsd: cost, eventStart: eventTime.start, eventEnd: eventTime.end });
+  const saved = await savePlan(d, user.access, prep.groupId, eventId, result.plan, { source: "ai", model: prep.model, costUsd: cost, eventStart: eventTime.start, eventEnd: eventTime.end, context: prep.context });
   await d.query("UPDATE ai_usage SET plan_id = $2 WHERE id = $1", [usageId, saved.id]);
   if (commentIds.length) await markCommentsUsed(d, user.access, prep.groupId, commentIds, saved.id);
   return { ...saved, warnings: result.warnings, costText: formatNok(cost, prep.settings.usd_nok) };

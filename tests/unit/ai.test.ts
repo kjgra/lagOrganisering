@@ -8,6 +8,7 @@ import {
   exerciseOrderText,
   exerciseRevisionText,
   orderText,
+  planContext,
   planFromAnswer,
   revisionText,
   EXERCISE_SCHEMA,
@@ -56,7 +57,27 @@ describe("KI order", () => {
     expect(() => orderText({ ...order, wish: "Emil må stå i mål" })).toThrow(/Emil/);
     expect(() => orderText({ ...order, wish: "Noen har astma" })).toThrow(/helse/);
   });
-  it("needs something to change when adjusting", () => {
+  it("tells KI how many trainers come, and keeps what the plan was made for", () => {
+    expect(orderText(order)).not.toContain("Trenere på økta");
+    expect(orderText({ ...order, coaches: 2 })).toContain("- Trenere på økta: 2");
+    expect(revisionText(plan, { ...order, coaches: 3, wish: "Kortere" })).toContain("- Trenere på økta: 3");
+    const c = planContext({ ...order, coaches: 2, band: "10-12", wish: "  Mer 1 mot 1 ", comments: ["Øvelse 2: for mye kø", " "], sub: "S1" }, "draft");
+    expect(c).toEqual({
+      kind: "draft",
+      band: "10-12",
+      players: 14,
+      groups: [5, 5, 4],
+      minutes: 65,
+      coaches: 2,
+      theme: "Samhandling",
+      wish: "Mer 1 mot 1",
+      comments: ["Øvelse 2: for mye kø"],
+      links: 0,
+    });
+    // Never names or the subgroup.
+    expect(JSON.stringify(c)).not.toMatch(/Emil|S1/);
+  });
+    it("needs something to change when adjusting", () => {
     expect(() => revisionText(plan, order)).toThrow(/Skriv hva/);
     expect(revisionText(plan, { ...order, wish: "Kortere økt" })).toContain("# Endringsønske\n\nKortere økt");
   });

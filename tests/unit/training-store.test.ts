@@ -54,8 +54,15 @@ afterAll(async () => d.close());
 describe("training plans", () => {
   it("saves versions, approves one, and puts new exercises in the bank as candidates", async () => {
     const v1 = await savePlan(d, me, "G1", "E1", plan);
-    const v2 = await savePlan(d, me, "G1", "E1", { ...plan, tittel: "Versjon to" }, { source: "ai", model: "claude-haiku-5-5", costUsd: 0.01 });
+    const context = { kind: "draft", band: "10-12", players: 14, groups: [7, 7], minutes: 60, coaches: 2, theme: "Samhandling", wish: "Mer 1 mot 1", comments: [], links: 0 };
+    const v2 = await savePlan(d, me, "G1", "E1", { ...plan, tittel: "Versjon to" }, { source: "ai", model: "claude-haiku-5-5", costUsd: 0.01, context });
     expect([v1.version, v2.version]).toEqual([1, 2]);
+    // What the KI plan was made for is kept with it; a plan made by hand has none.
+    const ctxRows = await d.query<{ version: number; context: unknown }>("SELECT version, context FROM training_plans WHERE spond_event_id = 'E1' ORDER BY version");
+    expect(ctxRows).toEqual([
+      { version: 1, context: null },
+      { version: 2, context },
+    ]);
     await approvePlan(d, me, v1.id);
     await approvePlan(d, me, v2.id);
     const versions = await planVersions(d, me, "G1", "E1");

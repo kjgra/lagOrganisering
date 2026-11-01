@@ -440,6 +440,43 @@ export interface OrderContext {
   comments?: string[];
   /** NFF's fagplan for the team's band (fagplanText), or empty. */
   fagplan?: string;
+  /** Adults at the session: from Spond (trainers who said yes), changed by the trainer if needed. */
+  coaches?: number | null;
+  /** The team's NFF age band; stored with the plan, never sent. */
+  band?: BandKey | null;
+}
+
+/**
+ * What a KI plan was made for, stored with it so sessions can be compared
+ * later: the age band, the players and groups, the time, the adults, and what
+ * the trainer asked for (checked for names and sensitive words already).
+ */
+export interface PlanContext {
+  kind: "draft" | "revision";
+  band: BandKey | null;
+  players: number;
+  groups: number[];
+  minutes: number | null;
+  coaches: number | null;
+  theme: string;
+  wish: string;
+  comments: string[];
+  links: number;
+}
+
+export function planContext(c: OrderContext, kind: PlanContext["kind"]): PlanContext {
+  return {
+    kind,
+    band: c.band ?? null,
+    players: c.nPlayers,
+    groups: c.groupSizes,
+    minutes: c.minutes,
+    coaches: c.coaches ?? null,
+    theme: c.theme,
+    wish: c.wish.trim(),
+    comments: (c.comments ?? []).map(txt).filter(Boolean),
+    links: c.links.length,
+  };
 }
 
 export function linksText(links: LinkText[]): string {
@@ -473,6 +510,7 @@ export function orderText(c: OrderContext): string {
     line("Utstyr", c.team.equipment),
     line("Lagets prinsipper", c.team.principles),
     line("Påmeldte spillere", c.nPlayers || null),
+    line("Trenere på økta", c.coaches || null),
     line("Grupper i godkjent gruppeforslag", c.groupSizes.length ? `${c.groupSizes.length} (${c.groupSizes.join(", ")} spillere)` : null),
     line("Maks nye øvelser", c.maxNew),
     line("Ønsker fra treneren", c.wish),
