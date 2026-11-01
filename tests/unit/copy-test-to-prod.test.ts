@@ -11,7 +11,7 @@ const counts = (rs: { table: string; inserted: number; updated: number; unchange
   Object.fromEntries(rs.filter((r) => tables.includes(r.table)).map((r) => [r.table, [r.inserted, r.updated, r.unchanged]]));
 
 beforeAll(async () => {
-  [src, dst] = await Promise.all([testDb(), testDb()]);
+  [src, dst] = await Promise.all([testDb({ admin: true }), testDb({ admin: true })]);
   await src.query(
     `INSERT INTO exercises (spond_group_id, code, name, category, themes, drawing, status, created_by, updated_by, updated_at)
      VALUES ('G1', 'rondo-4v1', 'Rondo 4 mot 1', 'Pasning', '{pasning,"første touch"}', '{"spillere":[{"x":1.5,"y":2}]}', 'active', 'P-1', 'P-1', '2026-05-01 10:00:00.123456+00'),
@@ -91,7 +91,7 @@ describe("copy test to prod", () => {
   });
 
   it("keeps a newer level in prod over an older number tag", async () => {
-    const [x, y] = await Promise.all([testDb(), testDb()]);
+    const [x, y] = await Promise.all([testDb({ admin: true }), testDb({ admin: true })]);
     await x.query("INSERT INTO member_tags (spond_group_id, spond_member_id, tag, created_by, created_at) VALUES ('G1', 'M-1', '1', 'P-1', '2026-05-01'), ('G1', 'M-1', '3', 'P-1', '2026-05-02')");
     await y.query("INSERT INTO member_levels (spond_group_id, spond_member_id, level, updated_by, updated_at) VALUES ('G1', 'M-1', 5, 'P-2', '2026-06-01')");
     await x.query("INSERT INTO member_tags (spond_group_id, spond_member_id, tag, created_by, created_at) VALUES ('G1', 'M-2', '1', 'P-1', '2026-05-01'), ('G1', 'M-2', '3', 'P-1', '2026-05-02')");
@@ -104,7 +104,7 @@ describe("copy test to prod", () => {
   });
 
   it("leaves out tables and columns the source does not have", async () => {
-    const [old, target] = await Promise.all([testDb(), testDb()]);
+    const [old, target] = await Promise.all([testDb({ admin: true }), testDb({ admin: true })]);
     await old.query("DROP TABLE user_preferences");
     await old.query("ALTER TABLE group_proposals DROP COLUMN spond_subgroup_id");
     await old.query(
@@ -124,7 +124,7 @@ describe("copy tags, proposals and plans", () => {
     "proposal_comments", "training_plans", "training_plan_comments", "exercise_feedback", "team_learnings", "ai_usage"];
 
   beforeAll(async () => {
-    [a, b] = await Promise.all([testDb(), testDb()]);
+    [a, b] = await Promise.all([testDb({ admin: true }), testDb({ admin: true })]);
     await a.query(
       `INSERT INTO member_tags (spond_group_id, spond_member_id, tag, created_by)
        VALUES ('G1', 'M-1', '2', 'P-1'), ('G1', 'M-1', 'Keeper', 'P-1'), ('G2', 'M-9', '1', 'P-2')`,
@@ -238,7 +238,7 @@ describe("copy tags, proposals and plans", () => {
   });
 
   it("copies the tags of one group", async () => {
-    const [x, y] = await Promise.all([testDb(), testDb()]);
+    const [x, y] = await Promise.all([testDb({ admin: true }), testDb({ admin: true })]);
     await x.query("INSERT INTO member_tags (spond_group_id, spond_member_id, tag, created_by) VALUES ('G1', 'M-1', '2', 'P-1'), ('G2', 'M-9', '1', 'P-2')");
     const [p] = await x.query<{ id: number }>("INSERT INTO group_proposals (spond_group_id, name, created_by) VALUES ('G2', 'Annet lag', 'P-2') RETURNING id");
     await x.query("INSERT INTO group_proposal_labels (proposal_id, label, sort_order) VALUES ($1, 'Lag 1', 0)", [p.id]);

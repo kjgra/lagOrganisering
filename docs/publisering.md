@@ -21,6 +21,15 @@ Appen kjører simulert til alt er satt opp. Slik kobles ekte tjenester på.
 4. Ikke bruk `service_role`- eller `anon`-nøkkelen i appen; de trengs ikke.
 5. Slå på daglig backup (Pro) eller sett opp en egen eksport.
 6. **Region**: prod ligger i Irland (`eu-west-1`). Regionen velges når prosjektet lages og kan ikke endres senere. Appen nekter å starte i Production hvis `DATABASE_URL` ikke går til pooleren i `eu-west-1` (`aws-N-eu-west-1.pooler.supabase.com`). Et nytt prosjekt (for eksempel preview) skal også lages i Irland.
+7. **Egen databasebruker for appen** (anbefalt). Migreringene lager rollen `nymark_app`, som bare kan lese og skrive rader: den kan ikke endre skjemaet, kommer ikke til Supabase sine egne skjemaer og går ikke forbi RLS. Migreringene kjører fortsatt som `postgres`. Slik tas den i bruk, etter at migreringen har kjørt:
+   1. Lag et passord: `openssl rand -base64 32`, uten tegn som må URL-kodes (eller URL-kod dem).
+   2. Supabase → SQL Editor: `ALTER ROLE nymark_app WITH LOGIN PASSWORD '<passord>';`
+   3. Vercel → `DATABASE_URL` (Production): bytt brukeren `postgres.<prosjekt-ref>` med `nymark_app.<prosjekt-ref>` og passordet med det nye. Resten (pooler, port 6543) er som før.
+   4. Deploy på nytt, logg inn og sjekk at lagforslag og tagger vises.
+
+   Går noe galt, sett tilbake den gamle `DATABASE_URL`. Gjør det samme i preview-prosjektet hvis du har et. En ny tabell i en migrering trenger en policy for `nymark_app` (se `supabase/migrations/20261106000000_app_role.sql`); en enhetstest stopper tabeller som mangler den.
+8. **TLS**: appen krever kryptert tilkobling til databasen (`ssl: "require"`). Slå i tillegg på Database → Settings → «Enforce SSL on incoming connections».
+9. **Kontoene**: tofaktor på Supabase, Vercel og GitHub. Bare de som trenger det, har tilgang til prosjektene.
 
 Den gamle appen fortsetter mot test-databasen. Denne appen skal bare ha prod.
 
@@ -147,6 +156,7 @@ Med simulert Spond (demo og preview) later appen som om den sender. Sakene får 
 
 - [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt
 - [ ] Data API av
+- [ ] Egen databasebruker `nymark_app` i `DATABASE_URL`, «Enforce SSL» på, tofaktor på kontoene
 - [ ] Eventuelt `pnpm copy:test-to-prod --apply`
 - [ ] Miljøvariabler i Vercel (Production og Preview)
 - [ ] Eventuelt preview-database (avsnitt 5) og fast preview-adresse (avsnitt 6)

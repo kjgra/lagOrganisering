@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import { isLocalDb } from "@/lib/env";
 import type { Db } from "./index";
 
 type Sql = postgres.Sql | postgres.TransactionSql;
@@ -23,10 +24,12 @@ function wrap(sql: Sql, root: postgres.Sql): Db {
 /**
  * Supabase through the connection pooler. `prepare: false` is needed for the
  * transaction pooler (port 6543), which serverless functions should use.
+ * Always TLS, except for a Postgres on this machine (local development, CI).
  */
 export function createPostgresDb(url: string): Db {
   const root = postgres(url, {
     prepare: false,
+    ssl: isLocalDb(url) ? false : "require",
     max: 3,
     idle_timeout: 20,
     connect_timeout: 15,
