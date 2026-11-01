@@ -1,5 +1,6 @@
 import type { NffBand } from "@/lib/nff/bands";
-import { meanText } from "@/lib/plans/feedback";
+import { meanText, tagLabel } from "@/lib/plans/feedback";
+import { structureLabel, type Insight } from "@/lib/plans/insights";
 import { NEEDS, type NeedPattern } from "@/lib/plans/needs";
 import { bandLabel, OBSERVATION_KINDS, type ExercisePattern } from "@/lib/plans/observations";
 import type { BankExercise } from "@/lib/plans/plan";
@@ -19,13 +20,15 @@ type BandKey = NffBand["key"];
 export const BAND_MIN = { ratings: 3, trainers: 2 };
 const GOOD = 2.4;
 const POOR = 1.7;
-const MAX = { good: 6, poor: 4, problems: 6, needs: 6 };
+const MAX = { good: 6, poor: 4, problems: 6, needs: 6, combos: 4, order: 3, structure: 3 };
 
 export interface LessonsInput {
   band: BandKey | null;
   bank: BankExercise[];
   patterns: ExercisePattern[];
   needs: NeedPattern[];
+  /** Session patterns for the band (insightsFor): combinations, order and structure. */
+  insights?: Insight[];
 }
 
 /** The rating of an exercise for one age band, when enough is behind it. */
@@ -74,6 +77,24 @@ export function lessonsText(x: LessonsInput): string {
     if (p.trend === "byttes_ut") problems.push(`- ${name(p.code)}: trenerne bytter den ofte ut etter KI-opplegg`);
   }
   if (problems.length) out.push(`## Problemer som går igjen\n\nUnngå dem når du bruker øvelsene, f.eks. med en justering.\n\n${problems.slice(0, MAX.problems).join("\n")}`);
+
+  // Whole sessions: what goes well (or badly) together, in which order, and how the session is built.
+  const counts = (i: Insight) => `snitt ${meanText(i.mean)}/3 for økta (${i.sessions} økter, ${i.trainers} trenere)${i.tags.length ? `; ofte «${tagLabel(i.tags[0])}»` : ""}`;
+  const sessions = (x.insights ?? []).filter((i) => i.band === band && i.codes.every((c) => live.has(c)));
+  const marked = (kind: Insight["kind"], good: boolean, max: number) =>
+    sessions
+      .filter((i) => i.kind === kind && (good ? i.mean >= GOOD : i.mean <= POOR))
+      .sort((a, b) => (good ? b.mean - a.mean : a.mean - b.mean) || b.sessions - a.sessions)
+      .slice(0, max);
+  const combos = [...marked("kombinasjon", true, MAX.combos).map((i) => `- ${i.codes.map(name).join(" + ")}: ${counts(i)}`), ...marked("kombinasjon", false, 2).map((i) => `- Unngå ${i.codes.map(name).join(" + ")} i samme økt: ${counts(i)}`)];
+  if (combos.length) out.push(`## Øvelser som fungerer sammen\n\n${combos.join("\n")}`);
+  const order = marked("progresjon", true, MAX.order).map((i) => `- ${name(i.codes[0])} før ${name(i.codes[1])}: ${counts(i)}`);
+  if (order.length) out.push(`## Rekkefølge som fungerer (økter der alle gjør det samme)\n\n${order.join("\n")}`);
+  const structure = [
+    ...marked("struktur", true, MAX.structure).map((i) => `- ${structureLabel(i.key)}: ${counts(i)}`),
+    ...marked("struktur", false, 1).map((i) => `- Fungerer dårlig: ${structureLabel(i.key)}: ${counts(i)}`),
+  ];
+  if (structure.length) out.push(`## Oppbygging av økta\n\n${structure.join("\n")}`);
 
   const needs = x.needs.filter((n) => n.band === band).slice(0, MAX.needs);
   if (needs.length) {

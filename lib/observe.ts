@@ -7,9 +7,11 @@ import type { Db } from "@/lib/db";
 import { aiMode } from "@/lib/env";
 import { osloMonthStart } from "@/lib/format";
 import { measureVersions, proposeImprovements } from "@/lib/improve";
+import { sessionInsights, type Insight } from "@/lib/plans/insights";
 import { analysePatterns, type Observation } from "@/lib/plans/observations";
 import { BANK } from "@/lib/store/bank";
 import { aiSpend, getAiSettings, logAiUsage } from "@/lib/store/ai";
+import { saveInsights, sessionRows } from "@/lib/store/insights";
 import { markEmptyNeeds, saveNeeds, unclassifiedNeeds } from "@/lib/store/needs";
 import { patternInputs, savePatterns, saveObservations, unobservedComments } from "@/lib/store/observations";
 
@@ -41,6 +43,8 @@ export interface AnalyseResult {
   /** Wishes and comments to KI gone through, and needs found in them. */
   wishes: number;
   needs: number;
+  /** Session patterns found (lib/plans/insights.ts), for every team together and per group. */
+  insights: number;
 }
 
 type Access = { profileId: string; groupIds: Set<string> };
@@ -129,6 +133,7 @@ export async function analyseBank(d: Db, opts: { actor?: string; now?: Date } = 
   const input = await patternInputs(d);
   const patterns = analysePatterns(input.evaluations, input.observations, input.removed, { minSessions: settings.pattern_min_sessions, minTrainers: settings.pattern_min_trainers }, now);
   await savePatterns(d, patterns);
+  const insights = await analyseSessions(d, { minSessions: settings.pattern_min_sessions, minTrainers: settings.pattern_min_trainers });
   const rolledBack = await measureVersions(d, access, groupId);
   const prop = await proposeImprovements(d, access, groupId, patterns, now);
   return {
@@ -141,7 +146,22 @@ export async function analyseBank(d: Db, opts: { actor?: string; now?: Date } = 
     rolledBack,
     wishes: asked.wishes,
     needs: asked.needs,
+    insights,
   };
+}
+
+/** Session patterns from the ratings of whole sessions: for every team together, and for each group on its own. */
+async function analyseSessions(d: Db, t: { minSessions: number; minTrainers: number }): Promise<number> {
+  const rows = await sessionRows(d);
+  const byGroup = new Map<string, Insight[]>([["", sessionInsights(rows, t)]]);
+  for (const g of new Set(rows.map((r) => r.groupId))) {
+    const own = sessionInsights(
+      rows.filter((r) => r.groupId === g),
+      t,
+    );
+    if (own.length) byGroup.set(g, own);
+  }
+  return saveInsights(d, byGroup);
 }
 
 /** The nightly run. A failure is logged and reported, not thrown. */
@@ -150,6 +170,6 @@ export async function analyseAll(d: Db, now = new Date()): Promise<AnalyseResult
     return [await analyseBank(d, { now })];
   } catch (err) {
     console.error("Analyse av innspill feilet:", (err as Error).message);
-    return [{ groupId: BANK, comments: 0, observations: 0, exercises: 0, waiting: "feilet", proposed: 0, rolledBack: 0, wishes: 0, needs: 0 }];
+    return [{ groupId: BANK, comments: 0, observations: 0, exercises: 0, waiting: "feilet", proposed: 0, rolledBack: 0, wishes: 0, needs: 0, insights: 0 }];
   }
 }

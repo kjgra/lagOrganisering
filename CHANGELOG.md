@@ -8,6 +8,15 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.5.0] – 2026-11-01
+
+KI lærer av hele økter, ikke bare enkeltøvelser.
+
+### Lagt til
+
+- Om natta telles vurderingene av «Hele økta» per aldersgruppe: hvilke øvelser som fungerer godt (eller dårlig) sammen, hvilken rekkefølge som fungerer, og hvordan økta er bygget opp (antall øvelser, stasjoner med rotasjon eller alle samlet). Rekkefølge læres bare av økter uten rotasjon, siden gruppene ellers tar stasjonene i ulik rekkefølge.
+- Mønstrene følger med i «Erfaringer fra lignende økter» når KI lager opplegg, med tallene bak. Som før brukes bare det som har nok økter og trenere bak seg, og mønstre fra andre lag bare når minst to lag står bak.
+
 ## [1.4.0] – 2026-11-01
 
 Lag og opplegg i ett trykk før trening.
