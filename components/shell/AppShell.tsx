@@ -2,6 +2,7 @@ import { Bookmark, CalendarDays, ChevronLeft, ClipboardList, Settings, Users } f
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Brand } from "@/components/Brand";
+import { FeedbackButton } from "@/components/feedback/FeedbackButton";
 import { Icon } from "@/components/ui/icon";
 import type { GroupContext } from "@/lib/context";
 import { db } from "@/lib/db";
@@ -119,6 +120,7 @@ export async function AppShell({
               <h1 className="nm-appbar__title nm-desk-only">{title}</h1>
             </>
           )}
+          <FeedbackButton groupId={ctx.group.id} />
           <Link href={`/innstillinger?fra=${encodeURIComponent(ctx.path(sectionPath))}&lag=${encodeURIComponent(ctx.group.id)}`} className="nm-iconbtn nm-iconbtn--chrome" aria-label="Innstillinger">
             <Icon icon={Settings} />
           </Link>

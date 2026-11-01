@@ -1,4 +1,4 @@
-import { ChevronRight, Sparkles } from "lucide-react";
+import { ChevronRight, MessageSquarePlus, Sparkles } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { SettingsShell } from "@/components/settings/SettingsShell";
@@ -47,13 +47,22 @@ export default async function SettingsPage(props: PageProps<"/innstillinger">) {
               <Icon icon={ChevronRight} />
             </Link>
           </li>
+          <li>
+            <Link href={`/innstillinger/tilbakemelding?fra=${encodeURIComponent(back)}`}>
+              <Icon icon={MessageSquarePlus} />
+              <span className="nm-list__name" style={{ flex: 1 }}>
+                Gi tilbakemelding
+              </span>
+              <Icon icon={ChevronRight} />
+            </Link>
+          </li>
         </ul>
         <p style={{ margin: 0 }}>
           Nymark – Gruppeorganisering er et frivillig verktøy for trenere i Nymark. Det er ikke laget, godkjent eller støttet av
           Spond AS, og bruker Sponds uoffisielle API. Appen skriver aldri til Spond.
         </p>
         <p className="nm-muted">
-          Passordet ditt lagres ikke. Databasen lagrer bare Spond-ID-er, tagger, lagforslag, treningsopplegg og kommentarer.
+          Passordet ditt lagres ikke. Databasen lagrer bare Spond-ID-er, tagger, lagforslag, treningsopplegg, kommentarer og tilbakemeldinger.
           Navn hentes fra Spond når de vises.
         </p>
         {envLabel() ? (

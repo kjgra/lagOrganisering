@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Sparkles, Users, Wrench, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Inbox, Sparkles, Users, Wrench, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Brand } from "@/components/Brand";
@@ -10,12 +10,14 @@ export const ADMIN_TABS = [
   { key: "trenere", label: "Trenere" },
   { key: "ki", label: "KI" },
   { key: "vedlikehold", label: "Vedlikehold", superadmin: true },
+  { key: "tilbakemeldinger", label: "Tilbakemeldinger", superadmin: true },
 ] as const;
 
 const TAB_ICONS: Record<(typeof ADMIN_TABS)[number]["key"], LucideIcon> = {
   trenere: Users,
   ki: Sparkles,
   vedlikehold: Wrench,
+  tilbakemeldinger: Inbox,
 };
 
 export type AdminTab = (typeof ADMIN_TABS)[number]["key"];
@@ -35,7 +37,7 @@ export function SettingsShell({
 }: {
   user: CurrentUser;
   back: string;
-  tab: AdminTab | "generelt" | "nytt";
+  tab: AdminTab | "generelt" | "nytt" | "tilbakemelding";
   groupId?: string;
   actions?: ReactNode;
   children: ReactNode;
@@ -58,6 +60,9 @@ export function SettingsShell({
           ))}
           <Link href={`/innstillinger/nytt${q()}`} aria-current={tab === "nytt" ? "page" : undefined}>
             Hva er nytt
+          </Link>
+          <Link href={`/innstillinger/tilbakemelding${q()}`} aria-current={tab === "tilbakemelding" ? "page" : undefined}>
+            Tilbakemelding
           </Link>
         </nav>
         <div className="nm-side__user">

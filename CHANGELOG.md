@@ -8,6 +8,16 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.6.0] – 2026-11-01
+
+Si fra om feil og kom med forslag rett fra appen.
+
+### Lagt til
+
+- Ny knapp «Gi tilbakemelding» (snakkeboble) øverst ved tannhjulet, og under Innstillinger. Velg «Noe virker ikke» eller «Forslag» og skriv kort hva det gjelder. Siden du var på, appversjonen og hva slags enhet du bruker følger med, men ikke navnet ditt.
+- Teksten stoppes hvis den har navn på spillere eller trenere, kontaktinfo eller helseopplysninger, siden den kan bli offentlig. Hver person kan sende fem tilbakemeldinger i døgnet.
+- Superadmin får en innboks under Admin → «Tilbakemeldinger». Der kan teksten rettes før den sendes til GitHub som en sak, uten avsenderens navn. «Avvis» sletter tilbakemeldingen.
+
 ## [1.5.0] – 2026-11-01
 
 KI lærer av hele økter, ikke bare enkeltøvelser.

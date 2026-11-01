@@ -1,11 +1,12 @@
 import "server-only";
 import { AiError } from "@/lib/ai/plan-ai";
 import { DrawingError } from "@/lib/plans/drawing";
+import { GithubError } from "@/lib/github";
 import { FeedbackError } from "@/lib/plans/feedback";
 import { PlanError } from "@/lib/plans/plan";
 import { UserError } from "@/lib/store/access";
 
-const USER_ERRORS = [UserError, AiError, PlanError, FeedbackError, DrawingError];
+const USER_ERRORS = [UserError, AiError, PlanError, FeedbackError, DrawingError, GithubError];
 
 /** The answer of a Server Action called from a client component. */
 export type ActionResult<T = undefined> = { ok: true; data: T; message?: string } | { ok: false; error: string };

@@ -134,6 +134,15 @@ Sperre mot doble øvelser: før en ny øvelse lagres (skjema, KI eller godkjent 
 
 Aldersgrupper og varianter: hver evaluering får NFF-båndet til laget (fødselsår i laginnstillingene for lagene treningen var for, ellers gruppens innstilling; fra banken lagene treneren har i Spond). exercise_patterns.bands har snitt per bånd. Har ett bånd snitt ≥ 2,4 og et annet ≤ 1,7, begge fra minst 3 vurderinger, lager appen et «Variant»-forslag for det svake båndet; «Bruk» lagrer det som en ny øvelse med based_on. Migreringen 20261101180000_band_variants.sql legger til kolonnen og forslagstypen.
 
+## 9. Tilbakemeldinger til GitHub (valgfritt)
+
+Knappen «Gi tilbakemelding» virker uten oppsett: tilbakemeldingene havner i innboksen under Admin → Tilbakemeldinger (bare superadmin). For at «Send til GitHub» skal lage en sak (issue) i repoet:
+
+1. GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token. Repository access: bare `kjgra/lagOrganisering`. Permissions: **Issues: Read and write** (Metadata: Read følger med). Velg en utløpsdato og sett en påminnelse om å fornye den.
+2. Vercel → Settings → Environment Variables: `GITHUB_FEEDBACK_TOKEN` med tokenet, **bare Production**. `GITHUB_FEEDBACK_REPO` trengs bare hvis sakene skal til et annet repo.
+
+Med simulert Spond (demo og preview) later appen som om den sender. Sakene får etikettene `tilbakemelding` og `feil` eller `forslag`; GitHub lager etikettene første gang de brukes.
+
 ## Sjekkliste
 
 - [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt
@@ -142,4 +151,5 @@ Aldersgrupper og varianter: hver evaluering får NFF-båndet til laget (fødsels
 - [ ] Miljøvariabler i Vercel (Production og Preview)
 - [ ] Eventuelt preview-database (avsnitt 5) og fast preview-adresse (avsnitt 6)
 - [ ] Eventuelt varsler etter trening (avsnitt 7)
+- [ ] Eventuelt `GITHUB_FEEDBACK_TOKEN` for tilbakemeldinger (avsnitt 9)
 - [ ] Deploy fra `main`, logg inn, sjekk Innstillinger → Generelt (ingen «simulert»)

@@ -47,6 +47,11 @@ const schema = z.object({
   VAPID_PRIVATE_KEY: z.string().optional().default(""),
   VAPID_SUBJECT: z.string().optional().default(""),
   CRON_SECRET: z.string().optional().default(""),
+  GITHUB_FEEDBACK_TOKEN: z.string().optional().default(""),
+  GITHUB_FEEDBACK_REPO: z
+    .string()
+    .optional()
+    .transform((s) => (s && /^[\w.-]+\/[\w.-]+$/.test(s.trim()) ? s.trim() : "kjgra/lagOrganisering")),
   VERCEL_ENV: z.string().optional().default(""),
   NODE_ENV: z.string().optional().default("development"),
 });
