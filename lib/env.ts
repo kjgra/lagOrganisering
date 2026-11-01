@@ -58,6 +58,27 @@ let cached: Env | null = null;
 // A fixed key for local simulation only. Production must set SESSION_SECRET.
 const DEV_SECRET = "dev-only-secret-not-for-production-use-0123456789";
 
+/**
+ * The app's region: Supabase prod is in Ireland (eu-west-1), and the Vercel
+ * functions run in Dublin (dub1, see vercel.json), so personal data stays
+ * in the EU and every database call is short.
+ */
+export const DB_REGION = "eu-west-1";
+
+/**
+ * True when the URL points at the Supabase pooler in DB_REGION
+ * (aws-0-eu-west-1.pooler.supabase.com). The direct connection
+ * (db.<ref>.supabase.co) does not show the region and is refused.
+ */
+export function isDbInRegion(url: string, region = DB_REGION): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return new RegExp(`^aws-\\d+-${region.replace(/[^a-z0-9-]/g, "")}\\.pooler\\.supabase\\.com$`).test(host);
+  } catch {
+    return false;
+  }
+}
+
 /** A Postgres on this machine (local development or CI), not Supabase. */
 export function isLocalDb(url: string): boolean {
   try {
@@ -76,6 +97,7 @@ export function env(): Env {
       parsed.SPOND_MOCK && "SPOND_MOCK kan ikke brukes i produksjon",
       parsed.AI_MOCK && "AI_MOCK kan ikke brukes i produksjon",
       !parsed.DATABASE_URL && "DATABASE_URL mangler",
+      parsed.DATABASE_URL && !isDbInRegion(parsed.DATABASE_URL) && `DATABASE_URL må gå til Supabase-pooleren i ${DB_REGION} (Irland)`,
       parsed.SESSION_SECRET.length < 32 && "SESSION_SECRET må ha minst 32 tegn",
     ].filter(Boolean);
     if (problems.length) throw new Error(`Feil i miljøvariabler: ${problems.join("; ")}.`);

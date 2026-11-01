@@ -19,3 +19,28 @@ describe("env", () => {
     expect((await load({ SPOND_MOCK: "true", DATABASE_URL: "" }))().SPOND_MOCK).toBe(true);
   });
 });
+
+describe("database region", () => {
+  const prod = { VERCEL_ENV: "production", SESSION_SECRET: "x".repeat(40) };
+
+  it("accepts the Supabase pooler in Ireland in production", async () => {
+    const env = await load({ ...prod, DATABASE_URL: "postgresql://postgres.ref:p@aws-0-eu-west-1.pooler.supabase.com:6543/postgres" });
+    expect(env().DATABASE_URL).toContain("eu-west-1");
+  });
+
+  it("refuses another region or the direct connection in production", async () => {
+    for (const url of [
+      "postgresql://postgres.ref:p@aws-0-us-east-1.pooler.supabase.com:6543/postgres",
+      "postgresql://postgres:p@db.ref.supabase.co:5432/postgres",
+      "postgresql://postgres.ref:p@aws-0-eu-west-1.pooler.supabase.com.evil.example:6543/postgres",
+    ]) {
+      const env = await load({ ...prod, DATABASE_URL: url });
+      expect(() => env()).toThrow(/eu-west-1/);
+    }
+  });
+
+  it("does not check the region outside production", async () => {
+    const env = await load({ DATABASE_URL: "postgresql://postgres.ref:p@aws-0-us-east-1.pooler.supabase.com:6543/postgres" });
+    expect(env().DATABASE_URL).toContain("us-east-1");
+  });
+});
