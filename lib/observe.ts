@@ -38,6 +38,8 @@ export interface AnalyseResult {
   waiting: string;
   /** New proposals in «Forbedringer». */
   proposed: number;
+  /** Proposals for the whole bank (new exercises, overlaps, missing info). */
+  bankProposed: number;
   /** New versions that were clearly worse and went back to the one before. */
   rolledBack: number;
   /** Wishes and comments to KI gone through, and needs found in them. */
@@ -85,7 +87,8 @@ async function classifyNeeds(d: Db, access: Access, now: Date): Promise<{ wishes
   return { wishes, needs, waiting: "" };
 }
 
-export async function analyseBank(d: Db, opts: { actor?: string; now?: Date } = {}): Promise<AnalyseResult> {
+/** `bank`: also propose for the whole bank (new exercises, overlaps, missing info); the nightly run does. */
+export async function analyseBank(d: Db, opts: { actor?: string; now?: Date; bank?: boolean } = {}): Promise<AnalyseResult> {
   const groupId = BANK;
   const now = opts.now ?? new Date();
   const access = { profileId: opts.actor ?? SYSTEM_ACTOR, groupIds: new Set([groupId]) };
@@ -135,7 +138,7 @@ export async function analyseBank(d: Db, opts: { actor?: string; now?: Date } = 
   await savePatterns(d, patterns);
   const insights = await analyseSessions(d, { minSessions: settings.pattern_min_sessions, minTrainers: settings.pattern_min_trainers });
   const rolledBack = await measureVersions(d, access, groupId);
-  const prop = await proposeImprovements(d, access, groupId, patterns, now);
+  const prop = await proposeImprovements(d, access, groupId, patterns, now, { bank: opts.bank });
   return {
     groupId,
     comments,
@@ -143,6 +146,7 @@ export async function analyseBank(d: Db, opts: { actor?: string; now?: Date } = 
     exercises: patterns.length,
     waiting: [...new Set([waiting, asked.waiting, prop.waiting].filter(Boolean))].join("; "),
     proposed: prop.proposed,
+    bankProposed: prop.bank,
     rolledBack,
     wishes: asked.wishes,
     needs: asked.needs,
@@ -167,9 +171,9 @@ async function analyseSessions(d: Db, t: { minSessions: number; minTrainers: num
 /** The nightly run. A failure is logged and reported, not thrown. */
 export async function analyseAll(d: Db, now = new Date()): Promise<AnalyseResult[]> {
   try {
-    return [await analyseBank(d, { now })];
+    return [await analyseBank(d, { now, bank: true })];
   } catch (err) {
     console.error("Analyse av innspill feilet:", (err as Error).message);
-    return [{ groupId: BANK, comments: 0, observations: 0, exercises: 0, waiting: "feilet", proposed: 0, rolledBack: 0, wishes: 0, needs: 0, insights: 0 }];
+    return [{ groupId: BANK, comments: 0, observations: 0, exercises: 0, waiting: "feilet", proposed: 0, bankProposed: 0, rolledBack: 0, wishes: 0, needs: 0, insights: 0 }];
   }
 }

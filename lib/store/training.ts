@@ -373,7 +373,7 @@ export async function saveExercise(
   groupId: string,
   input: Partial<ExerciseInput>,
   id: number | null,
-  opts: { kiDraft?: ExerciseValues; source?: VersionSource; proposalId?: number | null; basedOn?: string } = {},
+  opts: { kiDraft?: ExerciseValues; source?: VersionSource; proposalId?: number | null; basedOn?: string; madeByKi?: boolean } = {},
 ): Promise<number> {
   assertGroup(access, groupId);
   const v = wrap(() => validateExercise(input));
@@ -389,12 +389,12 @@ export async function saveExercise(
     const [{ id: newId }] = await d.query<{ id: number }>(
       `INSERT INTO exercises (spond_group_id, code, name, category, themes, min_players, max_players, duration_minutes, area,
                               organisation, execution, learning_points, questions, easier, harder, nff_url, created_by, updated_by,
-                              drawing, status, bands, nff_activity, nff_tags, based_on)
+                              drawing, status, bands, nff_activity, nff_tags, based_on, source)
        VALUES ($1, $2, $3, $4, $5::text[], $6, $7, $8, NULLIF($9, ''), NULLIF($10, ''), NULLIF($11, ''), NULLIF($12, ''),
                NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), NULLIF($16, ''), $17, $17, $18::jsonb, coalesce($19, 'active'),
-               $20::text[], NULLIF($21, ''), $22::text[], NULLIF($23, ''))
+               $20::text[], NULLIF($21, ''), $22::text[], NULLIF($23, ''), $24)
        RETURNING id`,
-      [bank, exerciseCode(v.name, taken), ...fields, opts.basedOn ?? ""],
+      [bank, exerciseCode(v.name, taken), ...fields, opts.basedOn ?? "", opts.madeByKi ? "ai" : "manual"],
     );
     return newId;
   }

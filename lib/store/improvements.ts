@@ -1,6 +1,9 @@
 import type { Db } from "@/lib/db";
 import type { ExerciseValues } from "@/lib/plans/exercise-values";
 import { QUIET_DAYS, type ProposalKind, type ProposalStatus } from "@/lib/plans/improvements";
+import { osloParts } from "@/lib/format";
+import { teamBand } from "@/lib/nff/bands";
+import { BAND_KEYS, type BandKey } from "@/lib/nff/fagplan";
 import { assertGroup, UserError, type Access } from "./access";
 import { BANK } from "./bank";
 
@@ -88,17 +91,34 @@ export async function decideProposal(
 
 // For the analysis (no one logged in) ----------------------------------------------------------
 
-/** Exercises that should not get a new proposal now: one is waiting, or the same one was handled lately. */
-export async function busyProposals(d: Db, now = new Date()): Promise<{ open: Set<string>; recent: Set<string> }> {
-  const rows = await d.query<{ exercise_code: string; signature: string; status: string }>(
-    `SELECT exercise_code, signature, status FROM improvement_proposals
+/**
+ * Exercises that should not get a new proposal now: one is waiting, or the same one was handled lately.
+ * `filling` are those whose waiting proposal is only «Mangler info», which gives way to the trainers' proposals.
+ */
+export async function busyProposals(d: Db, now = new Date()): Promise<{ open: Set<string>; recent: Set<string>; filling: Map<string, number> }> {
+  const rows = await d.query<{ id: number; exercise_code: string; signature: string; status: string; kind: string }>(
+    `SELECT id, exercise_code, signature, status, kind FROM improvement_proposals
       WHERE spond_group_id = $1 AND (status = 'ny' OR coalesce(decided_at, created_at) > $2::timestamptz - make_interval(days => $3::int))`,
     [BANK, now, QUIET_DAYS],
   );
+  const open = rows.filter((r) => r.status === "ny");
   return {
-    open: new Set(rows.filter((r) => r.status === "ny").map((r) => r.exercise_code)),
+    open: new Set(open.map((r) => r.exercise_code)),
     recent: new Set(rows.map((r) => `${r.exercise_code}\n${r.signature}`)),
+    filling: new Map(open.filter((r) => r.kind === "metadata").map((r) => [r.exercise_code, r.id])),
   };
+}
+
+/** A waiting proposal that is no longer needed (another one replaces it). */
+export async function retireProposal(d: Db, id: number): Promise<void> {
+  await d.query("UPDATE improvement_proposals SET status = 'utdatert', decided_at = now() WHERE spond_group_id = $1 AND id = $2 AND status = 'ny'", [BANK, id]);
+}
+
+/** The NFF bands of the teams that use the app (from their birth years), for the bank's gaps. */
+export async function bandsInUse(d: Db, now = new Date()): Promise<BandKey[]> {
+  const rows = await d.query<{ birth_year: number }>("SELECT DISTINCT birth_year FROM team_settings WHERE birth_year IS NOT NULL");
+  const year = osloParts(now).year;
+  return BAND_KEYS.filter((b) => rows.some((r) => teamBand(r.birth_year, year) === b));
 }
 
 /** Why trainers turned down earlier proposals for an exercise, newest first. */

@@ -1,10 +1,15 @@
+import { aktivitetLabel, tagLabel } from "@/lib/nff/fagplan";
 import { EDIT_FIELDS, exerciseChanges } from "@/lib/plans/exercise-edits";
+import { bandLabel } from "@/lib/plans/observations";
 import type { ExerciseValues } from "@/lib/plans/exercise-values";
 import { CATEGORIES, EXERCISE_STATUSES } from "@/lib/plans/plan";
 
 /** A field as text: lists joined, keys as their names. */
 function show(k: keyof ExerciseValues, v: ExerciseValues): string {
   const x = v[k];
+  if (k === "nff_tags") return v.nff_tags.map((t) => tagLabel(t) ?? t).join("\n");
+  if (k === "bands") return v.bands.map(bandLabel).join(", ");
+  if (k === "nff_activity") return aktivitetLabel(v.nff_activity) ?? v.nff_activity;
   if (Array.isArray(x)) return x.join(", ");
   if (k === "category") return CATEGORIES[x] ?? x;
   if (k === "status") return EXERCISE_STATUSES[x] ?? x;
@@ -30,10 +35,30 @@ function Side({ text, other, mark }: { text: string; other: string; mark: "del" 
   );
 }
 
-/** Before and after for each field the proposal changes. */
-export function ProposalDiff({ before, after }: { before: ExerciseValues; after: ExerciseValues }) {
+/** Before and after for each field the proposal changes; for a new exercise (`fresh`) only what it will be. */
+export function ProposalDiff({ before, after, fresh = false }: { before: ExerciseValues; after: ExerciseValues; fresh?: boolean }) {
   const keys = Object.keys(exerciseChanges(before, after)) as (keyof ExerciseValues)[];
   if (!keys.length) return <p className="nm-hint">Forslaget endrer ingenting i øvelsen.</p>;
+  if (fresh)
+    return (
+      <div className="nm-diff">
+        {(Object.keys(EDIT_FIELDS) as (keyof ExerciseValues)[])
+          .filter((k) => k !== "drawing" && k !== "status" && show(k, after).trim())
+          .map((k) => (
+            <section key={k} className="nm-diff__field" aria-label={EDIT_FIELDS[k]}>
+              <h3 className="nm-h3" style={{ margin: 0 }}>
+                {EDIT_FIELDS[k]}
+              </h3>
+              <div className="nm-diff__side">{show(k, after)}</div>
+            </section>
+          ))}
+        {after.drawing ? (
+          <p className="nm-hint" style={{ margin: 0 }}>
+            Øvelsen har en tegning. Velg «Endre først» for å se den.
+          </p>
+        ) : null}
+      </div>
+    );
   return (
     <div className="nm-diff">
       {keys.map((k) => (

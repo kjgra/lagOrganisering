@@ -8,6 +8,21 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.7.0] – 2026-11-01
+
+Forbedringer ser over hele øvelsesbanken, ikke bare øvelsene trenerne har kommentert.
+
+### Lagt til
+
+- «Ny øvelse»: Om natta ser appen etter hovedtemaer i NFF-fagplanen der en aldersgruppe som bruker appen har færre enn tre gode øvelser. KI lager da et forslag til en ny øvelse, merket med aldersgruppe og hovedtema. Med «Bruk» legges den i banken som kandidat.
+- «Overlapp»: To nesten like øvelser gir et forslag om å arkivere den som er vurdert dårligst. Øvelsene slås aldri sammen av seg selv.
+- «Mangler info»: Øvelser som mangler antall spillere, minutter, område, aktivitet, hovedtema eller aldersgruppe får et forslag som fyller inn bare det som mangler. Aldersgruppe hentes fra der øvelsen er vurdert godt, ikke fra KI.
+- Alle forslagene venter i Forbedringer på «Bruk», «Endre først» eller «Avvis», som før. Et forslag fra trenernes evalueringer går foran et «Mangler info»-forslag for samme øvelse.
+
+### Endret
+
+- I Forbedringer vises NFF-tagger, aktivitet og aldersgruppe med navn i stedet for koder.
+
 ## [1.6.1] – 2026-11-01
 
 Strammere sikkerhet rundt databasen.

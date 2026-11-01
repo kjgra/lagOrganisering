@@ -20,6 +20,17 @@ export async function POST(req: Request) {
   if (!secret || !same(auth, `Bearer ${secret}`)) return new Response("Ikke tilgang", { status: 401 });
   const d = await db();
   const r = await analyseAll(d);
-  const groups = r.map(({ comments, observations, exercises, waiting, proposed, rolledBack, wishes, needs, insights }) => ({ comments, observations, exercises, proposed, rolledBack, wishes, needs, insights, waiting }));
+  const groups = r.map(({ comments, observations, exercises, waiting, proposed, bankProposed, rolledBack, wishes, needs, insights }) => ({
+    comments,
+    observations,
+    exercises,
+    proposed,
+    bankProposed,
+    rolledBack,
+    wishes,
+    needs,
+    insights,
+    waiting,
+  }));
   return Response.json({ groups, digests: await weeklyDigest(d) }, { headers: { "Cache-Control": "no-store" } });
 }

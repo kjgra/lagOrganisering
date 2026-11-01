@@ -97,3 +97,37 @@ test("«Forbedringer» shows what trainers keep asking KI for, as counts only", 
   await expect(page.getByRole("heading", { name: "Dette ber trenerne KI om" })).toBeVisible();
   await expect(page.getByText(/Ingen ønsker går igjen ennå|ganger fra \d+ trenere/).first()).toBeVisible();
 });
+
+test("proposals for the whole bank: fill in what is missing, and a new exercise for a gap", async ({ page }, info) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/g/G-FOTBALL/alle/trening/forbedringer");
+  // The demo has one of each, as the nightly run makes them; each width tries one, since they share the database.
+  if (info.project.name === "mobil") {
+    await page.locator(".nm-pick", { hasText: "Mangler info" }).getByRole("link", { name: "Sistemann med ball" }).click();
+    await expect(page.getByRole("region", { name: "Hvorfor" })).toContainText("Forslaget fyller bare inn det som mangler.");
+    await expect(page.getByRole("region", { name: "Min. spillere" }).locator("ins")).toHaveText("6");
+    await expect(page.getByRole("region", { name: "NFF-tagger" }).locator("ins").first()).toHaveText("Føring");
+    await expect(page.getByRole("region", { name: "Gjennomføring" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Bruk" }).click();
+    await expect(page.locator(".nm-toast")).toContainText("«Sistemann med ball» har fått det som manglet");
+    await expect(page.getByText("Sistemann med ball · Mangler info · Brukt")).toBeVisible();
+  } else {
+    await page.locator(".nm-pick", { hasText: "Ny øvelse" }).getByRole("link", { name: "Skattejakt med småmål" }).click();
+    await expect(page.getByRole("region", { name: "Hvorfor" })).toContainText("Banken har ingen gode øvelser for 6–7 år med hovedtemaet «Score mål»");
+    await expect(page.getByRole("region", { name: "Aldersbånd" })).toContainText("6–7 år");
+    await expect(page.getByRole("region", { name: "NFF-tagger" })).toContainText("Score mål");
+    await expect(page.getByText("(tomt)")).toHaveCount(0);
+    await page.getByRole("link", { name: "Endre først" }).click();
+    await expect(page).toHaveURL(/\/endre$/);
+    const name = page.getByRole("textbox", { name: "Navn" });
+    await expect(name).toHaveValue("Skattejakt med småmål");
+    await name.fill("Skattejakt med fire mål");
+    await page.getByRole("button", { name: "Lagre øvelsen" }).click();
+    await expect(page.locator(".nm-toast")).toContainText("«Skattejakt med fire mål» er lagret");
+    await page.goto("/g/G-FOTBALL/alle/trening/forbedringer");
+    await expect(page.getByText(/Skattejakt med (småmål|fire mål) · Ny øvelse · Brukt med endringer/)).toBeVisible();
+    await page.goto("/g/G-FOTBALL/alle/trening/ovelser");
+    await expect(page.locator(".nm-pick", { hasText: "Skattejakt med fire mål" })).toBeVisible();
+  }
+});
