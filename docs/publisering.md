@@ -20,10 +20,13 @@ Appen kjører simulert til alt er satt opp. Slik kobles ekte tjenester på.
 3. **Tilkoblingsstreng**: Connect → «Transaction pooler» (port **6543**). Den passer for Vercel sine serverløse funksjoner. Bruk den som `DATABASE_URL`.
 4. Ikke bruk `service_role`- eller `anon`-nøkkelen i appen; de trengs ikke.
 5. Slå på daglig backup (Pro) eller sett opp en egen eksport.
+6. **Region**: prod ligger i Irland (`eu-west-1`). Regionen velges når prosjektet lages og kan ikke endres senere. Appen nekter å starte i Production hvis `DATABASE_URL` ikke går til pooleren i `eu-west-1` (`aws-N-eu-west-1.pooler.supabase.com`). Et nytt prosjekt (for eksempel preview) skal også lages i Irland.
 
 Den gamle appen fortsetter mot test-databasen. Denne appen skal bare ha prod.
 
 ## 2. Vercel
+
+Serverfunksjonene kjører i Dublin (`dub1`), ved siden av databasen. Det er låst i `vercel.json`, som går foran innstillingen under Settings → Functions.
 
 Settings → Environment Variables:
 

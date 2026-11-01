@@ -8,6 +8,15 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.4.1] – 2026-11-01
+
+Personopplysninger holdes i EU.
+
+### Sikkerhet
+
+- Serverfunksjonene kjører i Dublin, ved siden av databasen i Irland. Data om spillere og trenere går ikke lenger via USA, og appen svarer raskere.
+- Appen starter ikke i produksjon hvis databasen ligger utenfor Irland (`eu-west-1`).
+
 ## [1.4.0] – 2026-11-01
 
 Lag og opplegg i ett trykk før trening.
