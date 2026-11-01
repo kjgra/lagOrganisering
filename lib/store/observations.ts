@@ -119,3 +119,11 @@ export async function exercisePattern(d: Db, access: Access, groupId: string, co
   );
   return r ?? null;
 }
+
+/** Every exercise's pattern in the shared bank, for KI orders (counts and keywords only). */
+export async function allPatterns(d: Db): Promise<ExercisePattern[]> {
+  return d.query<ExercisePattern>(
+    `SELECT exercise_code AS code, score::float8 AS score, ratings, trend, patterns, bands FROM exercise_patterns WHERE spond_group_id = $1`,
+    [BANK],
+  );
+}

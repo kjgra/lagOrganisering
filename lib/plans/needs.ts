@@ -73,3 +73,18 @@ export function needPatterns(rows: NeedRow[], t: { minSessions: number; minTrain
     .map((x) => ({ band: x.band, need: x.need, sources: x.sources.size, trainers: x.trainers.size, groups: x.groups.size }))
     .sort((a, b) => bands.indexOf(a.band) - bands.indexOf(b.band) || b.sources - a.sources || a.need.localeCompare(b.need));
 }
+
+/**
+ * The needs a team's KI order may use: those from several groups (at least
+ * two behind them, so no group can be recognised), and the team's own group's
+ * needs counted on their own. Only for the team's age band.
+ */
+export function needsFor(rows: NeedRow[], groupId: string, band: BandKey | null, t: { minSessions: number; minTrainers: number }): NeedPattern[] {
+  if (!band) return [];
+  const shared = needPatterns(rows, t).filter((p) => p.band === band && p.groups >= 2);
+  const own = needPatterns(
+    rows.filter((r) => r.groupId === groupId),
+    t,
+  ).filter((p) => p.band === band && !shared.some((s) => s.need === p.need));
+  return [...shared, ...own].sort((a, b) => b.sources - a.sources || a.need.localeCompare(b.need));
+}

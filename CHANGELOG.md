@@ -8,6 +8,19 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.3.0] – 2026-11-01
+
+KI bruker det appen har lært når den lager opplegg og øvelser.
+
+### Lagt til
+
+- «Erfaringer fra lignende økter» følger med hver KI-bestilling: øvelser som fungerer godt og dårlig for lagets aldersgruppe, problemer som går igjen med trenernes egne forslag, øvelser som ofte byttes ut, og det trenerne for aldersgruppen ofte ber om. Alltid med tallene bak, og bare det som har nok vurderinger fra flere trenere. Erfaringer fra én aldersgruppe brukes aldri for en annen.
+- Ønsker fra andre lag brukes bare når minst to lag står bak, så ingen lag kan kjennes igjen.
+
+### Endret
+
+- Øvelsesbanken som sendes til KI, viser snittet for lagets aldersgruppe når det finnes nok vurderinger, og øvelser som er merket for aldersgruppen og passer gruppestørrelsen, kommer først.
+
 ## [1.2.0] – 2026-11-01
 
 KI lærer hva trenerne ber om.
