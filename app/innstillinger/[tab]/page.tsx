@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { FeedbackInboxItem } from "@/components/feedback/FeedbackInbox";
 import { AiSettingsForm } from "@/components/settings/admin/forms";
 import { GroupSelect } from "@/components/settings/admin/GroupSelect";
 import { MaintenancePanel } from "@/components/settings/admin/MaintenancePanel";
@@ -8,6 +9,8 @@ import { ADMIN_TABS, SettingsShell, type AdminTab } from "@/components/settings/
 import { adminContext, allTrainers, type AdminContext } from "@/lib/admin";
 import { AI_MODELS, budgetCheck, formatNok } from "@/lib/ai/plan-ai";
 import { db } from "@/lib/db";
+import { FEEDBACK_KINDS } from "@/lib/feedback";
+import { feedbackRepo, githubMode } from "@/lib/github";
 import { superadminId } from "@/lib/env";
 import { decimal, MONTH_NAMES, osloMidnight, osloMonthStart, osloParts, savedAt, shortDate } from "@/lib/format";
 import { MAINTENANCE_RULES } from "@/lib/maintenance";
@@ -16,6 +19,7 @@ import { movedPath } from "@/lib/settings-nav";
 import { profileName } from "@/lib/proposal-view";
 import { aiSpend, aiUsagePeriod, getAiSettings } from "@/lib/store/ai";
 import { archiveKey, archiveLog, archivePending } from "@/lib/store/archive";
+import { feedbackInbox } from "@/lib/store/feedback";
 import { listRoles } from "@/lib/store/roles";
 
 /** The admin panel: one tab per page, per main group (?lag=). */
@@ -32,7 +36,7 @@ export default async function AdminTabPage(props: PageProps<"/innstillinger/[tab
   return (
     <SettingsShell user={ctx.user} back={ctx.back} tab={t.key} groupId={ctx.group.id}>
       <h2 className="nm-h2">{t.label}</h2>
-      {t.key !== "vedlikehold" && t.key !== "trenere" ? <GroupSelect groups={ctx.user.data.groups.map((g) => ({ id: g.id, name: g.name }))} current={ctx.group.id} hrefFor={hrefFor} /> : null}
+      {t.key !== "vedlikehold" && t.key !== "trenere" && t.key !== "tilbakemeldinger" ? <GroupSelect groups={ctx.user.data.groups.map((g) => ({ id: g.id, name: g.name }))} current={ctx.group.id} hrefFor={hrefFor} /> : null}
       {body}
     </SettingsShell>
   );
@@ -213,6 +217,86 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
             }}
           />
         </section>
+      </>
+    );
+  },
+
+  async tilbakemeldinger({ user }) {
+    const { waiting, sent } = await feedbackInbox(await db(), user.rights);
+    const mode = githubMode();
+    const repo = feedbackRepo();
+    const who = (id: string) => {
+      for (const g of user.data.groups) {
+        const n = profileName(g, id);
+        if (n !== "en trener") return n;
+      }
+      return "en trener";
+    };
+    const kindLabel = (k: string) => FEEDBACK_KINDS.find((x) => x.key === k)?.issue ?? k;
+    return (
+      <>
+        <p style={{ marginTop: 0 }}>
+          Feil og forslag fra brukerne av appen. Ingenting blir offentlig før du trykker «Send til GitHub»: da blir teksten en sak (issue) i{" "}
+          <a href={`https://github.com/${repo}/issues`} target="_blank" rel="noreferrer">
+            {repo}
+          </a>
+          , uten avsenderens navn. «Avvis» sletter tilbakemeldingen.
+        </p>
+        {mode === "off" ? (
+          <div className="nm-alert" role="status" style={{ marginBottom: "var(--space-3)" }}>
+            GitHub er ikke satt opp: legg inn GITHUB_FEEDBACK_TOKEN i Vercel (Production). Til da kan du lese og avvise her.
+          </div>
+        ) : mode === "mock" ? (
+          <p className="nm-hint" style={{ margin: "0 0 var(--space-4)" }}>
+            Demo: «Send til GitHub» later bare som den sender.
+          </p>
+        ) : null}
+        <section className="nm-section">
+          <h3 className="nm-h3" style={{ marginBottom: "var(--space-2)" }}>
+            Venter ({waiting.length})
+          </h3>
+          {waiting.length ? (
+            <ul className="nm-stack" style={{ listStyle: "none", padding: 0, margin: 0, gap: "var(--space-3)" }}>
+              {waiting.map((r) => (
+                <FeedbackInboxItem
+                  key={r.id}
+                  canPublish={mode !== "off"}
+                  item={{
+                    id: r.id,
+                    kindLabel: kindLabel(r.kind),
+                    body: r.body,
+                    from: `${who(r.author)} (${r.role})`,
+                    meta: [savedAt(r.created_at), r.page || "/", `v${r.app_version}`, r.client].filter(Boolean).join(" · "),
+                  }}
+                />
+              ))}
+            </ul>
+          ) : (
+            <p className="nm-muted">Ingen tilbakemeldinger venter.</p>
+          )}
+        </section>
+        {sent.length ? (
+          <section className="nm-section">
+            <h3 className="nm-h3" style={{ marginBottom: "var(--space-2)" }}>
+              Sendt til GitHub
+            </h3>
+            <ul className="nm-plan-list">
+              {sent.map((r) => (
+                <li key={r.id}>
+                  {r.issue_number && r.issue_url ? (
+                    <a href={r.issue_url} target="_blank" rel="noreferrer">
+                      #{r.issue_number}
+                    </a>
+                  ) : (
+                    "Simulert"
+                  )}{" "}
+                  {kindLabel(r.kind)}: {r.body.length > 80 ? r.body.slice(0, 79) + "…" : r.body}
+                  <span className="nm-hint"> · {r.decided_at ? savedAt(r.decided_at) : ""}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </>
     );
   },
