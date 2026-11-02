@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Inbox, Sparkles, Users, Wrench, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Inbox, ShieldCheck, Sparkles, Users, Wrench, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Brand } from "@/components/Brand";
@@ -11,6 +11,7 @@ export const ADMIN_TABS = [
   { key: "ki", label: "KI" },
   { key: "vedlikehold", label: "Vedlikehold", superadmin: true },
   { key: "tilbakemeldinger", label: "Tilbakemeldinger", superadmin: true },
+  { key: "personvern", label: "Personvern", superadmin: true },
 ] as const;
 
 const TAB_ICONS: Record<(typeof ADMIN_TABS)[number]["key"], LucideIcon> = {
@@ -18,6 +19,7 @@ const TAB_ICONS: Record<(typeof ADMIN_TABS)[number]["key"], LucideIcon> = {
   ki: Sparkles,
   vedlikehold: Wrench,
   tilbakemeldinger: Inbox,
+  personvern: ShieldCheck,
 };
 
 export type AdminTab = (typeof ADMIN_TABS)[number]["key"];
