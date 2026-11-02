@@ -208,7 +208,8 @@ export async function exerciseKiRunAction(input: z.input<typeof exerciseKiInput>
   return runAction("KI", async () => {
     const { d, user, prep } = await exerciseKiPrep(input);
     const r = await runExerciseKi(d, user, prep);
-    refresh();
+    // No refresh() here: the form goes straight on to the bank, which loads fresh. A refresh of this page at the
+    // same time as that navigation left the iPhone on the loading page.
     const warn = r.warnings.length ? ` Merk: ${r.warnings.join(" ")}` : "";
     return { data: r.id, message: `«${r.name}» er laget med KI (${r.costText}) og lagt i banken som kandidat.${warn}` };
   });
