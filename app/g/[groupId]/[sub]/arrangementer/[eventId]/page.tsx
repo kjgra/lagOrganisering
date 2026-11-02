@@ -23,9 +23,6 @@ import { quickDefaults } from "@/lib/quick";
 import { aiSpend, getAiSettings } from "@/lib/store/ai";
 import { listPlayerTags, pairsOf, tagSuggestions } from "@/lib/store/tags";
 
-/** «Hurtigopprett» runs KI, which may take a minute or two; the Server Action runs within this page's limit. */
-export const maxDuration = 300;
-
 /** An event: who is coming, the team proposals, and the training plan. */
 export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arrangementer/[eventId]">) {
   const ctx = await contextFromParams(props.params);

@@ -195,7 +195,7 @@ describe("proposals for the bank at night", () => {
       expect(r.bankProposed).toBe(1);
       const [p] = (await listProposals(m, ann, "G1")).open;
       const tema = HOVEDTEMA.find((t) => t.key === "komme-til-avslutning")!;
-      expect(p).toMatchObject({ kind: "ny_ovelse", exercise_code: "ny-8-9-komme-til-avslutning", exercise_id: null, exercise_name: "Simulert KI-øvelse" });
+      expect(p).toMatchObject({ kind: "ny_ovelse", exercise_code: "ny-8-9-komme-til-avslutning", exercise_id: null, exercise_name: expect.stringMatching(/^Simulert/) });
       expect(p.proposed).toMatchObject({ status: "candidate", bands: ["8-9"], themes: tema.label, min_players: "6", max_players: "10" });
       expect(p.proposed.nff_tags).toContain("tema.komme-til-avslutning");
       expect(p.reason).toContain("ingen gode øvelser for 8–9 år");

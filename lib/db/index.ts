@@ -6,7 +6,7 @@ import { createPostgresDb } from "./postgres";
 /**
  * A minimal database handle over raw, parameterised SQL ($1, $2, ...).
  *
- * The same SQL runs against Supabase (postgres.js over the pooler) and,
+ * The same SQL runs against Supabase (node-postgres over the pooler) and,
  * without DATABASE_URL, against PGlite (Postgres compiled to WebAssembly in
  * the process) so the app can run fully simulated. Rules that keep the two
  * alike: cast counts and sums with ::int or ::float8, and read jsonb as

@@ -35,7 +35,7 @@ Med `TEST_DATABASE_URL` kjøres migreringstesten også mot ekte Postgres.
 
 - `app/` – sider, Server Actions og Route Handlers (PDF, arkiv).
 - `lib/spond/` – Spond-klient (uoffisielt API) og simulering. Bare på serveren.
-- `lib/db/` – Postgres via `postgres.js`, eller PGlite i simulering. Samme SQL-migreringer.
+- `lib/db/` – Postgres via `node-postgres` (`pg`), eller PGlite i simulering. Samme SQL-migreringer.
 - `lib/store/` – all databasetilgang, med tilgangssjekk per gruppe.
 - `lib/plans/`, `lib/ai/`, `lib/pdf/` – treningsopplegg, tegninger, KI og PDF.
 - `supabase/migrations/` – skjemaet. RLS er på for alle tabeller, uten policyer: bare serveren når databasen.
