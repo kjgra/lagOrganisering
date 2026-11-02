@@ -30,12 +30,14 @@ export default async function SettingsPage(props: PageProps<"/innstillinger">) {
           {rights.superadmin ? " Du er superadmin." : rights.admin ? " Du er administrator." : ""}
           {rights.ai ? " Du har tilgang til KI." : ""}
         </p>
-        <p>
-          <a href="/personvern">Personvern: hva appen lagrer og hvorfor</a>
-        </p>
         <a href="/logg-ut" className="nm-btn nm-btn--secondary">
           Logg ut
         </a>
+        <p style={{ margin: "var(--space-6) 0 0" }}>
+          <Link className="nm-link" href={`/personvern?fra=${encodeURIComponent(`/innstillinger?fra=${encodeURIComponent(back)}`)}`}>
+            Personvern: hva appen lagrer og hvorfor
+          </Link>
+        </p>
       </section>
       <section className="nm-section">
         <h2 className="nm-h2">Om appen</h2>

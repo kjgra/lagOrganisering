@@ -32,3 +32,16 @@ test("the privacy notice is open without login and linked from the login page", 
   await expect(page.getByRole("heading", { name: "Personvern", level: 1 })).toBeVisible();
   await expect(page.getByText("lagrer ikke navn", { exact: false })).toBeVisible();
 });
+
+test("the privacy notice opened from settings returns to settings", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/innstillinger");
+  await page.getByRole("link", { name: "Personvern: hva appen lagrer og hvorfor" }).click();
+  await expect(page.getByRole("heading", { name: "Personvern", level: 1 })).toBeVisible();
+  await page.getByRole("link", { name: "Lukk og gå tilbake til innstillinger" }).click();
+  await expect(page).toHaveURL(/\/innstillinger(\?|$)/);
+  await page.getByRole("link", { name: "Personvern: hva appen lagrer og hvorfor" }).click();
+  await page.getByRole("link", { name: "Tilbake til innstillinger", exact: true }).click();
+  await expect(page).toHaveURL(/\/innstillinger(\?|$)/);
+});

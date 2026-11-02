@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { X } from "lucide-react";
 import Link from "next/link";
 import { Brand } from "@/components/Brand";
+import { Icon } from "@/components/ui/icon";
 import { env } from "@/lib/env";
 import { DEPARTED_DAYS } from "@/lib/store/departed";
 import { MAINTENANCE_RULES } from "@/lib/maintenance";
+import { safeBack } from "@/lib/settings-nav";
 
 export const metadata: Metadata = { title: "Personvern" };
 
@@ -12,7 +15,10 @@ export const metadata: Metadata = { title: "Personvern" };
  * linked from Spond. Controller and contact come from PRIVACY_CONTROLLER and
  * PRIVACY_CONTACT; keep the text in line with what the code really does.
  */
-export default function PrivacyPage() {
+export default async function PrivacyPage(props: PageProps<"/personvern">) {
+  // From Innstillinger the page gets ?fra=, so «back» and the close button return there.
+  const back = safeBack((await props.searchParams).fra);
+  const fromSettings = back.startsWith("/innstillinger");
   const e = env();
   const controller = e.PRIVACY_CONTROLLER.trim() || "Trenerteamet som bruker appen i Nymark";
   const contact = e.PRIVACY_CONTACT.trim() || "treneren på laget, i Spond";
@@ -20,6 +26,9 @@ export default function PrivacyPage() {
     <div className="nm-login">
       <div className="nm-login__top nm-chrome">
         <Brand />
+        <Link href={back} className="nm-iconbtn" aria-label={fromSettings ? "Lukk og gå tilbake til innstillinger" : "Lukk"} style={{ color: "var(--on-chrome)" }}>
+          <Icon icon={X} />
+        </Link>
       </div>
       <div className="nm-login__body">
         <article className="nm-login__card">
@@ -92,8 +101,8 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          <Link className="nm-btn nm-btn--secondary nm-btn--block" href="/">
-            Til appen
+          <Link className="nm-btn nm-btn--secondary nm-btn--block" href={back}>
+            {fromSettings ? "Tilbake til innstillinger" : "Til appen"}
           </Link>
         </article>
       </div>
