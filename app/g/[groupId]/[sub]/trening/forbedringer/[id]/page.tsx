@@ -24,7 +24,7 @@ export default async function ProposalPage(props: PageProps<"/g/[groupId]/[sub]/
         {p.exercise_id ? (
           <>
             {" · "}
-            <Link href={ctx.path(`/trening/ovelser/${p.exercise_id}`)} style={{ textDecoration: "underline" }}>
+            <Link href={ctx.path(`/trening/ovelser/${p.exercise_id}/vis`)} style={{ textDecoration: "underline" }}>
               Se øvelsen
             </Link>
           </>

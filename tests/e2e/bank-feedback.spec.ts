@@ -5,7 +5,7 @@ test("evaluate an exercise from the bank", async ({ page }) => {
   await login(page);
   await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
   await page.goto("/g/G-FOTBALL/alle/trening/ovelser");
-  await page.locator(".nm-pick a").first().click();
+  await page.locator(".nm-pick").first().getByRole("link", { name: /^Evaluer / }).click();
   await expect(page).toHaveURL(/\/trening\/ovelser\/\d+\/evaluering/);
   await expect(page.getByLabel("Navn")).toHaveCount(0);
 
@@ -28,6 +28,28 @@ test("evaluate an exercise from the bank", async ({ page }) => {
   await expect(page).toHaveURL(/\/trening\/ovelser\/\d+$/);
   await expect(page.getByLabel("Navn")).toBeVisible();
   await expect(page.getByRole("button", { name: "Lagre evalueringen" })).toHaveCount(0);
+});
+
+test("the exercise name shows the exercise, read only", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/g/G-FOTBALL/alle/trening/ovelser/ny");
+  const name = `Vises ${Date.now()}`;
+  await page.getByLabel("Navn").fill(name);
+  await page.locator(".nm-field", { has: page.locator(".nm-field__label", { hasText: /^Kategori$/ }) }).locator("select").selectOption("smaaspill");
+  await page.getByLabel("Gjennomføring").fill("Spill 3 mot 3 på to små mål");
+  await page.getByRole("button", { name: "Lagre øvelsen" }).click();
+  await expect(page).toHaveURL(/\/trening\/ovelser$/);
+
+  await page.getByRole("link", { name, exact: true }).click();
+  await expect(page).toHaveURL(/\/trening\/ovelser\/\d+\/vis$/);
+  await expect(page.getByRole("heading", { name })).toBeVisible();
+  await expect(page.getByText("Spill 3 mot 3 på to små mål")).toBeVisible();
+  await expect(page.getByLabel("Navn")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Lagre evalueringen" })).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Evaluer øvelsen" }).click();
+  await expect(page).toHaveURL(/\/evaluering$/);
 });
 
 test("make a new exercise with KI from the bank", async ({ page }) => {
@@ -220,7 +242,7 @@ test("a comment on an exercise shows up in «Dette sier trenerne»", async ({ pa
   await page.getByRole("button", { name: "Lagre øvelsen" }).click();
   await expect(page).toHaveURL(/\/trening\/ovelser$/);
 
-  await page.locator(".nm-pick a", { hasText: name }).click();
+  await page.getByRole("link", { name: `Evaluer ${name}`, exact: true }).click();
   await expect(page).toHaveURL(/\/evaluering$/);
   const evaluation = page.url();
   await page.getByRole("button", { name: "👎 Dårlig" }).click();
