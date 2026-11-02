@@ -60,3 +60,14 @@ describe("personal data", () => {
     await expect(eraseTrainer(d, sa, "P-SA", "P-SA")).rejects.toThrow(/deg selv/);
   });
 });
+
+describe("names in free text", () => {
+  it("stops names of the group's members, and lets other text through", async () => {
+    const { memberNames, storedNamesProblem } = await import("@/lib/sensitive");
+    const names = memberNames([{ firstName: "Emma", lastName: "Haugen" }, { firstName: "Per", lastName: "Olsen" }]);
+    expect(storedNamesProblem(["Lag 1", "Keeper"], names)).toBeNull();
+    expect(storedNamesProblem(["Lag 1", "Emma og laget"], names)).toMatch(/«Emma».*Navn lagres ikke i appen/);
+    expect(storedNamesProblem(["Per Olsen spiller godt"], names)).toMatch(/Per Olsen/);
+    expect(storedNamesProblem(["per økt"], names)).toBeNull();
+  });
+});

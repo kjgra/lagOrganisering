@@ -5,6 +5,8 @@ import { z } from "zod";
 import { runAction, type ActionResult } from "@/lib/actions";
 import { requireUser } from "@/lib/auth/current";
 import { db } from "@/lib/db";
+import { UserError } from "@/lib/store/access";
+import { memberNames, storedNamesProblem } from "@/lib/sensitive";
 import { acquireLock, addComment, releaseLock, saveProposal, transition, type Action } from "@/lib/store/proposals";
 
 const id = z.number().int().positive();
@@ -34,6 +36,8 @@ export async function commentAction(proposalId: number, body: string): Promise<A
   return runAction("Lagring av kommentar", async () => {
     const v = z.object({ id, body: z.string().max(4000) }).parse({ id: proposalId, body });
     const user = await requireUser();
+    const np = storedNamesProblem([v.body], memberNames(user.data.groups.flatMap((g) => g.members)));
+    if (np) throw new UserError(np);
     await addComment(await db(), user.access, v.id, v.body);
     refresh();
     return { data: undefined };
@@ -61,6 +65,8 @@ export async function saveProposalAction(input: z.input<typeof saveInput>): Prom
     const v = saveInput.parse(input);
     const user = await requireUser();
     const group = user.data.groups.find((g) => g.id === v.groupId);
+    const np = storedNamesProblem([v.name, ...v.labels], memberNames(group?.members ?? []));
+    if (np) throw new UserError(np);
     const known = new Set(group?.members.map((m) => m.id) ?? []);
     const assignments = Object.fromEntries(Object.entries(v.assignments).filter(([m]) => known.has(m) || v.eventId));
     const saved = await saveProposal(await db(), user.access, { ...v, assignments });

@@ -6,6 +6,7 @@ import { runAction, type ActionResult } from "@/lib/actions";
 import { requireUser } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { UserError } from "@/lib/store/access";
+import { memberNames, storedNamesProblem } from "@/lib/sensitive";
 import { addPair, addTag, removePair, removeTag, setLevel } from "@/lib/store/tags";
 
 const id = z.string().max(100);
@@ -27,6 +28,9 @@ export async function addTagAction(groupId: string, memberId: string, tag: strin
   return runAction("Lagring av tagg", async () => {
     const v = input.parse({ groupId, memberId, tag });
     const user = await checkMembers(v.groupId, v.memberId);
+    const group = user.data.groups.find((g) => g.id === v.groupId);
+    const np = storedNamesProblem([v.tag], memberNames(group?.members ?? []));
+    if (np) throw new UserError(np);
     const t = await addTag(await db(), user.access, user.rights, v.groupId, v.memberId, v.tag);
     refresh();
     return { data: t };
