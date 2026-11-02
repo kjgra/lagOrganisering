@@ -9,9 +9,6 @@ import { CATEGORIES, pitchFacts } from "@/lib/plans/plan";
 import { aiSpend, getAiSettings } from "@/lib/store/ai";
 import { getTeamSettings, seasonTheme, teamPitches } from "@/lib/store/training";
 
-/** KI may take a minute; the Server Action runs within this page's limit. */
-export const maxDuration = 300;
-
 /** «Ny øvelse med KI»: one exercise for the bank, ordered like a session plan. */
 export default async function ExerciseKiPage(props: PageProps<"/g/[groupId]/[sub]/trening/ovelser/ki">) {
   const ctx = await contextFromParams(props.params);

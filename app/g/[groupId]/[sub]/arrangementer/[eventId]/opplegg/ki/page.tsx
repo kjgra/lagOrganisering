@@ -13,9 +13,6 @@ import { eventIsPast, responseCounts } from "@/lib/spond/events";
 import { aiSpend, getAiSettings } from "@/lib/store/ai";
 import { getPlan, getTeamSettings, listPlanComments, teamPitches } from "@/lib/store/training";
 
-/** KI may take a minute or two; the Server Action runs within this page's limit. */
-export const maxDuration = 300;
-
 export default async function KiPage(props: PageProps<"/g/[groupId]/[sub]/arrangementer/[eventId]/opplegg/ki">) {
   const ctx = await contextFromParams(props.params);
   const { eventId } = await props.params;

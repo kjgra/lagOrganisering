@@ -25,6 +25,13 @@ const barlowCondensed = localFont({
   ],
 });
 
+/**
+ * Every page may run for up to 5 minutes, since KI (from a Server Action on the page) can take a minute or two.
+ * Set here for all pages, not per page: pages with their own limit became separate functions on Vercel, and
+ * client-side navigation to them could hang on the loading page in Safari on iPhone.
+ */
+export const maxDuration = 300;
+
 export const metadata: Metadata = {
   title: appTitle(),
   description: "Fordel spillere på lag og lag treningsopplegg for trenere i Nymark.",

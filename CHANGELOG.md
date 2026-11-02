@@ -16,6 +16,7 @@ Etter «Ny øvelse med KI» kommer du rett tilbake til øvelsesbanken.
 
 - Når KI er ferdig med en ny øvelse, går appen tilbake til øvelsesbanken og viser den nye øvelsen merket «Ny». Før åpnet den redigeringen av øvelsen, og du måtte trykke «Tilbake» to ganger for å komme til banken.
 - «Ny øvelse med KI» kunne bli stående på lastesiden i hjemskjerm-appen på iPhone når KI var ferdig.
+- Sider kunne bli stående på lastesiden i hjemskjerm-appen på iPhone: KI-sidene og arrangementssiden («Påmeldte»), særlig etter at KI var brukt eller etter «Tilbake». Disse sidene hadde en egen tidsgrense, og ble derfor egne funksjoner hos Vercel. Nå har alle sidene den samme grensen.
 - Med simulert KI (test og preview) gir et ønske en ny eksempeløvelse hver gang, så «Ny øvelse med KI» kan prøves flere ganger uten å bli stoppet som «ligner for mye».
 
 ## [1.8.1] – 2026-11-02
