@@ -21,6 +21,7 @@ import { aiSpend, aiUsagePeriod, getAiSettings } from "@/lib/store/ai";
 import { archiveKey, archiveLog, archivePending } from "@/lib/store/archive";
 import { feedbackInbox } from "@/lib/store/feedback";
 import { listRoles } from "@/lib/store/roles";
+import { DEPARTED_DAYS } from "@/lib/store/departed";
 
 /** The admin panel: one tab per page, per main group (?lag=). */
 export default async function AdminTabPage(props: PageProps<"/innstillinger/[tab]">) {
@@ -318,7 +319,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
         <section className="nm-section">
           <p style={{ marginTop: 0 }}>
             Vedlikeholdet kjører automatisk ved innlogging, høyst én gang i døgnet. Mellomversjoner av opplegg slettes etter {MAINTENANCE_RULES.versionDays} dager (første,
-            siste og godkjente versjon beholdes). KI-bruk eldre enn {MAINTENANCE_RULES.aiMonths} måneder summeres per måned. Opplegg eldre enn ett år arkiveres av superadmin.
+            siste og godkjente versjon beholdes). KI-bruk eldre enn {MAINTENANCE_RULES.aiMonths} måneder summeres per måned. Opplegg eldre enn ett år arkiveres av superadmin. Nivå, tagger og par for spillere som har sluttet i gruppen i Spond, slettes etter {DEPARTED_DAYS} dager.
           </p>
           <p>
             <strong>Sist kjørt:</strong> {m.last_run ? `${savedAt(m.last_run)}${m.run_by ? ` (${m.run_by === user.session.profileId ? "av deg" : `ved innlogging av ${runner(m.run_by)}`})` : ""}` : "aldri"}
