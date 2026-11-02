@@ -50,7 +50,7 @@ Settings → Environment Variables:
 | `APP_ENV` | (tom) | `TEST` |
 | `PRIVACY_CONTROLLER`, `PRIVACY_CONTACT` | hvem som er ansvarlig og hvem foreldre kontakter, vises på /personvern | valgfri |
 
-Appen nekter å starte i Production hvis `SPOND_MOCK`/`AI_MOCK` er på, eller hvis `DATABASE_URL` eller `SESSION_SECRET` mangler. `SPOND_MOCK` sammen med en `DATABASE_URL` som ikke er localhost, stoppes i alle miljøer, så demokontoene aldri når ekte data.
+Appen nekter å starte i Production hvis `SPOND_MOCK`/`AI_MOCK` er på (unntatt i demoprosjektet, se avsnitt 11), eller hvis `DATABASE_URL` eller `SESSION_SECRET` mangler. `SPOND_MOCK` sammen med en `DATABASE_URL` som ikke er localhost, stoppes i alle miljøer, så demokontoene aldri når ekte data.
 
 Uten `DATABASE_URL` i Preview brukes en database i minnet med demodata; den nullstilles når funksjonen startes på nytt.
 
@@ -169,6 +169,21 @@ Workflowen «Feilvakt» følger med på resten:
 - Hvert kvarter kaller den `/api/helse` (bruker repo-variabelen `APP_URL` fra §7). Svarer ikke appen etter tre forsøk, lages saken «Appen svarer ikke (helsesjekk)» med etiketten `nede`. Den lukkes av seg selv når appen svarer igjen.
 - Den bruker bare innebygd `GITHUB_TOKEN`, ingen nye secrets.
 
+## 11. Demo-app (valgfritt)
+
+En offentlig demo som alltid er lik prod, men med falsk innlogging, falske spillere og simulert KI. Den har ingen database: dataene ligger i minnet og nullstilles når funksjonen starter på nytt.
+
+1. **Vercel → Add New → Project**: importer det samme repoet én gang til, f.eks. som `nymark-demo`. Production-branchen er `main`, så demoen bygges på nytt ved hver merge.
+2. **Settings → Environment Variables**, Production:
+   - `APP_ENV=DEMO` (viser DEMO ved logoen og slår på demomodus)
+   - `SPOND_MOCK=true` og `AI_MOCK=true`
+   - `SESSION_SECRET` (egen verdi, `openssl rand -base64 48`)
+   - ikke `DATABASE_URL`, `ANTHROPIC_API_KEY`, `GITHUB_FEEDBACK_TOKEN` eller `VAPID_*`: appen nekter å starte i demo med database, KI-nøkkel eller GitHub-token.
+3. **Settings → Deployment Protection**: Vercel Authentication beskytter ikke Production-domenet som standard, så demoen er åpen for alle med adressen.
+4. Deploy på nytt. Logg inn med `kjetil@demo.no` / `demo`.
+
+Uten `APP_ENV=DEMO` nekter Production fortsatt simulering, så prod-prosjektet kan ikke ved en feil gå i demomodus.
+
 ## Sjekkliste
 
 - [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt
@@ -179,4 +194,5 @@ Workflowen «Feilvakt» følger med på resten:
 - [ ] Eventuelt preview-database (avsnitt 5) og fast preview-adresse (avsnitt 6)
 - [ ] Eventuelt varsler etter trening (avsnitt 7)
 - [ ] Eventuelt `GITHUB_FEEDBACK_TOKEN` for tilbakemeldinger (avsnitt 9)
+- [ ] Eventuelt demo-app (avsnitt 11)
 - [ ] Deploy fra `main`, logg inn, sjekk Innstillinger → Generelt (ingen «simulert»)

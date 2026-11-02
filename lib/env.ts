@@ -7,9 +7,10 @@ import { z } from "zod";
  * Simulation: with SPOND_MOCK=true the app uses a fake Spond with demo data,
  * without DATABASE_URL it uses PGlite (Postgres in the process), and with
  * AI_MOCK=true (and no ANTHROPIC_API_KEY) KI answers with a canned plan.
- * Production (VERCEL_ENV=production) refuses all three. SPOND_MOCK with a
- * remote DATABASE_URL is refused everywhere: the public demo logins would
- * give superadmin on real data.
+ * Production (VERCEL_ENV=production) refuses all three, except in a demo
+ * deployment (APP_ENV=DEMO, see isDemo). SPOND_MOCK with a remote
+ * DATABASE_URL is refused everywhere: the public demo logins would give
+ * superadmin on real data.
  */
 
 const list = (fallback: string[]) =>
@@ -99,7 +100,18 @@ export function env(): Env {
   if (cached) return cached;
   const parsed = schema.parse(process.env);
   const prod = parsed.VERCEL_ENV === "production";
-  if (prod) {
+  if (prod && isDemo(parsed.APP_ENV)) {
+    // A separate Vercel project that runs main fully simulated: fake Spond,
+    // canned KI and the in-memory database, never a real database or key.
+    const problems = [
+      !parsed.SPOND_MOCK && "SPOND_MOCK=true mangler",
+      parsed.DATABASE_URL && "DATABASE_URL kan ikke brukes i demo",
+      parsed.ANTHROPIC_API_KEY && "ANTHROPIC_API_KEY kan ikke brukes i demo",
+      parsed.GITHUB_FEEDBACK_TOKEN && "GITHUB_FEEDBACK_TOKEN kan ikke brukes i demo",
+      parsed.SESSION_SECRET.length < 32 && "SESSION_SECRET må ha minst 32 tegn",
+    ].filter(Boolean);
+    if (problems.length) throw new Error(`Feil i miljøvariabler (demo): ${problems.join("; ")}.`);
+  } else if (prod) {
     const problems = [
       parsed.SPOND_MOCK && "SPOND_MOCK kan ikke brukes i produksjon",
       parsed.AI_MOCK && "AI_MOCK kan ikke brukes i produksjon",
@@ -120,6 +132,11 @@ export function env(): Env {
   }
   cached = parsed;
   return parsed;
+}
+
+/** APP_ENV=DEMO marks a public demo deployment (allowed in Production, fully simulated). */
+export function isDemo(appEnv: string): boolean {
+  return appEnv.trim().toUpperCase() === "DEMO";
 }
 
 /** "TEST", "DEMO" or "" for production, shown next to the logo. */

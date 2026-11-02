@@ -44,3 +44,32 @@ describe("database region", () => {
     expect(env().DATABASE_URL).toContain("us-east-1");
   });
 });
+
+describe("demo deployment", () => {
+  const demo = { VERCEL_ENV: "production", APP_ENV: "DEMO", SPOND_MOCK: "true", AI_MOCK: "true", SESSION_SECRET: "x".repeat(40) };
+
+  it("runs simulated in production with APP_ENV=DEMO", async () => {
+    const env = await load({ ...demo, DATABASE_URL: "", ANTHROPIC_API_KEY: "", GITHUB_FEEDBACK_TOKEN: "" });
+    expect(env().SPOND_MOCK).toBe(true);
+    const { envLabel } = await import("@/lib/env");
+    expect(envLabel()).toBe("DEMO");
+  });
+
+  it("still refuses simulation in production without APP_ENV=DEMO", async () => {
+    const env = await load({ ...demo, APP_ENV: "" });
+    expect(() => env()).toThrow(/SPOND_MOCK kan ikke/);
+  });
+
+  it("refuses a database, KI key, feedback token or missing secret in demo", async () => {
+    for (const [k, v, msg] of [
+      ["DATABASE_URL", "postgresql://u:p@localhost:5432/postgres", /DATABASE_URL/],
+      ["ANTHROPIC_API_KEY", "sk-test", /ANTHROPIC_API_KEY/],
+      ["GITHUB_FEEDBACK_TOKEN", "ghp_test", /GITHUB_FEEDBACK_TOKEN/],
+      ["SESSION_SECRET", "short", /SESSION_SECRET/],
+      ["SPOND_MOCK", "false", /SPOND_MOCK/],
+    ] as const) {
+      const env = await load({ DATABASE_URL: "", ANTHROPIC_API_KEY: "", GITHUB_FEEDBACK_TOKEN: "", ...demo, [k]: v });
+      expect(() => env()).toThrow(msg);
+    }
+  });
+});
