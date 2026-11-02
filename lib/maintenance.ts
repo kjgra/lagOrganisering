@@ -1,6 +1,9 @@
 import "server-only";
 import { db, type Db } from "@/lib/db";
+import { ERROR_KEEP_DAYS } from "@/lib/error-report";
 import { MONTH_NAMES, osloMonthStart } from "@/lib/format";
+import { deleteOldErrors } from "@/lib/store/errors";
+import { reportError } from "@/lib/errors";
 
 /**
  * Clean-up rules:
@@ -10,17 +13,19 @@ import { MONTH_NAMES, osloMonthStart } from "@/lib/format";
  *   model (without the trainer), and the rows are deleted.
  * - Plans for trainings older than 12 months are only deleted after the
  *   superadmin has downloaded the archive (see lib/store/archive.ts).
+ * - Rows in the error log not seen for 90 days are deleted.
  *
  * Runs after a login at most once a day (the row in `maintenance` is claimed
  * with one UPDATE, so two servers never run it at once), or from the admin panel.
  */
 
-export const MAINTENANCE_RULES = { versionDays: 30, archiveDays: 365, aiMonths: 12 };
+export const MAINTENANCE_RULES = { versionDays: 30, archiveDays: 365, aiMonths: 12, errorDays: ERROR_KEEP_DAYS };
 
 export interface MaintenanceResult {
   versions: number;
   aiRows: number;
   aiBefore: Date;
+  errors: number;
 }
 
 export async function runMaintenance(d: Db, now: Date = new Date()): Promise<MaintenanceResult> {
@@ -56,7 +61,8 @@ export async function runMaintenance(d: Db, now: Date = new Date()): Promise<Mai
       [aiBefore.toISOString()],
     );
     const ai = await t.query("DELETE FROM ai_usage WHERE created_at < $1::timestamptz RETURNING id", [aiBefore.toISOString()]);
-    return { versions: versions.length, aiRows: ai.length, aiBefore };
+    const errors = await deleteOldErrors(t, now);
+    return { versions: versions.length, aiRows: ai.length, aiBefore, errors };
   });
 }
 
@@ -70,6 +76,7 @@ export function maintenanceResultText(r: MaintenanceResult): string {
     const year = m.find((x) => x.type === "year")?.value;
     parts.push(`${r.aiRows} KI-kall fra før ${MONTH_NAMES[month - 1].toLowerCase()} ${year} summert per måned`);
   }
+  if (r.errors > 0) parts.push(`${r.errors} ${r.errors === 1 ? "gammel feil" : "gamle feil"} slettet fra feilloggen`);
   return `${parts.join(", ")}.`;
 }
 
@@ -91,7 +98,7 @@ export async function runMaintenanceNow(d: Db, by: string, force = false, now: D
     await d.query("UPDATE maintenance SET last_result = $1 WHERE id = 1", [maintenanceResultText(res)]);
     return res;
   } catch (err) {
-    console.error("Vedlikehold feilet:", (err as Error).message);
+    await reportError("Vedlikehold", err);
     await d.query("UPDATE maintenance SET last_result = $1 WHERE id = 1", ["Vedlikeholdet feilet. Se loggen hos Vercel."]);
     throw err;
   }

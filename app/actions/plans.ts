@@ -33,6 +33,7 @@ import {
   TooSimilarError,
   unapprovePlan,
 } from "@/lib/store/training";
+import { reportError } from "@/lib/errors";
 
 const id = z.number().int().positive();
 const sid = z.string().min(1).max(100);
@@ -321,7 +322,7 @@ function analyseLater() {
     try {
       await analyseBank(await db());
     } catch (err) {
-      console.error("Analyse av innspill feilet:", (err as Error).message);
+      await reportError("Analyse av innspill", err);
     }
   });
 }

@@ -5,6 +5,7 @@ import { GithubError } from "@/lib/github";
 import { FeedbackError } from "@/lib/plans/feedback";
 import { PlanError } from "@/lib/plans/plan";
 import { UserError } from "@/lib/store/access";
+import { reportError } from "@/lib/errors";
 
 const USER_ERRORS = [UserError, AiError, PlanError, FeedbackError, DrawingError, GithubError];
 
@@ -23,7 +24,7 @@ export async function runAction<T>(what: string, f: () => Promise<{ data: T; mes
     if (USER_ERRORS.some((E) => err instanceof E)) return { ok: false, error: (err as Error).message };
     if (err && typeof err === "object" && "digest" in err && String((err as { digest: unknown }).digest).startsWith("NEXT_")) throw err;
     if (err instanceof Error && err.name === "ZodError") return { ok: false, error: "Ugyldige data." };
-    console.error(`${what} feilet:`, (err as Error).message);
+    await reportError(what, err);
     return { ok: false, error: "Fikk ikke lagret. Prøv igjen om litt." };
   }
 }

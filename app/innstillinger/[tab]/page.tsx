@@ -9,6 +9,7 @@ import { ADMIN_TABS, SettingsShell, type AdminTab } from "@/components/settings/
 import { adminContext, allTrainers, type AdminContext } from "@/lib/admin";
 import { AI_MODELS, budgetCheck, formatNok } from "@/lib/ai/plan-ai";
 import { db } from "@/lib/db";
+import { ERROR_ISSUES_PER_DAY, ERROR_KEEP_DAYS, ERROR_LABEL } from "@/lib/error-report";
 import { FEEDBACK_KINDS } from "@/lib/feedback";
 import { feedbackRepo, githubMode } from "@/lib/github";
 import { superadminId } from "@/lib/env";
@@ -19,6 +20,7 @@ import { movedPath } from "@/lib/settings-nav";
 import { profileName } from "@/lib/proposal-view";
 import { aiSpend, aiUsagePeriod, getAiSettings } from "@/lib/store/ai";
 import { archiveKey, archiveLog, archivePending } from "@/lib/store/archive";
+import { listErrors } from "@/lib/store/errors";
 import { feedbackInbox } from "@/lib/store/feedback";
 import { listRoles } from "@/lib/store/roles";
 import { personSummary, summaryLines } from "@/lib/personal-export";
@@ -39,7 +41,7 @@ export default async function AdminTabPage(props: PageProps<"/innstillinger/[tab
   return (
     <SettingsShell user={ctx.user} back={ctx.back} tab={t.key} groupId={ctx.group.id}>
       <h2 className="nm-h2">{t.label}</h2>
-      {t.key !== "vedlikehold" && t.key !== "trenere" && t.key !== "tilbakemeldinger" ? <GroupSelect groups={ctx.user.data.groups.map((g) => ({ id: g.id, name: g.name }))} current={ctx.group.id} hrefFor={hrefFor} /> : null}
+      {t.key !== "vedlikehold" && t.key !== "trenere" && t.key !== "tilbakemeldinger" && t.key !== "feillogg" ? <GroupSelect groups={ctx.user.data.groups.map((g) => ({ id: g.id, name: g.name }))} current={ctx.group.id} hrefFor={hrefFor} /> : null}
       {body}
     </SettingsShell>
   );
@@ -372,6 +374,63 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
     );
   },
 
+  async feillogg({ user }) {
+    const errors = await listErrors(await db(), user.rights);
+    const mode = githubMode();
+    const repo = feedbackRepo();
+    return (
+      <>
+        <p style={{ marginTop: 0 }}>
+          Feil i appen, både på serveren og i nettleseren, gruppert slik at samme feil vises én gang med antall. I prod blir en ny type feil automatisk en sak med etiketten
+          «{ERROR_LABEL}» i{" "}
+          <a href={`https://github.com/${repo}/issues?q=label%3A${ERROR_LABEL}`} target="_blank" rel="noreferrer">
+            {repo}
+          </a>{" "}
+          (høyst {ERROR_ISSUES_PER_DAY} i døgnet), uten navn eller id-er. Feil som ikke er sett på {ERROR_KEEP_DAYS} dager, slettes.
+        </p>
+        {mode !== "real" ? (
+          <p className="nm-hint" style={{ margin: "0 0 var(--space-4)" }}>
+            {mode === "off" ? "GitHub er ikke satt opp (GITHUB_FEEDBACK_TOKEN), så feilene lagres bare her." : "Demo og preview: feilene lagres bare her, ingen saker på GitHub."}
+          </p>
+        ) : null}
+        {errors.length ? (
+          <ul className="nm-stack" style={{ listStyle: "none", padding: 0, margin: 0, gap: "var(--space-3)" }}>
+            {errors.map((e) => (
+              <li key={e.id} className="nm-exercise">
+                <strong>{e.area}</strong>
+                <p style={{ margin: "var(--space-1) 0", overflowWrap: "anywhere" }}>{e.message}</p>
+                <p className="nm-hint" style={{ margin: 0 }}>
+                  {e.count} {e.count === 1 ? "gang" : "ganger"} · sist {savedAt(e.last_seen)} · v{e.app_version} · {e.source}
+                  {e.route ? ` · ${e.route}` : ""}
+                  {e.issue_number && e.issue_url ? (
+                    <>
+                      {" · "}
+                      <a href={e.issue_url} target="_blank" rel="noreferrer">
+                        #{e.issue_number}
+                      </a>
+                    </>
+                  ) : null}
+                </p>
+                {e.stack ? (
+                  <details>
+                    <summary className="nm-hint" style={{ minHeight: "var(--touch-min)", paddingBlock: "var(--space-3)", cursor: "pointer" }}>
+                      Stack
+                    </summary>
+                    <pre className="nm-hint" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: "var(--space-1) 0 0" }}>
+                      {e.stack}
+                    </pre>
+                  </details>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="nm-muted">Ingen feil er logget. Bra!</p>
+        )}
+      </>
+    );
+  },
+
   async vedlikehold({ user }) {
     const d = await db();
     const [log, pending] = await Promise.all([archiveLog(d), archivePending(d, user.access)]);
@@ -389,7 +448,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
         <section className="nm-section">
           <p style={{ marginTop: 0 }}>
             Vedlikeholdet kjører automatisk ved innlogging, høyst én gang i døgnet. Mellomversjoner av opplegg slettes etter {MAINTENANCE_RULES.versionDays} dager (første,
-            siste og godkjente versjon beholdes). KI-bruk eldre enn {MAINTENANCE_RULES.aiMonths} måneder summeres per måned. Opplegg eldre enn ett år arkiveres av superadmin. Nivå, tagger og par for spillere som har sluttet i gruppen i Spond, slettes etter {DEPARTED_DAYS} dager.
+            siste og godkjente versjon beholdes). KI-bruk eldre enn {MAINTENANCE_RULES.aiMonths} måneder summeres per måned. Opplegg eldre enn ett år arkiveres av superadmin. Nivå, tagger og par for spillere som har sluttet i gruppen i Spond, slettes etter {DEPARTED_DAYS} dager. Feil i feilloggen slettes når de ikke er sett på {MAINTENANCE_RULES.errorDays} dager.
           </p>
           <p>
             <strong>Sist kjørt:</strong> {m.last_run ? `${savedAt(m.last_run)}${m.run_by ? ` (${m.run_by === user.session.profileId ? "av deg" : `ved innlogging av ${runner(m.run_by)}`})` : ""}` : "aldri"}

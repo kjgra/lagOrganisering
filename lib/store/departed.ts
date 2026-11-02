@@ -67,6 +67,6 @@ export async function syncDepartedAfterLogin(groups: { id: string; members: { id
     const { db } = await import("@/lib/db");
     await syncDeparted(await db(), groups.map((g) => ({ id: g.id, memberIds: g.members.map((m) => m.id) })));
   } catch (err) {
-    console.error("Opprydding etter spillere som har sluttet feilet:", (err as Error).message);
+    await (await import("@/lib/errors")).reportError("Opprydding etter spillere som har sluttet", err);
   }
 }

@@ -67,7 +67,7 @@ export default async function SettingsPage(props: PageProps<"/innstillinger">) {
           Spond AS, og bruker Sponds uoffisielle API. Appen skriver aldri til Spond.
         </p>
         <p className="nm-muted">
-          Passordet ditt lagres ikke. Databasen lagrer bare Spond-ID-er, tagger, lagforslag, treningsopplegg, kommentarer og tilbakemeldinger.
+          Passordet ditt lagres ikke. Databasen lagrer bare Spond-ID-er, tagger, lagforslag, treningsopplegg, kommentarer, tilbakemeldinger og en feillogg uten navn.
           Navn hentes fra Spond når de vises.
         </p>
         {envLabel() ? (

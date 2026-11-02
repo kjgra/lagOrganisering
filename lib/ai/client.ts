@@ -4,6 +4,7 @@ import { aiMode, env } from "@/lib/env";
 import { validatePlan } from "@/lib/plans/plan";
 import referencePlan from "@/lib/plans/reference-plan.json";
 import { answerFromPlan, type Usage } from "./plan-ai";
+import { reportError } from "@/lib/errors";
 
 /**
  * One call to the Claude API (Messages). The API key comes from
@@ -94,7 +95,7 @@ export async function callClaude(c: CallInput): Promise<CallResult> {
       if (err.status === 529) return fail("overloaded_error", "KI-tjenesten er overbelastet. Prøv igjen om litt.");
       return fail(`http_${err.status ?? "ukjent"}`, `KI-tjenesten svarte med en feil (HTTP ${err.status ?? "?"}). Prøv igjen om litt.`);
     }
-    console.error("KI-kall feilet:", (err as Error).message);
+    await reportError("KI-kall", err);
     return fail("ukjent", "Noe gikk galt med KI. Prøv igjen om litt.");
   }
 }
@@ -108,7 +109,7 @@ export async function countTokens(c: CallInput): Promise<number | null> {
     const r = await api().messages.countTokens({ model: b.model, system: b.system, messages: b.messages, ...(c.schema ? { output_config: b.output_config } : {}) });
     return r.input_tokens;
   } catch (err) {
-    console.error("Telling av tokens feilet:", (err as Error).message);
+    await reportError("Telling av tokens", err);
     return null;
   }
 }

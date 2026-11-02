@@ -16,6 +16,7 @@ import type { SpondEvent } from "@/lib/spond/types";
 import { activeLocks, listProposals, pendingProposals } from "@/lib/store/proposals";
 import { pendingEvaluations, syncPlanTimes } from "@/lib/store/reminders";
 import { latestPlans } from "@/lib/store/training";
+import { reportError } from "@/lib/errors";
 
 const UNSENT_STEP = 5;
 const PAST_STEP = 30;
@@ -40,7 +41,7 @@ export default async function EventsPage(props: PageProps<"/g/[groupId]/[sub]/ar
   try {
     events = forSubgroup(past ? await pastEvents(ctx.user, ctx.group.id, days, fresh) : await upcomingEvents(ctx.user, ctx.group.id, fresh), sub);
   } catch (err) {
-    console.error("Henting av arrangementer feilet:", (err as Error).message);
+    await reportError("Henting av arrangementer", err);
     error = "Kunne ikke hente arrangementer fra Spond. Prøv igjen om litt.";
   }
 
@@ -67,7 +68,7 @@ export default async function EventsPage(props: PageProps<"/g/[groupId]/[sub]/ar
 
   // The plans learn when their training ends (for reminders), then: trainings this trainer has not evaluated.
   const withPlan = events.filter((e) => plans.some((p) => p.spond_event_id === e.id));
-  await syncPlanTimes(d, ctx.user.access, ctx.group.id, withPlan).catch((err) => console.error("Oppdatering av treningstider feilet:", (err as Error).message));
+  await syncPlanTimes(d, ctx.user.access, ctx.group.id, withPlan).catch((err) => reportError("Oppdatering av treningstider", err));
   const toEvaluate = past ? [] : await pendingEvaluations(d, ctx.user.access, ctx.group.id);
   const push = vapid();
 

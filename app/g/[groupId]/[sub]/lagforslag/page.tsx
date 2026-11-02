@@ -14,6 +14,7 @@ import { eventIsPast } from "@/lib/spond/events";
 import type { SpondEvent } from "@/lib/spond/types";
 import { activeLocks, listProposals, pendingProposals, sortProposals, type Proposal } from "@/lib/store/proposals";
 import { listPlayerTags } from "@/lib/store/tags";
+import { reportError } from "@/lib/errors";
 
 type View = "alle" | "godkjenning" | "utkast";
 
@@ -31,7 +32,7 @@ export default async function ProposalsPage(props: PageProps<"/g/[groupId]/[sub]
     const [up, past] = await Promise.all([upcomingEvents(ctx.user, ctx.group.id), pastEvents(ctx.user, ctx.group.id, 30)]);
     events = forSubgroup([...up, ...past], view === "godkjenning" ? null : sub);
   } catch (err) {
-    console.error("Henting av arrangementer feilet:", (err as Error).message);
+    await reportError("Henting av arrangementer", err);
     error = "Kunne ikke hente arrangementer fra Spond. Forslagene vises uten arrangement.";
   }
   const [tags, locks, all, pending] = await Promise.all([

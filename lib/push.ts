@@ -4,6 +4,7 @@ import type { Db } from "@/lib/db";
 import { vapid } from "@/lib/env";
 import { ctxPath } from "@/lib/routes";
 import { dueReminders, forgetPushSubscription, markReminded, type PushKeys } from "@/lib/store/reminders";
+import { reportError } from "@/lib/errors";
 
 /**
  * Push messages on the trainers' phones (Web Push, VAPID). The message is
@@ -30,7 +31,7 @@ async function send(s: PushKeys, m: PushMessage): Promise<"ok" | "gone" | "error
   } catch (err) {
     const status = (err as { statusCode?: number }).statusCode;
     if (status === 404 || status === 410) return "gone";
-    console.error("Push feilet:", status ?? (err as Error).message);
+    await reportError("Push", status ? new Error(`Push-tjenesten svarte ${status}`) : err);
     return "error";
   }
 }

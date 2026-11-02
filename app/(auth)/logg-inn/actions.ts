@@ -11,6 +11,7 @@ import { writeSession } from "@/lib/auth/session";
 import { runMaintenanceIfDue } from "@/lib/maintenance";
 import { syncDepartedAfterLogin } from "@/lib/store/departed";
 import { spond, SpondError } from "@/lib/spond";
+import { reportError } from "@/lib/errors";
 
 export type LoginState =
   | { status: "idle" }
@@ -57,7 +58,7 @@ export async function login(_prev: LoginState, form: FormData): Promise<LoginSta
   } catch (err) {
     throttle.failed(keys);
     if (err instanceof SpondError) return fail(err.message);
-    console.error("Innlogging feilet:", (err as Error).message);
+    await reportError("Innlogging", err);
     return fail("Fikk ikke kontakt med Spond akkurat nå. Prøv igjen om litt.");
   }
   throttle.succeeded(keys);

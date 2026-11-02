@@ -8,6 +8,16 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.14.0] – 2026-11-03
+
+Feil i appen blir fanget opp automatisk.
+
+### Lagt til
+
+- Feilvakt: feil i appen, både på serveren og i nettleseren, samles i en feillogg under Admin → Feillogg (bare superadmin), med antall, side og versjon. Samme feil vises én gang. I prod blir en ny type feil automatisk en sak på GitHub med etiketten «auto-feil», uten navn, e-post eller id-er, høyst fem i døgnet. Kommer en feil tilbake etter at saken er lukket, lages en ny sak. Feil som ikke er sett på 90 dager, slettes av vedlikeholdet.
+- Personvernsiden forteller om feilloggen og hvor lenge den lagres.
+- Helsesjekk på `/api/helse`, som svarer med versjonen og om databasen svarer.
+
 ## [1.13.0] – 2026-11-03
 
 Trykk på en øvelse i øvelsesbanken for å se den.
