@@ -4,6 +4,8 @@ import { testDb } from "../helpers/db";
 import { migrationFiles } from "@/lib/db/migrations";
 import { createPostgresDb } from "@/lib/db/postgres";
 import { migrate } from "@/lib/db/pglite";
+import type { ExercisePattern } from "@/lib/plans/observations";
+import { allPatterns, savePatterns } from "@/lib/store/observations";
 
 const tables = async (q: (s: string) => Promise<{ relname: string; relrowsecurity: boolean }[]>) =>
   q("SELECT relname, relrowsecurity FROM pg_class WHERE relkind = 'r' AND relnamespace = 'public'::regnamespace");
@@ -59,6 +61,32 @@ describe("migrations", () => {
     expect((await migrate(d)).length).toBeGreaterThan(0);
     const rows = await tables((s) => d.query(s));
     expect(rows.filter((r) => r.relname !== "local_migrations").every((r) => r.relrowsecurity)).toBe(true);
+    // JSON sent as text is stored as JSON, not as a JSON string (as PGlite does).
+    await savePatterns(d, [{ code: "pasning", score: 2.5, ratings: 3, trend: "", patterns: [], bands: [{ band: "8-9", mean: 2.5, ratings: 3, trainers: 2 }] } as unknown as ExercisePattern]);
+    expect(await d.query("SELECT jsonb_typeof(bands) AS t FROM exercise_patterns")).toEqual([{ t: "array" }]);
+    const [p] = await allPatterns(d);
+    expect(Array.isArray(p.bands)).toBe(true);
+    expect(p.bands[0].band).toBe("8-9");
+    await d.close();
+  });
+});
+
+describe("unwrap jsonb migration", () => {
+  it("turns JSON strings that hold an object or a list back into JSON, and keeps other strings", async () => {
+    const d = await testDb({ admin: true });
+    await d.query(
+      `INSERT INTO exercise_patterns (spond_group_id, exercise_code, score, ratings, trend, patterns, bands)
+       VALUES ('B', 'a', 2, 1, '', to_jsonb('[]'::text), to_jsonb('[{"band":"8-9"}]'::text)),
+              ('B', 'b', 2, 1, '', '[]', '[{"band":"6-7"}]'),
+              ('B', 'c', 2, 1, '', '[]', to_jsonb('ikke json'::text))`,
+    );
+    const sql = (await migrationFiles()).find((m) => m.name.endsWith("_unwrap_jsonb.sql"))!.sql;
+    await d.query(sql);
+    expect(await d.query("SELECT exercise_code AS code, jsonb_typeof(patterns) AS p, bands FROM exercise_patterns ORDER BY 1")).toEqual([
+      { code: "a", p: "array", bands: [{ band: "8-9" }] },
+      { code: "b", p: "array", bands: [{ band: "6-7" }] },
+      { code: "c", p: "array", bands: "ikke json" },
+    ]);
     await d.close();
   });
 });

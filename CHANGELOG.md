@@ -8,6 +8,15 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.8.1] – 2026-11-02
+
+«Ny øvelse med KI» virker igjen.
+
+### Fikset
+
+- «Ny øvelse med KI», «Juster med KI» og «Lag opplegg med KI» kunne feile med «Fikk ikke lagret» når banken hadde vurderinger per aldersgruppe. Databasen lagret JSON som tekst i stedet for som lister og objekter. Nå lagres JSON riktig, og det som allerede var lagret som tekst, gjøres om.
+- Det samme gjorde at noe av det KI lærer av, ikke ble regnet med i prod: øktmønstre med rotasjon, minutter per stasjon og banene «Hurtigopprett» husker fra forrige gang.
+
 ## [1.8.0] – 2026-11-01
 
 Opplysninger om spillere som har sluttet, slettes.

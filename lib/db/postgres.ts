@@ -22,6 +22,19 @@ function wrap(sql: Sql, root: postgres.Sql): Db {
 }
 
 /**
+ * JSON parameters: the store passes JSON as text (`JSON.stringify(x)` with
+ * `$n::jsonb`), as PGlite expects. postgres.js would encode such a string as
+ * JSON once more and store a JSON string instead of the object, so text is
+ * passed as it is. Objects are still encoded.
+ */
+const json = {
+  to: 3802,
+  from: [114, 3802],
+  serialize: (x: unknown) => (typeof x === "string" ? x : JSON.stringify(x)),
+  parse: (x: string) => JSON.parse(x) as unknown,
+};
+
+/**
  * Supabase through the connection pooler. `prepare: false` is needed for the
  * transaction pooler (port 6543), which serverless functions should use.
  * Always TLS, except for a Postgres on this machine (local development, CI).
@@ -34,6 +47,7 @@ export function createPostgresDb(url: string): Db {
     idle_timeout: 20,
     connect_timeout: 15,
     onnotice: () => {},
+    types: { json },
   });
   return wrap(root, root);
 }
