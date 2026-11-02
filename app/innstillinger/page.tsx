@@ -33,6 +33,11 @@ export default async function SettingsPage(props: PageProps<"/innstillinger">) {
         <a href="/logg-ut" className="nm-btn nm-btn--secondary">
           Logg ut
         </a>
+        <p style={{ margin: "var(--space-6) 0 0" }}>
+          <Link className="nm-link" href={`/personvern?fra=${encodeURIComponent(`/innstillinger?fra=${encodeURIComponent(back)}`)}`}>
+            Personvern: hva appen lagrer og hvorfor
+          </Link>
+        </p>
       </section>
       <section className="nm-section">
         <h2 className="nm-h2">Om appen</h2>

@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.11.0] – 2026-11-02
+
+Personvernerklæring i appen.
+
+### Lagt til
+
+- Ny side /personvern som forklarer foreldre og trenere hva appen lagrer, hvorfor, hvor dataene er, hvor lenge de lagres og hvilke rettigheter de har. Siden er åpen uten innlogging, så den kan lenkes til fra Spond. Lenke fra innloggingen og fra Innstillinger. Fra Innstillinger kommer du tilbake dit med krysset øverst eller knappen nederst.
+
 ## [1.10.0] – 2026-11-02
 
 Innsyn og sletting når en forelder eller trener ber om det.

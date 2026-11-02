@@ -48,6 +48,7 @@ Settings → Environment Variables:
 | `SPOND_MOCK` | (ikke sett) | `true` for demo |
 | `AI_MOCK` | (ikke sett) | `true` for demo |
 | `APP_ENV` | (tom) | `TEST` |
+| `PRIVACY_CONTROLLER`, `PRIVACY_CONTACT` | hvem som er ansvarlig og hvem foreldre kontakter, vises på /personvern | valgfri |
 
 Appen nekter å starte i Production hvis `SPOND_MOCK`/`AI_MOCK` er på, eller hvis `DATABASE_URL` eller `SESSION_SECRET` mangler. `SPOND_MOCK` sammen med en `DATABASE_URL` som ikke er localhost, stoppes i alle miljøer, så demokontoene aldri når ekte data.
 

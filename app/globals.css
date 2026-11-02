@@ -90,6 +90,7 @@ body { margin: 0; font-family: var(--font-sans); color: var(--ink); background: 
 .nm-iconbtn--outline { border: var(--border-2) solid var(--line-strong); background: var(--surface-raised); color: var(--ink); }
 .nm-iconbtn--chrome { background: var(--chrome-raised); border: var(--border-2) solid var(--chrome-line); color: var(--on-chrome); }
 .nm-link-chrome { color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 2px; }
+.nm-link { color: var(--ink); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 2px; }
 
 /* StatusBadge */
 .nm-badge { display: inline-flex; align-items: center; gap: var(--space-1); padding: 2px 10px 2px 6px; min-height: 28px; border-radius: var(--radius-pill); font-size: 15px; line-height: 20px; font-weight: 700; white-space: nowrap; }

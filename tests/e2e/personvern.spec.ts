@@ -24,3 +24,24 @@ test("a trainer without superadmin cannot download personal data", async ({ page
   await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
   expect((await page.request.get("/api/personvern?lag=G-FOTBALL&person=M-S-G2016-3")).status()).toBe(403);
 });
+
+test("the privacy notice is open without login and linked from the login page", async ({ page }) => {
+  await page.goto("/logg-inn");
+  await page.getByRole("link", { name: "Personvern" }).click();
+  await expect(page).toHaveURL(/\/personvern$/);
+  await expect(page.getByRole("heading", { name: "Personvern", level: 1 })).toBeVisible();
+  await expect(page.getByText("lagrer ikke navn", { exact: false })).toBeVisible();
+});
+
+test("the privacy notice opened from settings returns to settings", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/innstillinger");
+  await page.getByRole("link", { name: "Personvern: hva appen lagrer og hvorfor" }).click();
+  await expect(page.getByRole("heading", { name: "Personvern", level: 1 })).toBeVisible();
+  await page.getByRole("link", { name: "Lukk og gå tilbake til innstillinger" }).click();
+  await expect(page).toHaveURL(/\/innstillinger(\?|$)/);
+  await page.getByRole("link", { name: "Personvern: hva appen lagrer og hvorfor" }).click();
+  await page.getByRole("link", { name: "Tilbake til innstillinger", exact: true }).click();
+  await expect(page).toHaveURL(/\/innstillinger(\?|$)/);
+});
