@@ -98,7 +98,7 @@ export function LoginForm({ notice, demoAccounts }: { notice?: string; demoAccou
         </div>
       ) : null}
       <p className="nm-muted" style={{ margin: 0, fontSize: "var(--fs-caption)", lineHeight: "var(--lh-caption)" }}>
-        Uoffisielt verktøy for trenere i Nymark. Ikke laget eller støttet av Spond AS.
+        Uoffisielt verktøy for trenere i Nymark. Ikke laget eller støttet av Spond AS. <a href="/personvern">Personvern</a>
       </p>
     </form>
   );

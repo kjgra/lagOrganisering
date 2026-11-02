@@ -30,6 +30,9 @@ export default async function SettingsPage(props: PageProps<"/innstillinger">) {
           {rights.superadmin ? " Du er superadmin." : rights.admin ? " Du er administrator." : ""}
           {rights.ai ? " Du har tilgang til KI." : ""}
         </p>
+        <p>
+          <a href="/personvern">Personvern: hva appen lagrer og hvorfor</a>
+        </p>
         <a href="/logg-ut" className="nm-btn nm-btn--secondary">
           Logg ut
         </a>

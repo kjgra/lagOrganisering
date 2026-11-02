@@ -24,3 +24,11 @@ test("a trainer without superadmin cannot download personal data", async ({ page
   await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
   expect((await page.request.get("/api/personvern?lag=G-FOTBALL&person=M-S-G2016-3")).status()).toBe(403);
 });
+
+test("the privacy notice is open without login and linked from the login page", async ({ page }) => {
+  await page.goto("/logg-inn");
+  await page.getByRole("link", { name: "Personvern" }).click();
+  await expect(page).toHaveURL(/\/personvern$/);
+  await expect(page.getByRole("heading", { name: "Personvern", level: 1 })).toBeVisible();
+  await expect(page.getByText("lagrer ikke navn", { exact: false })).toBeVisible();
+});
