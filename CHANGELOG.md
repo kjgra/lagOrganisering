@@ -15,6 +15,7 @@ Etter «Ny øvelse med KI» kommer du rett tilbake til øvelsesbanken.
 ### Endret
 
 - Når KI er ferdig med en ny øvelse, går appen tilbake til øvelsesbanken og viser den nye øvelsen merket «Ny». Før åpnet den redigeringen av øvelsen, og du måtte trykke «Tilbake» to ganger for å komme til banken.
+- Med simulert KI (test og preview) gir et ønske en ny eksempeløvelse hver gang, så «Ny øvelse med KI» kan prøves flere ganger uten å bli stoppet som «ligner for mye».
 
 ## [1.8.1] – 2026-11-02
 

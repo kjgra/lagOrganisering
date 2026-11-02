@@ -77,7 +77,7 @@ export function ExerciseKiForm(p: ExerciseKiFormProps) {
       }}
     >
       {p.simulated ? (
-        <div className="nm-note">KI er simulert i dette miljøet: du får en eksempeløvelse, og ingenting sendes til Anthropic.</div>
+        <div className="nm-note">KI er simulert i dette miljøet: du får en eksempeløvelse, og ingenting sendes til Anthropic. Skriv et ønske for å få en ny eksempeløvelse hver gang.</div>
       ) : null}
       <p style={{ margin: 0 }}>
         KI lager én øvelse ut fra temaet, lagets standard, øvelsesbanken og evalueringene. Øvelsen legges i banken som kandidat, og du kan se over og endre den før den brukes. Navn på spillere sendes aldri.
