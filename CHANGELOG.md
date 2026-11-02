@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.8.2] – 2026-11-02
+
+Etter «Ny øvelse med KI» kommer du rett tilbake til øvelsesbanken.
+
+### Endret
+
+- Når KI er ferdig med en ny øvelse, går appen tilbake til øvelsesbanken og viser den nye øvelsen merket «Ny». Før åpnet den redigeringen av øvelsen, og du måtte trykke «Tilbake» to ganger for å komme til banken.
+
 ## [1.8.1] – 2026-11-02
 
 «Ny øvelse med KI» virker igjen.

@@ -52,8 +52,7 @@ export default async function ExerciseKiPage(props: PageProps<"/g/[groupId]/[sub
         domains={settings.link_domains}
         budgetText={budgetText}
         simulated={aiMode() === "mock"}
-        donePath={listHref}
-        doneQuery=""
+        listHref={listHref}
       />
     </AppShell>
   );

@@ -41,8 +41,17 @@ test("make a new exercise with KI from the bank", async ({ page }) => {
   await page.getByLabel("Antall spillere").fill("8");
   await page.getByRole("button", { name: "Lag øvelse med KI" }).click();
   await expect(page.locator(".nm-toast")).toContainText(/laget med KI .* som kandidat/, { timeout: 30_000 });
-  await expect(page).toHaveURL(/\/trening\/ovelser\/\d+$/);
-  await expect(page.getByText(/laget med KI/).first()).toBeVisible();
+  // Back in the bank, with the new exercise marked; «Tilbake» does not open the KI form again.
+  await expect(page).toHaveURL(/\/trening\/ovelser\?ny=\d+#ovelse-\d+$/);
+  const row = page.locator(".nm-pick--new");
+  await expect(row).toContainText("Simulert KI-øvelse");
+  await expect(row.locator(".nm-badge", { hasText: "Ny" })).toBeVisible();
+  await expect(row.locator(".nm-badge", { hasText: "Kandidat" })).toBeVisible();
+  await page.goBack();
+  await expect(page).not.toHaveURL(/\/ki$/);
+  await page.goForward();
+  await row.getByRole("link", { name: "Juster Simulert KI-øvelse med KI" }).click();
+  await page.getByRole("link", { name: "Endre manuelt i stedet" }).click();
   await expect(page.getByLabel("Status")).toHaveValue("candidate");
   await expect(page.getByLabel("Min. spillere")).toHaveValue("6");
   // The same exercise again is too much like this one: it is not saved twice.

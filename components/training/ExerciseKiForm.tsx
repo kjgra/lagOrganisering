@@ -23,9 +23,8 @@ export interface ExerciseKiFormProps {
   domains: string[];
   budgetText: string;
   simulated: boolean;
-  /** The new exercise opens at `${donePath}/${id}${doneQuery}`. */
-  donePath: string;
-  doneQuery: string;
+  /** The bank list: when KI is done, the trainer lands there, with the new exercise marked. */
+  listHref: string;
 }
 
 /** «Ny øvelse med KI»: order one exercise for the bank, the same way as a session plan. */
@@ -63,7 +62,8 @@ export function ExerciseKiForm(p: ExerciseKiFormProps) {
       setRunning(false);
       if (!r.ok) return setError(r.error);
       if (r.message) toast(r.message);
-      router.push(`${p.donePath}/${r.data}${p.doneQuery}`);
+      // Replace the form in the history, so «Tilbake» from the bank does not open it again.
+      router.replace(`${p.listHref}?ny=${r.data}#ovelse-${r.data}`);
     });
 
   return (

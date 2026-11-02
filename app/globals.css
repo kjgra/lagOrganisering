@@ -53,14 +53,14 @@
 html, body { height: 100%; }
 body { margin: 0; font-family: var(--font-sans); color: var(--ink); background: var(--surface); -webkit-font-smoothing: antialiased; }
 :where(button, input, select, textarea) { font: inherit; color: inherit; }
-:focus-visible { outline: var(--border-focus) solid var(--focus); outline-offset: 2px; }
+:focus-visible { outline: var(--border-focus) solid var(--focus); outline-offset: calc(var(--border-2) * -1); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 
 
 /* Nymark – komponentstiler. Alle verdier kommer fra tokens.css. */
 .nm-root { font-family: var(--font-sans); color: var(--ink); background: var(--surface); -webkit-font-smoothing: antialiased; margin: 0; }
 .nm-root :where(button, input, select) { font: inherit; color: inherit; }
-.nm-root :focus-visible { outline: var(--border-focus) solid var(--focus); outline-offset: 2px; }
+.nm-root :focus-visible { outline: var(--border-focus) solid var(--focus); outline-offset: calc(var(--border-2) * -1); }
 .nm-icon { flex: none; display: block; }
 .nm-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .nm-muted { color: var(--ink-muted); }
@@ -223,7 +223,7 @@ body { margin: 0; font-family: var(--font-sans); color: var(--ink); background: 
 .nm-team__drop { display: none; width: 100%; min-height: var(--touch-min); align-items: center; justify-content: center; gap: var(--space-2); border: var(--border-2) dashed var(--ink); border-radius: var(--radius-md); background: transparent; font-weight: 700; font-size: 16px; cursor: pointer; color: var(--ink); }
 .nm-teams.is-moving .nm-team__drop { display: flex; }
 .nm-teams.is-moving .nm-team.is-source .nm-team__drop { display: none; }
-.nm-team.is-over { outline: var(--border-focus) solid var(--focus); outline-offset: 2px; }
+.nm-team.is-over { outline: var(--border-focus) solid var(--focus); outline-offset: calc(var(--border-2) * -1); }
 .nm-team--1 { --tc: var(--team-1); --tc-on: var(--on-team-1); }
 .nm-team--2 { --tc: var(--team-2); --tc-on: var(--on-team-2); }
 .nm-team--3 { --tc: var(--team-3); --tc-on: var(--on-team-3); }
@@ -361,6 +361,7 @@ select.nm-input { appearance: auto; }
 .nm-exercise { border-top: var(--border-1) solid var(--line); padding-top: var(--space-3); }
 .nm-pick { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row-min); padding: 6px 0; border-top: var(--border-1) solid var(--line); }
 .nm-pick > div { flex: 1; min-width: 0; }
+.nm-pick--new { outline: var(--border-2) solid var(--border-focus); outline-offset: calc(var(--border-2) * -1); border-radius: var(--radius-sm); scroll-margin-top: calc(var(--space-7) * 2); }
 .nm-rate { display: flex; gap: 6px; flex-wrap: wrap; }
 .nm-rate button[aria-pressed="true"], .nm-chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 .nm-table { width: 100%; border-collapse: collapse; font-size: 15px; }
@@ -474,7 +475,7 @@ body:has(.nm-actions):has(.nm-bottomnav) .nm-toast { bottom: calc(158px + env(sa
 .nm-sheet { animation: nm-rise 150ms ease-out; }
 .nm-toast { animation: nm-toast-in 150ms ease-out; }
 /* The chip moved last keeps a dashed ring until the next move, so you see where it landed. */
-.nm-chip[data-moved] { outline: var(--border-2) dashed var(--primary); outline-offset: 2px; animation: nm-fade 150ms ease-out; }
+.nm-chip[data-moved] { outline: var(--border-2) dashed var(--primary); outline-offset: calc(var(--border-2) * -1); animation: nm-fade 150ms ease-out; }
 .nm-btn, .nm-chip, .nm-seg a, .nm-seg button, .nm-navlist a, .nm-row-btn { transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out; }
 
 /* Filter tabs wrap onto a new row instead of being cut on a narrow phone */
