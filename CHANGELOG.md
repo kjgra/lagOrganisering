@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.10.0] – 2026-11-02
+
+Innsyn og sletting når en forelder eller trener ber om det.
+
+### Lagt til
+
+- Innstillinger → Personvern (superadmin): velg en spiller eller trener og se alt appen har lagret om personen, last det ned som JSON, eller slett det. For en spiller slettes nivå, tagger, par og plassen i lagforslag i gruppen. For en trener slettes tilganger, innstillinger og varsler, og det treneren har skrevet blir stående uten navn.
+
 ## [1.9.0] – 2026-11-02
 
 Se om KI blir bedre.

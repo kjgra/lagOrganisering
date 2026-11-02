@@ -10,6 +10,7 @@ import { maintenanceResultText, runMaintenanceNow } from "@/lib/maintenance";
 import { assertSuperadmin, UserError } from "@/lib/store/access";
 import { saveAiSettings } from "@/lib/store/ai";
 import { confirmArchive } from "@/lib/store/archive";
+import { erasePlayer, eraseTrainer } from "@/lib/store/personal-data";
 import { setRole } from "@/lib/store/roles";
 
 const sid = z.string().min(1).max(100);
@@ -58,5 +59,19 @@ export async function confirmArchiveAction(keys: string[]): Promise<ActionResult
     const r = await confirmArchive(await db(), user.access, user.rights, v, user.session.profileId);
     refresh();
     return { data: undefined, message: `${r.nEvents} treninger med ${r.nVersions} versjoner er slettet.` };
+  });
+}
+
+export async function erasePersonAction(groupId: string, memberId: string, asTrainer: boolean): Promise<ActionResult> {
+  return runAction("Sletting av personopplysninger", async () => {
+    const v = z.object({ groupId: sid, memberId: sid, asTrainer: z.boolean() }).parse({ groupId, memberId, asTrainer });
+    const { user, group, d } = await admin(v.groupId);
+    assertSuperadmin(user.rights);
+    const member = group.members.find((m) => m.id === v.memberId);
+    if (!member) throw new UserError("Fant ikke personen i gruppen.");
+    let n = await erasePlayer(d, user.access, user.rights, group.id, member.id);
+    if (v.asTrainer && member.profileId) n += await eraseTrainer(d, user.rights, member.profileId, user.session.profileId);
+    refresh();
+    return { data: undefined, message: n ? `Slettet eller anonymisert ${n} ${n === 1 ? "rad" : "rader"}.` : "Det var ingenting å slette." };
   });
 }
