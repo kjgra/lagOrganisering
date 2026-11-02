@@ -16,6 +16,8 @@ import { listExercises } from "@/lib/store/training";
 /** The team's exercise bank, for every trainer. */
 export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]/trening/ovelser">) {
   const ctx = await contextFromParams(props.params);
+  // «Ny øvelse med KI» comes back here with the new exercise's id, so it can be marked.
+  const fresh = Number((await props.searchParams).ny) || null;
   const d = await db();
   const [bank, proposals] = await Promise.all([listExercises(d, ctx.user.access, ctx.group.id), openProposalCount(d, ctx.user.access, ctx.group.id)]);
   const cats = Object.keys(CATEGORIES).filter((c) => bank.some((b) => b.category === c));
@@ -75,7 +77,7 @@ export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]
                 {bank
                   .filter((b) => b.category === c)
                   .map((b) => (
-                    <li key={b.id} className="nm-pick">
+                    <li key={b.id} id={`ovelse-${b.id}`} className={b.id === fresh ? "nm-pick nm-pick--new" : "nm-pick"}>
                       <div>
                         <Link href={`${base}/${b.id}/evaluering`} style={{ fontWeight: 700, textDecoration: "underline" }}>
                           {b.name}
@@ -87,6 +89,12 @@ export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]
                         </div>
                         {nffSummary(b) ? <div className="nm-hint">NFF: {nffSummary(b)}</div> : null}
                       </div>
+                      {b.id === fresh ? (
+                        <span className="nm-badge nm-badge--neutral">
+                          <Icon icon={Sparkles} />
+                          Ny
+                        </span>
+                      ) : null}
                       {shouldAvoid(b) ? <span className="nm-badge nm-badge--kommer-ikke">Unngås av KI</span> : null}
                       <span className={`nm-badge ${status(b.status)}`}>{EXERCISE_STATUSES[b.status]}</span>
                       {ctx.user.rights.ai ? (

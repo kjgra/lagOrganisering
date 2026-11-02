@@ -5,7 +5,7 @@ Web app for football coaches in Nymark: sign in with Spond, fetch participants f
 ## Stack
 - Next.js 16 (App Router, TypeScript strict, Turbopack)
 - Tailwind CSS + shadcn/ui
-- Supabase (PostgreSQL), reached directly from the server with `postgres.js` (transaction pooler). PGlite runs the same migrations in simulation and tests.
+- Supabase (PostgreSQL), reached directly from the server with node-postgres (`pg`, transaction pooler; scripts still use `postgres.js`). PGlite runs the same migrations in simulation and tests.
 - Hosting: Vercel (preview deploy per branch, production from `main`)
 - Package manager: pnpm. Node 20+
 

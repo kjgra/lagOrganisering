@@ -115,6 +115,18 @@ export async function countTokens(c: CallInput): Promise<number | null> {
 
 // Simulated answers ---------------------------------------------------------------------
 
+/** Simulated «Ny øvelse med KI» when the trainer writes a wish: different enough not to be blocked as too similar. */
+const MOCK_EXERCISES = [
+  { navn: "Simulert: Fargekjegler", organisering: ["Spre gule, røde og blå markører utover feltet."], gjennomforing: ["Treneren roper farge, alle dribler raskt dit og tilbake."] },
+  { navn: "Simulert: Portløp", organisering: ["Lag mange små porter av to hatter hver."], gjennomforing: ["Hvert par teller hvor mange porter de spiller pasning gjennom på ett minutt."] },
+  { navn: "Simulert: Haien", organisering: ["Én hai står midt i rektangelet uten egen lærball."], gjennomforing: ["De andre krysser fra side til side, haien sparker bort det den når."] },
+  { navn: "Simulert: Vegg og løp", organisering: ["Trioer står i trekant med fem meters avstand."], gjennomforing: ["Veggspill, deretter sprint rundt nærmeste hatt og bytt rolle."] },
+  { navn: "Simulert: Kongen på haugen", organisering: ["Fire firkanter, én konge i hver."], gjennomforing: ["Utfordreren vinner ruta ved å score på kongens minimål."] },
+  { navn: "Simulert: Stafett med vending", organisering: ["Rekker bak en startlinje, slalåmstokker foran hver rekke."], gjennomforing: ["Føring gjennom stokkene, vending med sålen, tilbake og veksle."] },
+  { navn: "Simulert: Overtall to mot én", organisering: ["Angripere i par møter én forsvarer foran stort mål."], gjennomforing: ["Paret avslutter innen åtte sekunder, forsvareren kontrer mot linjen."] },
+  { navn: "Simulert: Tigerfangst", organisering: ["Halvparten har vest i buksa som hale."], gjennomforing: ["Uten lærball jakter resten på haler, hver fangst gir poeng."] },
+];
+
 async function mockCall(c: CallInput, t0: number): Promise<CallResult> {
   await new Promise((r) => setTimeout(r, process.env.NODE_ENV === "test" ? 0 : 1200));
   const inTokens = Math.round((c.system.join("").length + c.user.length) / 3.5);
@@ -186,11 +198,18 @@ async function mockCall(c: CallInput, t0: number): Promise<CallResult> {
       usage.output_tokens = 1500;
     } else if (c.kind === "exercise") {
       // Its own content, so it is not too much like the reference exercises in the demo bank.
+      // Without a wish, always the same exercise (the e2e test checks that it is not saved twice).
+      // With a wish, one of several different ones, so «Ny øvelse med KI» can be tried again and again.
+      // One the bank (in the catalogue) does not have yet, when there is one.
+      const known = c.system.join("\n");
+      const free = MOCK_EXERCISES.filter((x) => !known.includes(x.navn));
+      const from = free.length ? free : MOCK_EXERCISES;
+      const pick = wish ? from[[...wish].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7) % from.length] : null;
       const e = {
         ...ref.ovelser[1],
-        navn: "Simulert KI-øvelse",
-        organisering: ["Simulert: sett opp en sone med kjegler.", "Del gruppa i to like store lag."],
-        gjennomforing: ["Simulert: lagene konkurrerer om å holde sonen lengst.", `Eksempeltekst fra simulert KI${wish ? `: ${wish}` : ""}.`.slice(0, 400)],
+        navn: pick?.navn ?? "Simulert KI-øvelse",
+        organisering: pick?.organisering ?? ["Simulert: sett opp en sone med kjegler.", "Del gruppa i to like store lag."],
+        gjennomforing: [...(pick?.gjennomforing ?? ["Simulert: lagene konkurrerer om å holde sonen lengst."]), `Eksempeltekst fra simulert KI${wish ? `: ${wish}` : ""}.`.slice(0, 400)],
         laeringsmomenter: ["Simulert: snakk sammen."],
         sporsmal: ["Simulert: hva fungerte?"],
       };

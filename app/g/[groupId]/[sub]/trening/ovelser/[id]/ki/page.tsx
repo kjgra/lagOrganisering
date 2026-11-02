@@ -13,9 +13,6 @@ import { CATEGORIES, EXERCISE_STATUSES, pitchFacts } from "@/lib/plans/plan";
 import { aiSpend, getAiSettings } from "@/lib/store/ai";
 import { getExercise, getTeamSettings, teamPitches } from "@/lib/store/training";
 
-/** KI may take a minute; the Server Action runs within this page's limit. */
-export const maxDuration = 300;
-
 /** «Juster med KI»: the usual way to change an exercise in the bank. Manual edit is a link away. */
 export default async function ExerciseRevisePage(props: PageProps<"/g/[groupId]/[sub]/trening/ovelser/[id]/ki">) {
   const ctx = await contextFromParams(props.params);

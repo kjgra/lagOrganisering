@@ -18,6 +18,28 @@ Se om KI blir bedre.
 - Innsikt viser også øvelser som fungerer godt sammen per aldersgruppe (fra minst to lag) og om forslag fra Forbedringer ga høyere snitt enn versjonen før.
 - Tallene gjelder alle lagene sammen. Det vises ingen navn eller tekst.
 
+## [1.8.2] – 2026-11-02
+
+Sidene henger ikke lenger på lastesiden, og etter «Ny øvelse med KI» kommer du rett tilbake til øvelsesbanken.
+
+### Fikset
+
+- Sider kunne bli stående på lastesiden i flere minutter, i prod og preview: KI-sidene, arrangementssiden («Påmeldte»), forsiden og innloggingen. Ofte virket første trykk, og så hang resten. En spørring mot databasen kunne stoppe halvveis gjennom Supabase sin pooler, og da ventet både databasen og appen på hverandre. Appen bruker nå en annen databasedriver (node-postgres) som sender hver spørring i ett stykke. En spørring som likevel tar mer enn 25 sekunder, gir nå en feilmelding i stedet for at siden henger, og neste trykk får en ny tilkobling.
+
+### Endret
+
+- Når KI er ferdig med en ny øvelse, går appen tilbake til øvelsesbanken og viser den nye øvelsen merket «Ny». Før åpnet den redigeringen av øvelsen, og du måtte trykke «Tilbake» to ganger for å komme til banken.
+- Med simulert KI (test og preview) gir et ønske en ny eksempeløvelse hver gang, så «Ny øvelse med KI» kan prøves flere ganger uten å bli stoppet som «ligner for mye».
+
+## [1.8.1] – 2026-11-02
+
+«Ny øvelse med KI» virker igjen.
+
+### Fikset
+
+- «Ny øvelse med KI», «Juster med KI» og «Lag opplegg med KI» kunne feile med «Fikk ikke lagret» når banken hadde vurderinger per aldersgruppe. Databasen lagret JSON som tekst i stedet for som lister og objekter. Nå lagres JSON riktig, og det som allerede var lagret som tekst, gjøres om.
+- Det samme gjorde at noe av det KI lærer av, ikke ble regnet med i prod: øktmønstre med rotasjon, minutter per stasjon og banene «Hurtigopprett» husker fra forrige gang.
+
 ## [1.8.0] – 2026-11-01
 
 Opplysninger om spillere som har sluttet, slettes.

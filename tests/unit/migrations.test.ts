@@ -4,6 +4,8 @@ import { testDb } from "../helpers/db";
 import { migrationFiles } from "@/lib/db/migrations";
 import { createPostgresDb } from "@/lib/db/postgres";
 import { migrate } from "@/lib/db/pglite";
+import type { ExercisePattern } from "@/lib/plans/observations";
+import { allPatterns, savePatterns } from "@/lib/store/observations";
 
 const tables = async (q: (s: string) => Promise<{ relname: string; relrowsecurity: boolean }[]>) =>
   q("SELECT relname, relrowsecurity FROM pg_class WHERE relkind = 'r' AND relnamespace = 'public'::regnamespace");
@@ -59,6 +61,51 @@ describe("migrations", () => {
     expect((await migrate(d)).length).toBeGreaterThan(0);
     const rows = await tables((s) => d.query(s));
     expect(rows.filter((r) => r.relname !== "local_migrations").every((r) => r.relrowsecurity)).toBe(true);
+    // JSON sent as text is stored as JSON, not as a JSON string (as PGlite does).
+    await savePatterns(d, [{ code: "pasning", score: 2.5, ratings: 3, trend: "", patterns: [], bands: [{ band: "8-9", mean: 2.5, ratings: 3, trainers: 2 }] } as unknown as ExercisePattern]);
+    expect(await d.query("SELECT jsonb_typeof(bands) AS t FROM exercise_patterns")).toEqual([{ t: "array" }]);
+    const [p] = await allPatterns(d);
+    expect(Array.isArray(p.bands)).toBe(true);
+    expect(p.bands[0].band).toBe("8-9");
+    // Values come back as the store expects them.
+    const [v] = await d.query<Record<string, unknown>>(
+      `SELECT '2026-11-02'::date AS day, '2026-11-02T10:00:00Z'::timestamptz AS at, count(*) AS n, 1.5::numeric AS num,
+              ARRAY['a','b']::text[] AS tags, '{"a":1}'::jsonb AS j, interval '2 hours' AS iv, $1::text[] AS sent`,
+      [["x", "y,z"]],
+    );
+    expect(v).toEqual({ day: new Date("2026-11-02T00:00:00Z"), at: new Date("2026-11-02T10:00:00Z"), n: "1", num: "1.5", tags: ["a", "b"], j: { a: 1 }, iv: "02:00:00", sent: ["x", "y,z"] });
+    // A transaction rolls back on an error.
+    await expect(d.tx(async (t) => {
+      await t.query("DELETE FROM exercise_patterns");
+      throw new Error("stopp");
+    })).rejects.toThrow("stopp");
+    expect(await d.query("SELECT count(*)::int AS n FROM exercise_patterns")).toEqual([{ n: 1 }]);
+    await d.close();
+    // A query that takes too long fails instead of hanging, and the next one works.
+    const slow = createPostgresDb(process.env.TEST_DATABASE_URL!, { queryTimeoutMs: 300 });
+    await expect(slow.query("SELECT pg_sleep(2)")).rejects.toThrow(/timeout/i);
+    await expect(slow.tx((t) => t.query("SELECT pg_sleep(2)"))).rejects.toThrow(/timeout/i);
+    expect(await slow.query("SELECT 1 AS one")).toEqual([{ one: 1 }]);
+    await slow.close();
+  });
+});
+
+describe("unwrap jsonb migration", () => {
+  it("turns JSON strings that hold an object or a list back into JSON, and keeps other strings", async () => {
+    const d = await testDb({ admin: true });
+    await d.query(
+      `INSERT INTO exercise_patterns (spond_group_id, exercise_code, score, ratings, trend, patterns, bands)
+       VALUES ('B', 'a', 2, 1, '', to_jsonb('[]'::text), to_jsonb('[{"band":"8-9"}]'::text)),
+              ('B', 'b', 2, 1, '', '[]', '[{"band":"6-7"}]'),
+              ('B', 'c', 2, 1, '', '[]', to_jsonb('ikke json'::text))`,
+    );
+    const sql = (await migrationFiles()).find((m) => m.name.endsWith("_unwrap_jsonb.sql"))!.sql;
+    await d.query(sql);
+    expect(await d.query("SELECT exercise_code AS code, jsonb_typeof(patterns) AS p, bands FROM exercise_patterns ORDER BY 1")).toEqual([
+      { code: "a", p: "array", bands: [{ band: "8-9" }] },
+      { code: "b", p: "array", bands: [{ band: "6-7" }] },
+      { code: "c", p: "array", bands: "ikke json" },
+    ]);
     await d.close();
   });
 });
