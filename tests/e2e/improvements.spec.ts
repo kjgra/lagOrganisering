@@ -131,3 +131,18 @@ test("proposals for the whole bank: fill in what is missing, and a new exercise 
     await expect(page.locator(".nm-pick", { hasText: "Skattejakt med fire mål" })).toBeVisible();
   }
 });
+
+test("«Innsikt» shows whether KI gets better, as counts for every team", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/g/G-FOTBALL/alle/trening/forbedringer");
+  await page.getByRole("navigation", { name: "Forbedringer" }).getByRole("link", { name: "Innsikt" }).click();
+  await expect(page).toHaveURL(/\/forbedringer\/innsikt$/);
+  await expect(page.getByRole("navigation", { name: "Forbedringer" }).getByRole("link", { name: "Innsikt" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("region", { name: "Hurtigopplegg brukt uendret" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "KI-øvelser beholdt" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Per måned" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Virker forbedringene?" })).toBeVisible();
+  await page.getByRole("navigation", { name: "Forbedringer" }).getByRole("link", { name: "Forslag" }).click();
+  await expect(page).toHaveURL(/\/forbedringer$/);
+});
