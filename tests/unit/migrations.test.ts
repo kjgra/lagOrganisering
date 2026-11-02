@@ -67,7 +67,26 @@ describe("migrations", () => {
     const [p] = await allPatterns(d);
     expect(Array.isArray(p.bands)).toBe(true);
     expect(p.bands[0].band).toBe("8-9");
+    // Values come back as the store expects them.
+    const [v] = await d.query<Record<string, unknown>>(
+      `SELECT '2026-11-02'::date AS day, '2026-11-02T10:00:00Z'::timestamptz AS at, count(*) AS n, 1.5::numeric AS num,
+              ARRAY['a','b']::text[] AS tags, '{"a":1}'::jsonb AS j, interval '2 hours' AS iv, $1::text[] AS sent`,
+      [["x", "y,z"]],
+    );
+    expect(v).toEqual({ day: new Date("2026-11-02T00:00:00Z"), at: new Date("2026-11-02T10:00:00Z"), n: "1", num: "1.5", tags: ["a", "b"], j: { a: 1 }, iv: "02:00:00", sent: ["x", "y,z"] });
+    // A transaction rolls back on an error.
+    await expect(d.tx(async (t) => {
+      await t.query("DELETE FROM exercise_patterns");
+      throw new Error("stopp");
+    })).rejects.toThrow("stopp");
+    expect(await d.query("SELECT count(*)::int AS n FROM exercise_patterns")).toEqual([{ n: 1 }]);
     await d.close();
+    // A query that takes too long fails instead of hanging, and the next one works.
+    const slow = createPostgresDb(process.env.TEST_DATABASE_URL!, { queryTimeoutMs: 300 });
+    await expect(slow.query("SELECT pg_sleep(2)")).rejects.toThrow(/timeout/i);
+    await expect(slow.tx((t) => t.query("SELECT pg_sleep(2)"))).rejects.toThrow(/timeout/i);
+    expect(await slow.query("SELECT 1 AS one")).toEqual([{ one: 1 }]);
+    await slow.close();
   });
 });
 

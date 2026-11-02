@@ -10,13 +10,15 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [1.8.2] – 2026-11-02
 
-Etter «Ny øvelse med KI» kommer du rett tilbake til øvelsesbanken.
+Sidene henger ikke lenger på lastesiden, og etter «Ny øvelse med KI» kommer du rett tilbake til øvelsesbanken.
+
+### Fikset
+
+- Sider kunne bli stående på lastesiden i flere minutter, i prod og preview: KI-sidene, arrangementssiden («Påmeldte»), forsiden og innloggingen. Ofte virket første trykk, og så hang resten. En spørring mot databasen kunne stoppe halvveis gjennom Supabase sin pooler, og da ventet både databasen og appen på hverandre. Appen bruker nå en annen databasedriver (node-postgres) som sender hver spørring i ett stykke. En spørring som likevel tar mer enn 25 sekunder, gir nå en feilmelding i stedet for at siden henger, og neste trykk får en ny tilkobling.
 
 ### Endret
 
 - Når KI er ferdig med en ny øvelse, går appen tilbake til øvelsesbanken og viser den nye øvelsen merket «Ny». Før åpnet den redigeringen av øvelsen, og du måtte trykke «Tilbake» to ganger for å komme til banken.
-- «Ny øvelse med KI» kunne bli stående på lastesiden i hjemskjerm-appen på iPhone når KI var ferdig.
-- Sider kunne bli stående på lastesiden i hjemskjerm-appen på iPhone: KI-sidene og arrangementssiden («Påmeldte»), særlig etter at KI var brukt eller etter «Tilbake». Disse sidene hadde en egen tidsgrense, og ble derfor egne funksjoner hos Vercel. Nå har alle sidene den samme grensen.
 - Med simulert KI (test og preview) gir et ønske en ny eksempeløvelse hver gang, så «Ny øvelse med KI» kan prøves flere ganger uten å bli stoppet som «ligner for mye».
 
 ## [1.8.1] – 2026-11-02
