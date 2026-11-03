@@ -8,11 +8,49 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.13.0] – 2026-11-03
+
+Trykk på en øvelse i øvelsesbanken for å se den.
+
 ### Endret
 
 - I øvelsesbanken viser et trykk på navnet nå selve øvelsen: tegning, organisering, gjennomføring, læringsmomenter og variasjoner, uten at noe kan endres ved et uhell. Derfra kan du evaluere, justere med KI eller endre øvelsen.
 - Evaluering har fått sin egen knapp (skjema-ikonet) i lista, ved siden av stjernene for «Juster med KI». Før sendte et trykk på navnet deg rett til evalueringen.
 - «Se øvelsen» fra et forbedringsforslag viser også øvelsen i stedet for å åpne redigeringen.
+
+## [1.12.0] – 2026-11-02
+
+Navn holdes utenfor databasen.
+
+### Endret
+
+- Tagger, kommentarer på lagforslag, navn på lagforslag og lag, prinsipper og lærdommer kan ikke inneholde navn på spillere eller trenere i gruppen. Appen lagrer bare Spond-ID-er og henter navnene fra Spond, og slik holder det seg. Skriv for eksempel «en av keeperne» i stedet.
+
+## [1.11.0] – 2026-11-02
+
+Personvernerklæring i appen.
+
+### Lagt til
+
+- Ny side /personvern som forklarer foreldre og trenere hva appen lagrer, hvorfor, hvor dataene er, hvor lenge de lagres og hvilke rettigheter de har. Siden er åpen uten innlogging, så den kan lenkes til fra Spond. Lenke fra innloggingen og fra Innstillinger. Fra Innstillinger kommer du tilbake dit med krysset øverst eller knappen nederst.
+
+## [1.10.0] – 2026-11-02
+
+Innsyn og sletting når en forelder eller trener ber om det.
+
+### Lagt til
+
+- Innstillinger → Personvern (superadmin): velg en spiller eller trener og se alt appen har lagret om personen, last det ned som JSON, eller slett det. For en spiller slettes nivå, tagger, par og plassen i lagforslag i gruppen. For en trener slettes tilganger, innstillinger og varsler, og det treneren har skrevet blir stående uten navn.
+
+## [1.9.0] – 2026-11-02
+
+Se om KI blir bedre.
+
+### Lagt til
+
+- Ny fane «Innsikt» i Forbedringer. Hovedtallet er hvor mange hurtigopplegg som ble godkjent uten at øvelser ble byttet. I tillegg vises andelen KI-øvelser som var med i det godkjente opplegget, og snittet for hele økta med og uten KI, per måned de siste seks månedene.
+- Innsikt viser også øvelser som fungerer godt sammen per aldersgruppe (fra minst to lag) og om forslag fra Forbedringer ga høyere snitt enn versjonen før.
+- Tallene gjelder alle lagene sammen. Det vises ingen navn eller tekst.
 
 ## [1.8.2] – 2026-11-02
 

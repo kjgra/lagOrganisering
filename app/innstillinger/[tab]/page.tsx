@@ -21,6 +21,8 @@ import { aiSpend, aiUsagePeriod, getAiSettings } from "@/lib/store/ai";
 import { archiveKey, archiveLog, archivePending } from "@/lib/store/archive";
 import { feedbackInbox } from "@/lib/store/feedback";
 import { listRoles } from "@/lib/store/roles";
+import { personSummary, summaryLines } from "@/lib/personal-export";
+import { PersonPanel } from "@/components/settings/admin/PersonPanel";
 import { DEPARTED_DAYS } from "@/lib/store/departed";
 
 /** The admin panel: one tab per page, per main group (?lag=). */
@@ -296,6 +298,74 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
                 </li>
               ))}
             </ul>
+          </section>
+        ) : null}
+      </>
+    );
+  },
+
+  async personvern({ user, group }, sp) {
+    const people = [...group.members].sort((a, b) => a.displayName.localeCompare(b.displayName, "nb"));
+    const member = people.find((m) => m.id === str(sp.person));
+    const s = member ? await personSummary(await db(), user, group, member) : null;
+    const lines = (xs: { label: string; n: number }[]) =>
+      xs.length ? (
+        <ul style={{ margin: 0 }}>
+          {xs.map((x) => (
+            <li key={x.label}>
+              {x.label}: {x.n}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="nm-muted" style={{ margin: 0 }}>
+          Ingenting lagret.
+        </p>
+      );
+    return (
+      <>
+        <section className="nm-section">
+          <p style={{ marginTop: 0 }}>
+            Ber en forelder eller trener om innsyn eller sletting, finner du her alt appen har lagret om personen. Navn hentes fra Spond og lagres ikke. Svar innen én måned.
+          </p>
+          <form method="get" action="/innstillinger/personvern" className="nm-row" style={{ gap: "var(--space-2)", flexWrap: "wrap", alignItems: "end" }}>
+            <input type="hidden" name="fra" value={str(sp.fra)} />
+            <input type="hidden" name="lag" value={group.id} />
+            <label className="nm-field" style={{ minWidth: 240 }}>
+              <span className="nm-field__label">Person</span>
+              <select name="person" className="nm-input" defaultValue={member?.id ?? ""}>
+                <option value="" disabled>
+                  Velg spiller eller trener
+                </option>
+                {people.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.displayName}
+                    {m.kind === "coach" ? " (trener)" : m.kind === "adult" ? " (voksen)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" className="nm-btn nm-btn--primary">
+              Vis
+            </button>
+          </form>
+        </section>
+        {s && member ? (
+          <section className="nm-section nm-stack" style={{ gap: "var(--space-3)" }}>
+            <h3 className="nm-h3" style={{ margin: 0 }}>
+              {s.name}
+            </h3>
+            <div>
+              <strong>Som spiller i {s.group}</strong>
+              {lines(summaryLines(s.player))}
+            </div>
+            {s.trainer ? (
+              <div>
+                <strong>Som trener (alle grupper)</strong>
+                {lines(summaryLines(s.trainer))}
+              </div>
+            ) : null}
+            <PersonPanel groupId={group.id} memberId={member.id} name={s.name} isTrainer={s.isTrainer} empty={s.player.count + (s.trainer?.count ?? 0) === 0} />
           </section>
         ) : null}
       </>

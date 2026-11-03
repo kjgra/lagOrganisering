@@ -97,3 +97,17 @@ export function redactNames(text: string, names: string[]): string {
     .sort((a, b) => b.length - a.length)
     .reduce((t, n) => t.replace(new RegExp(`(?<![\\p{L}\\p{N}])${esc(n)}(?![\\p{L}\\p{N}])`, "giu"), "en spiller"), text);
 }
+
+/**
+ * Names are not stored in the app: the database has only Spond ids, and
+ * names come from Spond when shown. Free text a trainer writes (tags,
+ * comments, proposal and team names, learnings) is checked against the
+ * group's names. Returns the message for the first text that names someone.
+ */
+export function storedNamesProblem(texts: (string | null | undefined)[], names: string[]): string | null {
+  for (const t of texts) {
+    const p = t ? namesProblem(t, names, "Navn lagres ikke i appen") : null;
+    if (p) return p;
+  }
+  return null;
+}
