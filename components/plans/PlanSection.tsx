@@ -54,13 +54,14 @@ export function ExerciseBody({ e }: { e: PlanExercise }) {
   );
 }
 
-export function ExerciseDetails({ e, n, open }: { e: PlanExercise; n: number; open?: boolean }) {
+/** One exercise, folded. `n` is its number, or null for the common warm-up. */
+export function ExerciseDetails({ e, n, open }: { e: PlanExercise; n: number | null; open?: boolean }) {
   return (
     <details className="nm-exercise" open={open}>
       <summary style={{ cursor: "pointer", fontSize: "var(--fs-body-lg)", fontWeight: 700, minHeight: 32 }}>
-        {n}. {e.navn}
+        {n === null ? `Felles oppvarming: ${e.navn}` : `${n}. ${e.navn}`}
         <span className="nm-muted" style={{ fontWeight: 400 }}>
-          {e.kategori ? ` · ${e.kategori}` : ""}
+          {e.kategori && n !== null ? ` · ${e.kategori}` : ""}
           {e.kilde === "ny" ? " · ny" : e.kilde === "justert" ? " · justert" : ""}
         </span>
       </summary>
@@ -198,6 +199,7 @@ export async function PlanSection({ ctx, event, selected }: { ctx: GroupContext;
         </div>
 
         <div>
+          {p.tidsplan.oppvarming.ovelse ? <ExerciseDetails e={p.tidsplan.oppvarming.ovelse} n={null} /> : null}
           {p.ovelser.map((e, i) => (
             <ExerciseDetails key={i} e={e} n={i + 1} />
           ))}

@@ -27,6 +27,19 @@ describe("plan", () => {
     expect(() => buildPlan(ex, { ...defaultSettings(), merknad: "Han har astma" })).toThrow(/helse/);
   });
 
+  it("keeps a common warm-up exercise, shows it in the schedule and survives the database format", () => {
+    const ex = validatePlan(ref).ovelser;
+    const warmup = { ...ex[0], kode: "sistemann", navn: "Sistemann" };
+    const p = buildPlan(ex.slice(1), defaultSettings(), {}, warmup);
+    expect(p.tidsplan.oppvarming.ovelse?.navn).toBe("Sistemann");
+    expect(p.ovelser).toHaveLength(2);
+    expect(schedule(p).rows[0].tekst).toBe("Felles oppvarming: Sistemann");
+    expect(validatePlan(JSON.parse(planJson(p)))).toEqual(p);
+    expect(() => validatePlan({ ...p, tidsplan: { ...p.tidsplan, oppvarming: { ...p.tidsplan.oppvarming, ovelse: { navn: "" } } } })).toThrow(/Oppvarmingsøvelsen: Navnet/);
+    // Without one, the text as before.
+    expect(schedule(buildPlan(ex.slice(1), defaultSettings())).rows[0].tekst).toBe("Felles oppvarming");
+  });
+
   it("makes stable codes", () => {
     expect(exerciseCode("3 mot 1 i to ruter")).toBe("3-mot-1-i-to-ruter");
     expect(exerciseCode("Små-spill på kunstgress", ["sma-spill-pa-kunstgress"])).toBe("sma-spill-pa-kunstgress-2");

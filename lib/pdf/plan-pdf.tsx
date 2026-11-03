@@ -313,10 +313,13 @@ function PlanDocument({ plan: p, info, footer, groups }: PdfInput) {
         <Legend width={contentWidth} />
         {p.kilde ? <Rich style={[s.note, { marginTop: 8 }]} text={p.kilde} /> : null}
       </Page>
-      {p.ovelser.map((e, i) => (
+      {[
+        ...(p.tidsplan.oppvarming.ovelse ? [{ e: p.tidsplan.oppvarming.ovelse, label: "FELLES OPPVARMING · ALLE LAG" }] : []),
+        ...p.ovelser.map((e, i) => ({ e, label: `ØVELSE ${i + 1}${e.kategori ? ` · ${e.kategori.toUpperCase()}` : ""}` })),
+      ].map(({ e, label }, i) => (
         <Page key={i} size="A4" style={s.page}>
           {pageChrome}
-          <Text style={s.label}>{`ØVELSE ${i + 1}${e.kategori ? ` · ${e.kategori.toUpperCase()}` : ""}`}</Text>
+          <Text style={s.label}>{label}</Text>
           <Text style={s.exName}>{e.navn}</Text>
           {e.fokus ? <Rich style={{ color: GREY, marginBottom: 4 }} text={`**Fokus:** ${e.fokus}`} /> : null}
           {e.tegning ? <DrawingPdf d={e.tegning} maxWidth={contentWidth} maxHeight={355} /> : null}

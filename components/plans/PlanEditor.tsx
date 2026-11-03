@@ -29,6 +29,8 @@ export function PlanEditor(props: {
   initial: PlanSettings;
   chosen: EditorExercise[];
   bank: EditorExercise[];
+  /** Exercises for the common warm-up: «keep» (the base version's) and bank exercises in the category Oppvarming. */
+  warmups: { value: string; name: string }[];
   doneHref: string;
 }) {
   const router = useRouter();
@@ -48,7 +50,9 @@ export function PlanEditor(props: {
   const restore = () => {
     const v = draft.saved?.value;
     if (!v) return;
-    setS({ ...props.initial, ...v.s });
+    const w = { ...props.initial, ...v.s };
+    if (!props.warmups.some((x) => x.value === w.oppvarming_ovelse)) w.oppvarming_ovelse = props.initial.oppvarming_ovelse;
+    setS(w);
     setList(v.list.filter((x) => props.bank.some((b) => b.key === x.key) || props.chosen.some((c) => c.key === x.key)));
     draft.dismiss();
   };
@@ -178,9 +182,27 @@ export function PlanEditor(props: {
         </span>
       </label>
       <label className="nm-field">
-        <span className="nm-field__label">Oppvarming</span>
-        <input className="nm-input" value={s.oppvarming_tekst} maxLength={300} onChange={(e) => set("oppvarming_tekst", e.target.value)} />
+        <span className="nm-field__label">Felles oppvarming</span>
+        <select className="nm-input" value={s.oppvarming_ovelse} onChange={(e) => set("oppvarming_ovelse", e.target.value)}>
+          <option value="">Ingen øvelse, bare tekst</option>
+          {props.warmups.map((w) => (
+            <option key={w.value} value={w.value}>
+              {w.name}
+            </option>
+          ))}
+        </select>
+        <span className="nm-hint" style={{ display: "block" }}>
+          {props.warmups.some((w) => w.value.startsWith("b:"))
+            ? "Alle lagene gjør oppvarmingsøvelsen sammen før stasjonene."
+            : "Legg øvelser i kategorien Oppvarming i øvelsesbanken for å velge dem her."}
+        </span>
       </label>
+      {s.oppvarming_ovelse ? null : (
+        <label className="nm-field">
+          <span className="nm-field__label">Oppvarming (tekst)</span>
+          <input className="nm-input" value={s.oppvarming_tekst} maxLength={300} onChange={(e) => set("oppvarming_tekst", e.target.value)} />
+        </label>
+      )}
       <label className="nm-field">
         <span className="nm-field__label">Avslutning</span>
         <input className="nm-input" value={s.avslutning_tekst} maxLength={300} onChange={(e) => set("avslutning_tekst", e.target.value)} />

@@ -158,6 +158,7 @@ export const PLAN_SCHEMA = obj({
   stikkord_merknad: str,
   oppvarming_minutter: int,
   oppvarming_tekst: str,
+  oppvarming_kode: str,
   stasjon_minutter: int,
   bytte_minutter: int,
   rotasjon: { type: "boolean" },
@@ -217,6 +218,8 @@ export interface PlanAnswer {
   stikkord_merknad: string;
   oppvarming_minutter: number;
   oppvarming_tekst: string;
+  /** A bank exercise (category oppvarming) that all groups do together first; "" for none. */
+  oppvarming_kode: string;
   stasjon_minutter: number;
   bytte_minutter: number;
   rotasjon: boolean;
@@ -240,6 +243,7 @@ export function answerFromPlan(p: Plan): PlanAnswer {
     stikkord_merknad: p.stikkord_merknad,
     oppvarming_minutter: tp.oppvarming.minutter,
     oppvarming_tekst: tp.oppvarming.tekst,
+    oppvarming_kode: tp.oppvarming.ovelse?.kode ?? "",
     stasjon_minutter: tp.stasjoner.minutter,
     bytte_minutter: tp.stasjoner.bytte,
     rotasjon: tp.stasjoner.grupper > 1,
@@ -365,7 +369,10 @@ export function catalogue(bank: BankExercise[], theme = "", max = 30, fit: Catal
     const t = x.replace(/\s+/g, " ").trim();
     return t.length > n ? `${t.slice(0, n - 1)}…` : t;
   };
-  const lines = sorted.slice(0, max).map((b) => {
+  // Warm-up exercises are always in the catalogue, so KI can pick one for the common warm-up.
+  const top = sorted.slice(0, max);
+  const shown = [...top, ...sorted.filter((b) => b.category === "oppvarming" && !top.includes(b)).slice(0, 5)];
+  const lines = shown.map((b) => {
     const players = b.min_players === null && b.max_players === null ? "" : `${b.min_players ?? "?"}–${b.max_players ?? "?"} spillere`;
     const desc = oneLine(b.execution || b.organisation);
     const parts = [
@@ -803,6 +810,16 @@ export function planFromAnswer(answer: string, bank: BankExercise[], ctx: Answer
     return Number.isInteger(v) ? Math.min(Math.max(v, lo), hi) : fallback;
   };
   const rot = !!a.rotasjon && list.length > 1;
+  // The common warm-up: the one in the current plan when KI keeps it, else from the bank.
+  const wk = txt(a.oppvarming_kode);
+  const baseWarmup = ctx.base?.tidsplan.oppvarming.ovelse;
+  let warmup: PlanExercise | null = null;
+  if (wk && baseWarmup?.kode === wk) warmup = baseWarmup;
+  else if (wk) {
+    const row = bank.find((b) => b.code === wk && b.status !== "archived");
+    if (row) warmup = exerciseFromBank(row);
+    else warnings.push(`Oppvarmingsøvelsen «${wk}» finnes ikke i banken, så oppvarmingen er bare tekst.`);
+  }
   const plan = validatePlan({
     tittel: clip(txt(a.tittel) || ctx.theme || "Treningsøkt", 80),
     undertittel: clip(a.undertittel, 160),
@@ -811,7 +828,7 @@ export function planFromAnswer(answer: string, bank: BankExercise[], ctx: Answer
     stikkord: (a.stikkord ?? []).filter((k) => txt(k?.tittel)).slice(0, 4).map((k) => ({ tittel: clip(k.tittel, 60), tekst: clip(k.tekst, 160) })),
     stikkord_merknad: clip(a.stikkord_merknad, 300),
     tidsplan: {
-      oppvarming: { minutter: n(a.oppvarming_minutter, 0, 0, 60), tekst: clip(a.oppvarming_tekst, 200) },
+      oppvarming: { minutter: n(a.oppvarming_minutter, 0, 0, 60), tekst: clip(a.oppvarming_tekst, 200), ...(warmup ? { ovelse: warmup } : {}) },
       stasjoner: { minutter: n(a.stasjon_minutter, 15, 1, 90), bytte: list.length > 1 ? n(a.bytte_minutter, 2, 0, 10) : 0, grupper: rot ? list.length : 1 },
       avslutning: { minutter: n(a.avslutning_minutter, 0, 0, 60), tekst: clip(a.avslutning_tekst, 200) },
       merknad: clip(a.merknad, 500),

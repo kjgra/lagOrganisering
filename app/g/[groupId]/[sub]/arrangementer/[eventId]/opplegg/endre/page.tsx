@@ -45,6 +45,14 @@ export default async function EditPlanPage(props: PageProps<"/g/[groupId]/[sub]/
     ? base.plan.ovelser.map((e, i) => ({ key: bank.some((b) => b.code === e.kode) && e.kilde === "bank" ? `b:${e.kode}` : `k:${i}`, ref: { keep: i + 1 }, name: e.navn, category: e.kategori, note: copy ? "fra forrige økt" : `fra versjon ${base.version}` }))
     : [];
   const initial = base ? settingsFromPlan(base.plan) : defaultSettings(season?.theme ?? "");
+  // Warm-up exercises for the common warm-up, best rated first; a new plan starts with the best one (issue #74).
+  const warmups = bank
+    .filter((b) => b.status !== "archived" && b.category === "oppvarming")
+    .sort((a, b) => (b.fb_mean ?? 0) - (a.fb_mean ?? 0) || Number(a.status !== "active") - Number(b.status !== "active") || a.name.localeCompare(b.name, "nb"))
+    .map((b) => ({ value: `b:${b.code}`, name: b.name }));
+  const keptWarmup = base?.plan.tidsplan.oppvarming.ovelse;
+  if (keptWarmup) warmups.unshift({ value: "keep", name: `${keptWarmup.navn} (${copy ? "fra forrige økt" : `fra versjon ${base.version}`})` });
+  if (!base && warmups.length) initial.oppvarming_ovelse = warmups[0].value;
   if (!base && team.session_minutes) {
     // Fill the session: 3 stations of equal length after warm-up and the end.
     const rest = team.session_minutes - initial.oppvarming - initial.avslutning - 2 * initial.bytte;
@@ -53,7 +61,7 @@ export default async function EditPlanPage(props: PageProps<"/g/[groupId]/[sub]/
 
   return (
     <AppShell ctx={ctx} title={copy && base ? `Kopier opplegg · ${base.plan.tittel}` : base ? `Endre opplegg v${base.version}` : `Opplegg · ${event.start ? dayLabel(event.start) : event.heading}`} section="events" back={eventPath}>
-      <PlanEditor groupId={ctx.group.id} eventId={event.id} baseId={base?.id ?? null} copy={copy} initial={initial} chosen={chosen} bank={bankItems} doneHref={eventPath} />
+      <PlanEditor groupId={ctx.group.id} eventId={event.id} baseId={base?.id ?? null} copy={copy} initial={initial} chosen={chosen} bank={bankItems} warmups={warmups} doneHref={eventPath} />
     </AppShell>
   );
 }
