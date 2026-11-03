@@ -13,6 +13,8 @@ import { UserError } from "@/lib/store/access";
 import { memberNames, storedNamesProblem } from "@/lib/sensitive";
 import { decideProposal, getProposal } from "@/lib/store/improvements";
 import { exerciseVersions } from "@/lib/store/versions";
+import { importExercises, previewExerciseImport } from "@/lib/store/exercise-import";
+import type { ImportRow } from "@/lib/plans/exercise-import";
 import { deleteExercise, getExercise, saveExercise, saveLearning, savePrinciples, saveSeason, saveTeamSettings, followMainGroup, type Part } from "@/lib/store/training";
 
 /** «Trening»: season plan, the team, principles, learnings and the exercise bank, for every trainer on the team. */
@@ -256,5 +258,29 @@ export async function exerciseReviseRunAction(input: z.input<typeof exerciseRevi
       data: { values: adjustedValues(r.base, r.exercise, r.extra), warnings: r.warnings },
       message: `KI har justert «${r.exercise.navn}» (${r.costText}). Se over og lagre.`,
     };
+  });
+}
+
+const importInput = z.object({ groupId: sid, text: z.string().min(1).max(1_000_000) });
+
+/** «Importer øvelser»: what the file would add to the bank (superadmin). Nothing is saved. */
+export async function previewExerciseImportAction(groupId: string, text: string): Promise<ActionResult<ImportRow[]>> {
+  return runAction("Import av øvelser", async () => {
+    const v = importInput.parse({ groupId, text });
+    const { user, d } = await trainer(v.groupId);
+    return { data: (await previewExerciseImport(d, user.access, user.rights, v.groupId, v.text)).map((r) => ({ ...r, input: null })) };
+  });
+}
+
+/** «Importer øvelser»: save the new exercises in the file in the bank (superadmin). */
+export async function importExercisesAction(groupId: string, text: string): Promise<ActionResult<number>> {
+  return runAction("Import av øvelser", async () => {
+    const v = importInput.parse({ groupId, text });
+    const { user, d } = await trainer(v.groupId);
+    const r = await importExercises(d, user.access, user.rights, v.groupId, v.text);
+    refresh();
+    const n = r.imported.length;
+    const skipped = r.skipped.length ? ` ${r.skipped.length} hoppet over.` : "";
+    return { data: n, message: `${n === 1 ? "Én øvelse" : `${n} øvelser`} er lagt i banken.${skipped}` };
   });
 }

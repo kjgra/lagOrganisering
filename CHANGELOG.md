@@ -8,6 +8,10 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+### Lagt til
+
+- Importer øvelser fra fil (superadmin): under Trening › Øvelser kan superadmin laste opp en JSON-fil med øvelser. Først vises hva som blir lagt inn, og øvelser som finnes fra før, ligner for mye på en i banken eller har feil, hoppes over. Nye øvelser kommer inn som kandidater. Slik kan øvelser holdes utenfor koden i repoet.
+
 ## [1.16.1] – 2026-11-03
 
 Enklere tidsplan i Dagens økt.
