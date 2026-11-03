@@ -84,7 +84,6 @@ export default async function PrivacyPage(props: PageProps<"/personvern">) {
             <h2 className="nm-h3">Hvor dataene er</h2>
             <ul>
               <li>Databasen ligger hos Supabase i Irland, og appen kjører hos Vercel i Dublin. Begge har databehandleravtale.</li>
-              <li>Vercel måler hvor raskt sidene laster (Speed Insights), uten informasjonskapsler og uten navn.</li>
               <li>Treningsopplegg kan lages med KI fra Anthropic (USA). KI får aldri navn på spillere eller trenere.</li>
               <li>Varsler på mobilen går gjennom nettleserens varseltjeneste og inneholder ingen navn.</li>
             </ul>
