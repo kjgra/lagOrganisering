@@ -8,8 +8,6 @@ export interface TimelineRow {
   from: number;
   to: number;
   label: string;
-  /** Per group in a rotation: «Lag 1 · Oransje: Øvelse 2». */
-  cells: string[];
 }
 
 const minutesSince = (start: string) => (Date.now() - Date.parse(start)) / 60_000;
@@ -56,13 +54,6 @@ export function SessionTimeline({ start, rows }: { start: string | null; rows: T
             <span>
               {i === current ? <span className="nm-timeline__tag">Nå</span> : i === next ? <span className="nm-timeline__tag nm-timeline__tag--next">Neste</span> : null}
               <strong>{r.label}</strong>
-              {r.cells.length ? (
-                <span className="nm-timeline__cells">
-                  {r.cells.map((c) => (
-                    <span key={c}>{c}</span>
-                  ))}
-                </span>
-              ) : null}
             </span>
           </li>
         ))}

@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.16.1] – 2026-11-03
+
+Enklere tidsplan i Dagens økt.
+
+### Endret
+
+- Tidsplanen i Dagens økt viser ikke lenger hvilket lag som er på hvilken stasjon. Med stasjoner som roterer står det bare «Stasjoner, runde 1 av 3» osv., med «Nå» og «Neste» som før. Hele rulleringsplanen står fortsatt i opplegget og i PDF-en (#73).
+
 ## [1.16.0] – 2026-11-03
 
 Offentlig demo som alltid er lik prod.
