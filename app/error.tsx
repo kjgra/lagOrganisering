@@ -4,6 +4,7 @@ import { CircleAlert, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect } from "react";
+import { reportClientErrorAction } from "@/app/actions/errors";
 import { Brand } from "@/components/Brand";
 import { Icon } from "@/components/ui/icon";
 
@@ -12,6 +13,10 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
   const router = useRouter();
   useEffect(() => {
     console.error(error);
+    // Server errors (with a digest) are logged on the server already.
+    if (!error.digest) {
+      reportClientErrorAction({ name: error.name, message: error.message, stack: error.stack ?? "", path: window.location.pathname }).catch(() => {});
+    }
   }, [error]);
   const retry = () =>
     startTransition(() => {

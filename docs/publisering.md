@@ -153,6 +153,16 @@ Knappen «Gi tilbakemelding» virker uten oppsett: tilbakemeldingene havner i in
 
 Med simulert Spond (demo og preview) later appen som om den sender. Sakene får etikettene `tilbakemelding` og `feil` eller `forslag`; GitHub lager etikettene første gang de brukes.
 
+## 10. Feilvakt (feillogg og automatiske GitHub-saker)
+
+Feil i appen lagres alltid i feilloggen (Admin → Feillogg, bare superadmin). I **Production** blir en ny type feil i tillegg en sak (issue) med etikettene `auto-feil` og `server` eller `klient`. Det bruker samme `GITHUB_FEEDBACK_TOKEN` som tilbakemeldingene (§9), så det trengs ikke noe nytt oppsett. Uten token lagres feilene bare i appen.
+
+- Høyst fem nye saker per døgn. Samme feil (likt område og melding, uansett tall og verdier) gir bare én sak.
+- Saken får en vasket melding: e-post, telefonnummer, id-er, verdier i anførselstegn og @-nevninger fjernes. Detaljene (full melding og stack) blir i databasen.
+- Kommer feilen i en ny versjon av appen og saken er lukket, lages en ny sak som viser til den gamle.
+- For pushvarsel: GitHub-appen på mobilen, og på repoet Watch → Custom → Issues.
+- `GET /api/helse` svarer `{"ok":true,"versjon":"…"}` når appen når databasen, ellers HTTP 503.
+
 ## Sjekkliste
 
 - [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt

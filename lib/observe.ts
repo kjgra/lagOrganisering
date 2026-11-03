@@ -14,6 +14,7 @@ import { aiSpend, getAiSettings, logAiUsage } from "@/lib/store/ai";
 import { saveInsights, sessionRows } from "@/lib/store/insights";
 import { markEmptyNeeds, saveNeeds, unclassifiedNeeds } from "@/lib/store/needs";
 import { patternInputs, savePatterns, saveObservations, unobservedComments } from "@/lib/store/observations";
+import { reportError } from "@/lib/errors";
 
 /**
  * Turns the trainers' evaluations into observations and patterns per
@@ -173,7 +174,7 @@ export async function analyseAll(d: Db, now = new Date()): Promise<AnalyseResult
   try {
     return [await analyseBank(d, { now, bank: true })];
   } catch (err) {
-    console.error("Analyse av innspill feilet:", (err as Error).message);
+    await reportError("Analyse av innspill", err);
     return [{ groupId: BANK, comments: 0, observations: 0, exercises: 0, waiting: "feilet", proposed: 0, bankProposed: 0, rolledBack: 0, wishes: 0, needs: 0, insights: 0 }];
   }
 }

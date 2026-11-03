@@ -60,6 +60,10 @@ export default async function PrivacyPage(props: PageProps<"/personvern">) {
                 <strong>Om trenere:</strong> tilganger i appen, kommentarer, evalueringer og treningsopplegg treneren har laget, egne innstillinger og varsler, og bruk av KI.
               </li>
             </ul>
+            <p>
+              Appen fører også en feillogg: tekniske feilmeldinger med side og versjon, uten hvem som brukte appen. Bare administratoren ser den, og en vasket utgave av nye
+              feil, uten navn og id-er, kan bli en sak i det åpne kodeprosjektet på GitHub.
+            </p>
             <p>Helseopplysninger og annet sensitivt skal ikke skrives i appen. Appen stopper de vanligste ordene.</p>
           </section>
 
@@ -90,6 +94,7 @@ export default async function PrivacyPage(props: PageProps<"/personvern">) {
             <ul>
               <li>Nivå, stikkord og par slettes {DEPARTED_DAYS} dager etter at spilleren har sluttet i gruppen i Spond.</li>
               <li>Treningsopplegg eldre enn ett år arkiveres og slettes. Bruk av KI per trener slås sammen etter {MAINTENANCE_RULES.aiMonths} måneder.</li>
+              <li>Feil i feilloggen slettes når de ikke er sett på {MAINTENANCE_RULES.errorDays} dager.</li>
             </ul>
           </section>
 

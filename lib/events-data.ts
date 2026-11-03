@@ -4,6 +4,7 @@ import type { CurrentUser } from "@/lib/auth/current";
 import { spond, SpondError } from "@/lib/spond";
 import { eventsForContext } from "@/lib/spond/events";
 import type { RawEvent, SpondEvent } from "@/lib/spond/types";
+import { reportError } from "@/lib/errors";
 
 /**
  * Events from Spond for a main group. Upcoming events are fetched for the
@@ -53,7 +54,7 @@ export async function upcomingEvents(user: CurrentUser, groupId: string, fresh =
         // A failing list of unsent events must not hide the others.
         .catch((err: Error): RawEvent[] => {
           if (err instanceof SpondError && err.code === "expired") throw err;
-          console.error("Henting av arrangementer som ikke er sendt feilet:", err.message);
+          void reportError("Henting av arrangementer som ikke er sendt", err);
           return [];
         }),
     ]),

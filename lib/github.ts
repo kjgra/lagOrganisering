@@ -2,7 +2,8 @@ import "server-only";
 import { env } from "@/lib/env";
 
 /**
- * Creates GitHub issues for feedback the superadmin has approved. Uses a
+ * Creates GitHub issues for feedback the superadmin has approved, and for
+ * new kinds of errors (lib/errors.ts). Uses a
  * fine-grained token with only «Issues: Read and write» on the repository
  * (GITHUB_FEEDBACK_TOKEN), set in Vercel for Production only. With simulated
  * Spond (demo, preview) no issue is created: the app pretends.
@@ -27,6 +28,26 @@ export class GithubError extends Error {
   }
 }
 
+const headers = () => ({
+  Accept: "application/vnd.github+json",
+  Authorization: `Bearer ${env().GITHUB_FEEDBACK_TOKEN}`,
+  "X-GitHub-Api-Version": "2022-11-28",
+  "User-Agent": "lagorganisering",
+});
+
+/** Whether an issue is open or closed, or null if it could not be read. */
+export async function issueState(n: number): Promise<"open" | "closed" | null> {
+  if (githubMode() !== "real") return null;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${feedbackRepo()}/issues/${n}`, { headers: headers(), signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) return null;
+    const j = (await res.json()) as { state?: unknown };
+    return j.state === "open" || j.state === "closed" ? j.state : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function createIssue(issue: { title: string; body: string; labels: string[] }): Promise<{ number: number; url: string }> {
   const mode = githubMode();
   const repo = feedbackRepo();
@@ -34,13 +55,7 @@ export async function createIssue(issue: { title: string; body: string; labels: 
   if (mode === "off") throw new GithubError("GitHub er ikke satt opp (GITHUB_FEEDBACK_TOKEN mangler).");
   const res = await fetch(`https://api.github.com/repos/${repo}/issues`, {
     method: "POST",
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${env().GITHUB_FEEDBACK_TOKEN}`,
-      "X-GitHub-Api-Version": "2022-11-28",
-      "Content-Type": "application/json",
-      "User-Agent": "lagorganisering",
-    },
+    headers: { ...headers(), "Content-Type": "application/json" },
     body: JSON.stringify(issue),
     signal: AbortSignal.timeout(15_000),
   });

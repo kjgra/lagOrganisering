@@ -9,6 +9,7 @@ import type { Group, SessionData } from "@/lib/spond/types";
 import { NO_RIGHTS, userRights, type Access, type Rights } from "@/lib/store/access";
 import { getRole } from "@/lib/store/roles";
 import { readSession, type Session } from "./session";
+import { reportError } from "@/lib/errors";
 
 /**
  * The data access layer for the logged-in user. Server Components, Server
@@ -57,7 +58,7 @@ export async function readRights(profileId: string): Promise<Rights> {
   try {
     return userRights(profileId, await getRole(await db(), profileId), sa);
   } catch (err) {
-    console.error("Lesing av rettigheter feilet:", (err as Error).message);
+    await reportError("Lesing av rettigheter", err);
     return NO_RIGHTS;
   }
 }
@@ -77,7 +78,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUserResult> => {
       data = sessionCache.get(session.sid)!;
     } catch (err) {
       if (err instanceof SpondError && err.code === "expired") return { ok: false, reason: "expired" };
-      console.error("Henting av Spond-data feilet:", (err as Error).message);
+      await reportError("Henting av Spond-data", err);
       return { ok: false, reason: "spond_down" };
     }
   }
