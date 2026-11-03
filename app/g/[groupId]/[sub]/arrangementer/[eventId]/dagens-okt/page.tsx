@@ -42,14 +42,17 @@ export default async function SessionPage(props: PageProps<"/g/[groupId]/[sub]/a
   if (plan) {
     const names = teams?.groups.map((g) => g.title) ?? [];
     const s = schedule(plan, names);
+    const stations = s.rows.filter((r) => !r.felles).length;
+    let round = 0;
     rows = s.rows.map((r) => {
       const [from, to] = r.tid.split("–").map(Number);
+      // Rotation: one line per round; which team is at which station is left out (issue #73).
       const rotation = !r.felles && s.columns.length > 2;
+      if (!r.felles) round++;
       return {
         from,
         to,
-        label: r.felles ? (r.tekst ?? "").replaceAll("**", "") : rotation ? "Stasjoner" : (r.celler?.[0] ?? ""),
-        cells: rotation ? (r.celler ?? []).map((c, i) => `${s.columns[i + 1]}: ${c}`) : [],
+        label: r.felles ? (r.tekst ?? "").replaceAll("**", "") : rotation ? `Stasjoner, runde ${round} av ${stations}` : (r.celler?.[0] ?? ""),
       };
     });
   }
