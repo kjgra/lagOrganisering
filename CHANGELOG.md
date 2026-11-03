@@ -8,6 +8,12 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.20.1] – 2026-11-03
+
+### Fikset
+
+- Speed Insights er fjernet igjen, fordi den krever et Vercel-abonnement appen ikke har. Personvernsiden nevner den ikke lenger.
+
 ## [1.20.0] – 2026-11-03
 
 Øvelsesbanken som rutenett på PC.
