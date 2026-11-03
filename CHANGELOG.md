@@ -8,6 +8,15 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.14.1] – 2026-11-03
+
+Feilvakten følger også med på GitHub Actions og på om appen svarer.
+
+### Lagt til
+
+- Når en workflow feiler på `main` (CI, migreringer, påminnelser, analyse og de andre), lages en sak på GitHub med etiketten «auto-feil», lenke til kjøringen og de siste linjene av loggen. Samme feil gir bare én åpen sak.
+- Helsesjekk hvert kvarter: svarer ikke appen etter tre forsøk, lages saken «Appen svarer ikke (helsesjekk)». Den lukkes av seg selv når appen svarer igjen.
+
 ## [1.14.0] – 2026-11-03
 
 Feil i appen blir fanget opp automatisk.
