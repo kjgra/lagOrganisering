@@ -1,12 +1,11 @@
 name: Påminnelser
 
 # Ber appen sende påminnelser om evaluering etter trening (varsler på mobilen).
-# Hvert kvarter, eller manuelt fra Actions-fanen. Trenger repo-secret
-# CRON_SECRET (samme som i Vercel) og repo-variabel APP_URL (f.eks.
-# https://lagorganisering.vercel.app); uten dem hoppes alt over.
+# Vercel Cron gjør dette hvert kvarter (vercel.json); denne kjøres bare
+# manuelt fra Actions-fanen. Trenger repo-secret CRON_SECRET (samme som i
+# Vercel) og repo-variabel APP_URL (f.eks. https://lagorganisering.vercel.app);
+# uten dem hoppes alt over.
 on:
-  schedule:
-    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 concurrency:

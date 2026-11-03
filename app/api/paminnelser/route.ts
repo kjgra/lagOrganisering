@@ -9,12 +9,15 @@ const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(
 
 /**
  * Sends the reminders that are due (push after a training). Called every
- * 15 minutes by the GitHub workflow «Påminnelser» with CRON_SECRET.
+ * 15 minutes by Vercel Cron (GET, see vercel.json) with CRON_SECRET; the
+ * GitHub workflow «Påminnelser» can still call it by hand (POST).
  */
-export async function POST(req: Request) {
+export async function GET(req: Request) {
   const secret = env().CRON_SECRET;
   const auth = req.headers.get("authorization") ?? "";
   if (!secret || !same(auth, `Bearer ${secret}`)) return new Response("Ikke tilgang", { status: 401 });
   const r = await sendDueReminders(await db());
   return Response.json(r, { headers: { "Cache-Control": "no-store" } });
 }
+
+export const POST = GET;

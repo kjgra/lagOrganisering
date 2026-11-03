@@ -52,13 +52,23 @@ export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]
       )}
     </div>
   );
-  const manual = ai ? (
-    <p className="nm-hint" style={{ marginTop: "var(--space-6)" }}>
-      <Link href={`${base}/ny`} style={{ textDecoration: "underline" }}>
-        Lag øvelse uten KI
-      </Link>
-    </p>
+  // Import from a file is for the superadmin only, a quiet link like «Lag øvelse uten KI».
+  const importLink = ctx.user.rights.superadmin ? (
+    <Link href={`${base}/import`} style={{ textDecoration: "underline" }}>
+      Importer øvelser fra fil
+    </Link>
   ) : null;
+  const manual =
+    ai || importLink ? (
+      <p className="nm-hint nm-row" style={{ marginTop: "var(--space-6)", gap: "var(--space-4)" }}>
+        {ai ? (
+          <Link href={`${base}/ny`} style={{ textDecoration: "underline" }}>
+            Lag øvelse uten KI
+          </Link>
+        ) : null}
+        {importLink}
+      </p>
+    ) : null;
   return (
     <AppShell ctx={ctx} title="Trening" section="training">
       <TrainingTabs ctx={ctx} current="ovelser" />

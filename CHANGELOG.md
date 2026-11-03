@@ -8,13 +8,33 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
-## [1.18.0] – 2026-11-03
+## [1.20.0] – 2026-11-03
 
 Øvelsesbanken som rutenett på PC.
 
 ### Lagt til
 
 - På en bred skjerm (PC og nettbrett på tvers) viser øvelsesbanken øvelsene som kort i et rutenett, hver med et lite bilde: tegningen øvelsen har, eller en enkel bane med kategoriens ikon når den ikke har noen. Over rutenettet kan du søke i navn og filtrere på aldersbånd, hovedtema, aktivitet, delferdighet, kategori og vurdering. Filtrene blir med når du åpner en øvelse og går tilbake. På mobil er banken en liste som før.
+
+## [1.19.0] – 2026-11-03
+
+Import av øvelser fra fil.
+
+### Lagt til
+
+- Importer øvelser fra fil (superadmin): under Trening › Øvelser kan superadmin laste opp en JSON-fil med øvelser. Først vises hva som blir lagt inn, og øvelser som finnes fra før, ligner for mye på en i banken eller har feil, hoppes over. Nye øvelser kommer inn som kandidater. Slik kan øvelser holdes utenfor koden i repoet.
+
+## [1.18.0] – 2026-11-03
+
+Bruker Vercel Pro.
+
+### Lagt til
+
+- Speed Insights: Vercel måler hvor raskt sidene laster på trenernes telefoner, uten informasjonskapsler og uten navn. Personvernsiden sier det.
+
+### Endret
+
+- Påminnelser etter trening sendes nå av Vercel Cron hvert kvarter i stedet for GitHub Actions, som ofte kom for sent eller hoppet over kjøringer. Workflowen «Påminnelser» kan fortsatt kjøres manuelt.
 
 ## [1.17.0] – 2026-11-03
 
