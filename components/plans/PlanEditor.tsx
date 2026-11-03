@@ -110,6 +110,29 @@ export function PlanEditor(props: {
         <input className="nm-input" value={s.tema} maxLength={80} onChange={(e) => set("tema", e.target.value)} />
       </label>
 
+      <label className="nm-field">
+        <span className="nm-field__label">Felles oppvarming</span>
+        <select className="nm-input" value={s.oppvarming_ovelse} onChange={(e) => set("oppvarming_ovelse", e.target.value)}>
+          <option value="">Ingen øvelse, bare tekst</option>
+          {props.warmups.map((w) => (
+            <option key={w.value} value={w.value}>
+              {w.name}
+            </option>
+          ))}
+        </select>
+        <span className="nm-hint" style={{ display: "block" }}>
+          {props.warmups.some((w) => w.value.startsWith("b:"))
+            ? "Alle lagene gjør oppvarmingsøvelsen sammen før stasjonene."
+            : "Legg øvelser i kategorien Oppvarming i øvelsesbanken for å velge dem her."}
+        </span>
+      </label>
+      {s.oppvarming_ovelse ? null : (
+        <label className="nm-field">
+          <span className="nm-field__label">Oppvarming (tekst)</span>
+          <input className="nm-input" value={s.oppvarming_tekst} maxLength={300} onChange={(e) => set("oppvarming_tekst", e.target.value)} />
+        </label>
+      )}
+
       <section className="nm-stack" style={{ gap: "var(--space-1)" }} aria-labelledby="ov-h">
         <h2 className="nm-section-label" id="ov-h" style={{ marginTop: "var(--space-2)" }}>
           Øvelser ({list.length})
@@ -181,28 +204,6 @@ export function PlanEditor(props: {
           </span>
         </span>
       </label>
-      <label className="nm-field">
-        <span className="nm-field__label">Felles oppvarming</span>
-        <select className="nm-input" value={s.oppvarming_ovelse} onChange={(e) => set("oppvarming_ovelse", e.target.value)}>
-          <option value="">Ingen øvelse, bare tekst</option>
-          {props.warmups.map((w) => (
-            <option key={w.value} value={w.value}>
-              {w.name}
-            </option>
-          ))}
-        </select>
-        <span className="nm-hint" style={{ display: "block" }}>
-          {props.warmups.some((w) => w.value.startsWith("b:"))
-            ? "Alle lagene gjør oppvarmingsøvelsen sammen før stasjonene."
-            : "Legg øvelser i kategorien Oppvarming i øvelsesbanken for å velge dem her."}
-        </span>
-      </label>
-      {s.oppvarming_ovelse ? null : (
-        <label className="nm-field">
-          <span className="nm-field__label">Oppvarming (tekst)</span>
-          <input className="nm-input" value={s.oppvarming_tekst} maxLength={300} onChange={(e) => set("oppvarming_tekst", e.target.value)} />
-        </label>
-      )}
       <label className="nm-field">
         <span className="nm-field__label">Avslutning</span>
         <input className="nm-input" value={s.avslutning_tekst} maxLength={300} onChange={(e) => set("avslutning_tekst", e.target.value)} />

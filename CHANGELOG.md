@@ -14,7 +14,11 @@ Felles oppvarming fra øvelsesbanken.
 
 ### Lagt til
 
-- Oppvarmingen kan være en øvelse fra banken (kategorien Oppvarming) som alle lagene gjør sammen før stasjonene. Velg den under «Felles oppvarming» når du lager eller endrer et opplegg. Nye opplegg starter med den best vurderte oppvarmingsøvelsen, og KI velger også en når banken har noen. Øvelsen vises først i opplegget, i Dagens økt og i PDF-en, og tidsplanen viser navnet. Uten oppvarmingsøvelser i banken er oppvarmingen bare tekst som før (#74).
+- Oppvarmingen kan være en øvelse fra banken (kategorien Oppvarming) som alle lagene gjør sammen før stasjonene. Velg den under «Felles oppvarming» øverst når du lager eller endrer et opplegg, før de andre øvelsene. Nye opplegg starter med den best vurderte oppvarmingsøvelsen, og KI velger også en når banken har noen. Øvelsen vises først i opplegget, i Dagens økt og i PDF-en, og tidsplanen viser navnet. Uten oppvarmingsøvelser i banken er oppvarmingen bare tekst som før (#74).
+
+### Fikset
+
+- «Ny øvelse med KI» beholder kategorien du velger, også når KI foreslår en annen. Før kunne en bestilt oppvarmingsøvelse havne i en annen kategori.
 
 ## [1.16.1] – 2026-11-03
 
