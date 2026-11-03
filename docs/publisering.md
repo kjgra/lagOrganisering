@@ -163,6 +163,12 @@ Feil i appen lagres alltid i feilloggen (Admin → Feillogg, bare superadmin). I
 - For pushvarsel: GitHub-appen på mobilen, og på repoet Watch → Custom → Issues.
 - `GET /api/helse` svarer `{"ok":true,"versjon":"…"}` når appen når databasen, ellers HTTP 503.
 
+Workflowen «Feilvakt» følger med på resten:
+
+- Feiler en annen workflow på `main` (CI, migreringer, preview-database, påminnelser, analyse eller fast preview-adresse), lages en sak «Workflow feilet: …» med etikettene `auto-feil` og `workflow`, lenke til kjøringen og de siste linjene av loggen. Feiler den samme igjen mens saken er åpen, blir det en kommentar i stedet for en ny sak.
+- Hvert kvarter kaller den `/api/helse` (bruker repo-variabelen `APP_URL` fra §7). Svarer ikke appen etter tre forsøk, lages saken «Appen svarer ikke (helsesjekk)» med etiketten `nede`. Den lukkes av seg selv når appen svarer igjen.
+- Den bruker bare innebygd `GITHUB_TOKEN`, ingen nye secrets.
+
 ## Sjekkliste
 
 - [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt
