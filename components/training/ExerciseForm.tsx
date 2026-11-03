@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { NffTagger } from "@/components/training/NffTagger";
 import { checkDrawing, DrawingError, EXAMPLE_DRAWING, fixDrawing, prettyDrawing, validateDrawing, type Drawing } from "@/lib/plans/drawing";
 import type { ExerciseValues } from "@/lib/plans/exercise-values";
+import { ExerciseLicense } from "@/components/training/ExerciseLicense";
 
 export type { ExerciseValues };
 
@@ -173,6 +174,7 @@ export function ExerciseForm(p: {
         {pv.drawing ? <DrawingSvg drawing={pv.drawing} title="Forhåndsvisning av tegningen" /> : null}
       </div>
 
+      <ExerciseLicense contribute />
       {error ? (
         <div className="nm-alert" role="alert">
           {error}

@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.15.0] – 2026-11-03
+
+Øvelsene er åpne data.
+
+### Endret
+
+- Øvelsene i øvelsesbanken er nå åpne data under CC BY-SA 4.0: alle kan bruke og endre dem, også kommersielt, men endrede utgaver må deles videre under samme lisens, så de kan ikke havne bak en betalingsmur. Koden er fortsatt MIT. Øvelsesbanken og hver øvelse viser lisensen, og skjemaene for nye og endrede øvelser sier at øvelsen deles under samme lisens når den lagres.
+
 ## [1.14.1] – 2026-11-03
 
 Feilvakten følger også med på GitHub Actions og på om appen svarer.

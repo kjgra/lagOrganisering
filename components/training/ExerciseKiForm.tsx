@@ -7,6 +7,7 @@ import { exerciseKiEstimateAction, exerciseKiRunAction } from "@/app/actions/tra
 import { ModelFields, PitchFields } from "@/components/plans/KiFields";
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
+import { ExerciseLicense } from "@/components/training/ExerciseLicense";
 
 export interface ExerciseKiFormProps {
   groupId: string;
@@ -130,6 +131,7 @@ export function ExerciseKiForm(p: ExerciseKiFormProps) {
         <span className="nm-hint">Tillatte nettsteder: {p.domains.join(", ")}</span>
       </label>
       <ModelFields models={p.models} value={model} onChange={setModel} prices={prices} onEstimate={estimate} pending={pending} budgetText={p.budgetText} />
+      <ExerciseLicense contribute />
       {error ? (
         <div className="nm-alert" role="alert">
           {error}

@@ -12,6 +12,7 @@ import { feedbackSummary, shouldAvoid } from "@/lib/plans/feedback";
 import { CATEGORIES, EXERCISE_STATUSES } from "@/lib/plans/plan";
 import { openProposalCount } from "@/lib/store/improvements";
 import { listExercises } from "@/lib/store/training";
+import { ExerciseLicense } from "@/components/training/ExerciseLicense";
 
 /** The team's exercise bank, for every trainer. */
 export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]/trening/ovelser">) {
@@ -122,6 +123,7 @@ export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]
           {manual}
         </EmptyState>
       )}
+      <ExerciseLicense />
     </AppShell>
   );
 }
