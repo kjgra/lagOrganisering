@@ -11,6 +11,7 @@ import { nffSummary } from "@/lib/nff/fagplan";
 import { feedbackSummary } from "@/lib/plans/feedback";
 import { CATEGORIES, EXERCISE_STATUSES, exerciseFromBank } from "@/lib/plans/plan";
 import { getExercise } from "@/lib/store/training";
+import { ExerciseLicense } from "@/components/training/ExerciseLicense";
 
 /** Show an exercise from the bank, read only, with buttons to evaluate or change it. */
 export default async function ExerciseViewPage(props: PageProps<"/g/[groupId]/[sub]/trening/ovelser/[id]/vis">) {
@@ -56,6 +57,7 @@ export default async function ExerciseViewPage(props: PageProps<"/g/[groupId]/[s
           </Link>
         </div>
         <ExerciseBody e={exerciseFromBank(b)} />
+        <ExerciseLicense />
       </article>
     </AppShell>
   );

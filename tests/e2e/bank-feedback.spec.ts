@@ -259,3 +259,15 @@ test("a comment on an exercise shows up in «Dette sier trenerne»", async ({ pa
   await expect(page.getByText("Nevnt av færre: mye venting/kø (1)")).toBeVisible();
   await expect(page.getByText(/Vektet snitt .* fra 1 vurdering/)).toBeVisible();
 });
+
+test("the bank says the exercises are open data under CC BY-SA 4.0", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/g/G-FOTBALL/alle/trening/ovelser");
+  await expect(page.getByRole("link", { name: "CC BY-SA 4.0" })).toHaveAttribute("href", /creativecommons\.org\/licenses\/by-sa\/4\.0/);
+  await page.locator(".nm-pick").first().getByRole("link").first().click();
+  await expect(page).toHaveURL(/\/vis$/);
+  await expect(page.getByText(/åpne data under/)).toBeVisible();
+  await page.goto("/g/G-FOTBALL/alle/trening/ovelser/ny");
+  await expect(page.getByText(/blir åpne data under/)).toBeVisible();
+});

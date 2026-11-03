@@ -4,7 +4,8 @@
 [![Prosjektstatus: aktiv](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![Livssyklus: eksperimentell](https://img.shields.io/badge/livssyklus-eksperimentell-orange)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![Versjon](https://img.shields.io/github/package-json/v/kjgra/lagOrganisering?label=versjon)](CHANGELOG.md)
-[![Lisens: MIT](https://img.shields.io/github/license/kjgra/lagOrganisering?label=lisens)](LICENSE)
+[![Kode: MIT](https://img.shields.io/github/license/kjgra/lagOrganisering?label=kode)](LICENSE)
+[![Øvelser: CC BY-SA 4.0](https://img.shields.io/badge/%C3%B8velser-CC%20BY--SA%204.0-lightgrey)](LICENSE-OVELSER.md)
 
 Webapp for trenere i Nymark: logg inn med Spond, se påmeldte, fordel spillere på lag, lag treningsopplegg (selv eller med KI) og evaluer øktene. Erstatter den gamle Shiny-appen (SpondNymark).
 
@@ -50,4 +51,6 @@ Se [docs/publisering.md](docs/publisering.md) for Vercel og Supabase.
 
 ## Lisens
 
-[MIT](LICENSE). Bruk koden fritt.
+Koden er [MIT](LICENSE). Bruk den fritt.
+
+Øvelsene i øvelsesbanken er åpne data under [CC BY-SA 4.0](LICENSE-OVELSER.md): alle kan bruke og endre dem, også kommersielt, men endrede utgaver må deles videre under samme lisens. Slik kan øvelsene aldri havne bak en betalingsmur.
