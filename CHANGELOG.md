@@ -8,6 +8,18 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.18.0] – 2026-11-03
+
+Bruker Vercel Pro.
+
+### Lagt til
+
+- Speed Insights: Vercel måler hvor raskt sidene laster på trenernes telefoner, uten informasjonskapsler og uten navn. Personvernsiden sier det.
+
+### Endret
+
+- Påminnelser etter trening sendes nå av Vercel Cron hvert kvarter i stedet for GitHub Actions, som ofte kom for sent eller hoppet over kjøringer. Workflowen «Påminnelser» kan fortsatt kjøres manuelt.
+
 ## [1.17.0] – 2026-11-03
 
 Felles oppvarming fra øvelsesbanken.
