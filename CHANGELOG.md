@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.18.0] – 2026-11-03
+
+Øvelsesbanken som rutenett på PC.
+
+### Lagt til
+
+- På en bred skjerm (PC og nettbrett på tvers) viser øvelsesbanken øvelsene som kort i et rutenett, hver med et lite bilde: tegningen øvelsen har, eller en enkel bane med kategoriens ikon når den ikke har noen. Over rutenettet kan du søke i navn og filtrere på aldersbånd, hovedtema, aktivitet, delferdighet, kategori og vurdering. Filtrene blir med når du åpner en øvelse og går tilbake. På mobil er banken en liste som før.
+
 ## [1.17.0] – 2026-11-03
 
 Felles oppvarming fra øvelsesbanken.

@@ -1,4 +1,4 @@
-import { ClipboardCheck, ClipboardList, Pencil, Plus, Sparkles } from "lucide-react";
+import { ClipboardList, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/shell/AppShell";
 import { TrainingTabs } from "@/components/training/TrainingTabs";
@@ -7,11 +7,13 @@ import { Icon } from "@/components/ui/icon";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
 import { shortDate } from "@/lib/format";
-import { nffSummary } from "@/lib/nff/fagplan";
+import { AKTIVITETER, BAND_KEYS, DELFERDIGHETER, HOVEDTEMA, aktivitetLabel, delfTag, nffSummary, temaTag } from "@/lib/nff/fagplan";
+import { ratingOf, type BankItem } from "@/lib/plans/bank-filter";
 import { feedbackSummary, shouldAvoid } from "@/lib/plans/feedback";
-import { CATEGORIES, EXERCISE_STATUSES } from "@/lib/plans/plan";
+import { CATEGORIES, EXERCISE_STATUSES, type BankExercise } from "@/lib/plans/plan";
 import { openProposalCount } from "@/lib/store/improvements";
 import { listExercises } from "@/lib/store/training";
+import { ExerciseBank } from "@/components/training/ExerciseBank";
 import { ExerciseLicense } from "@/components/training/ExerciseLicense";
 
 /** The team's exercise bank, for every trainer. */
@@ -21,8 +23,17 @@ export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]
   const fresh = Number((await props.searchParams).ny) || null;
   const d = await db();
   const [bank, proposals] = await Promise.all([listExercises(d, ctx.user.access, ctx.group.id), openProposalCount(d, ctx.user.access, ctx.group.id)]);
-  const cats = Object.keys(CATEGORIES).filter((c) => bank.some((b) => b.category === c));
-  const status = (s: string) => (s === "active" ? "nm-badge--kommer" : s === "candidate" ? "nm-badge--ikke-svart" : "nm-badge--neutral");
+  const items = bank.map((b) => bankItem(b, bank));
+  const present = (keys: string[], label: (k: string) => string | undefined) => keys.filter((k) => label(k)).map((k): [string, string] => [k, label(k)!]);
+  const tags = new Set(bank.flatMap((b) => b.nff_tags));
+  // Only what the bank has, in the catalog's order, so a filter never shows an empty grid.
+  const options = {
+    alder: present(BAND_KEYS.filter((k) => bank.some((b) => b.bands.includes(k))), (k) => `${k.replace("-", "–")} år`),
+    tema: present(HOVEDTEMA.map((t) => t.key).filter((k) => tags.has(temaTag(k))), (k) => HOVEDTEMA.find((t) => t.key === k)?.label),
+    aktivitet: present(AKTIVITETER.map((a) => a.key).filter((k) => bank.some((b) => b.nff_activity === k)), aktivitetLabel),
+    delf: present(DELFERDIGHETER.map((t) => t.key).filter((k) => tags.has(delfTag(k))), (k) => DELFERDIGHETER.find((t) => t.key === k)?.label),
+    kategori: present(Object.keys(CATEGORIES).filter((c) => bank.some((b) => b.category === c)), (k) => CATEGORIES[k]),
+  };
   const base = ctx.path("/trening/ovelser");
   // Manual creation is rarely used: with KI it is a quiet link at the bottom, without KI the only button.
   const ai = ctx.user.rights.ai;
@@ -71,50 +82,7 @@ export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]
             Nye øvelser fra godkjente opplegg kommer inn som <em>kandidater</em>, og blir aktive når en trener gir 👍 og «Bruke igjen: Ja». Trykk på navnet for å se øvelsen, på skjemaet for å evaluere den (også uten at den er brukt på en trening), eller på {ctx.user.rights.ai ? "stjernene for å justere den med KI" : "blyanten for å endre den"}.
           </p>
           {buttons}
-          {cats.map((c) => (
-            <section key={c} className="nm-section">
-              <h3 className="nm-section-label">{CATEGORIES[c]}</h3>
-              <ul className="nm-list" style={{ listStyle: "none", margin: 0, padding: 0 }}>
-                {bank
-                  .filter((b) => b.category === c)
-                  .map((b) => (
-                    <li key={b.id} id={`ovelse-${b.id}`} className={b.id === fresh ? "nm-pick nm-pick--new" : "nm-pick"}>
-                      <div>
-                        <Link href={`${base}/${b.id}/vis`} style={{ fontWeight: 700, textDecoration: "underline" }}>
-                          {b.name}
-                        </Link>
-                        <div className="nm-hint">
-                          {feedbackSummary(b)}
-                          {b.fb_last ? ` · sist ${shortDate(b.fb_last)}` : ""}
-                          {b.based_on ? ` · variant av ${bank.find((x) => x.code === b.based_on)?.name ?? b.based_on}` : ""}
-                        </div>
-                        {nffSummary(b) ? <div className="nm-hint">NFF: {nffSummary(b)}</div> : null}
-                      </div>
-                      {b.id === fresh ? (
-                        <span className="nm-badge nm-badge--neutral">
-                          <Icon icon={Sparkles} />
-                          Ny
-                        </span>
-                      ) : null}
-                      {shouldAvoid(b) ? <span className="nm-badge nm-badge--kommer-ikke">Unngås av KI</span> : null}
-                      <span className={`nm-badge ${status(b.status)}`}>{EXERCISE_STATUSES[b.status]}</span>
-                      <Link href={`${base}/${b.id}/evaluering`} className="nm-btn nm-btn--ghost" aria-label={`Evaluer ${b.name}`} title="Evaluer øvelsen">
-                        <Icon icon={ClipboardCheck} />
-                      </Link>
-                      {ctx.user.rights.ai ? (
-                        <Link href={`${base}/${b.id}/ki`} className="nm-btn nm-btn--ghost" aria-label={`Juster ${b.name} med KI`} title="Juster med KI">
-                          <Icon icon={Sparkles} />
-                        </Link>
-                      ) : (
-                        <Link href={`${base}/${b.id}`} className="nm-btn nm-btn--ghost" aria-label={`Endre ${b.name}`} title="Endre øvelsen">
-                          <Icon icon={Pencil} />
-                        </Link>
-                      )}
-                    </li>
-                  ))}
-              </ul>
-            </section>
-          ))}
+          <ExerciseBank items={items} base={base} ai={ai} fresh={fresh} statuses={EXERCISE_STATUSES} options={options} />
           {manual}
         </>
       ) : (
@@ -126,4 +94,25 @@ export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]
       <ExerciseLicense />
     </AppShell>
   );
+}
+
+/** What the bank's list and grid need of an exercise, without its texts. */
+function bankItem(b: BankExercise, bank: BankExercise[]): BankItem {
+  const players = b.min_players && b.max_players ? `${b.min_players}–${b.max_players} spillere` : b.min_players ? `minst ${b.min_players} spillere` : b.max_players ? `opptil ${b.max_players} spillere` : "";
+  return {
+    id: b.id,
+    name: b.name,
+    category: b.category,
+    status: b.status,
+    summary: [feedbackSummary(b), b.fb_last ? `sist ${shortDate(b.fb_last)}` : "", b.based_on ? `variant av ${bank.find((x) => x.code === b.based_on)?.name ?? b.based_on}` : ""].filter(Boolean).join(" · "),
+    nff: nffSummary(b),
+    avoid: shouldAvoid(b),
+    bands: b.bands,
+    activity: b.nff_activity,
+    tags: b.nff_tags,
+    rating: ratingOf(b),
+    // One sketch is what a thumbnail can show.
+    drawing: b.drawing?.skisser.length ? { skisser: [b.drawing.skisser[0]] } : null,
+    facts: [b.duration_minutes ? `${b.duration_minutes} min` : "", players].filter(Boolean).join(" · "),
+  };
 }
