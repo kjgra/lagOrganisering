@@ -109,7 +109,27 @@ describe("KI answer", () => {
     expect(r.plan.ovelser[1].tegning).toBeNull();
     expect(r.warnings.join(" ")).toMatch(/tegningen kunne ikke brukes/);
   });
+  it("takes the common warm-up from the bank, keeps it when adjusting, and warns about an unknown code", () => {
+    const warm = bankRow("sistemann", { name: "Sistemann", category: "oppvarming" });
+    const a = { ...answerFromPlan(plan), oppvarming_kode: "sistemann" };
+    const r = planFromAnswer(JSON.stringify(a), [warm], { theme: "", minutes: null, maxNew: 6, linkUrls: [] });
+    expect(r.plan.tidsplan.oppvarming.ovelse?.navn).toBe("Sistemann");
+    expect(r.plan.ovelser).toHaveLength(3);
+    // Adjusting: the plan's own copy is kept, even when the bank has changed.
+    const again = planFromAnswer(JSON.stringify(answerFromPlan(r.plan)), [], { theme: "", minutes: null, maxNew: 6, linkUrls: [], base: r.plan });
+    expect(again.plan.tidsplan.oppvarming.ovelse).toEqual(r.plan.tidsplan.oppvarming.ovelse);
+    const unknown = planFromAnswer(JSON.stringify({ ...a, oppvarming_kode: "finnes-ikke" }), [], { theme: "", minutes: null, maxNew: 6, linkUrls: [] });
+    expect(unknown.plan.tidsplan.oppvarming.ovelse).toBeUndefined();
+    expect(unknown.warnings.join(" ")).toMatch(/Oppvarmingsøvelsen «finnes-ikke»/);
+  });
+  it("always lists warm-up exercises in the catalogue", () => {
+    const many = Array.from({ length: 4 }, (_, i) => bankRow(`rondo-${i}`));
+    const c = catalogue([...many, bankRow("sistemann", { name: "Sistemann", category: "oppvarming", themes: [] })], "Samhandling", 3);
+    expect(c).toContain("sistemann | Sistemann | oppvarming");
+    expect(c).not.toContain("rondo-3");
+  });
   it("has a schema where every property is required", () => {
+    expect(PLAN_SCHEMA.required).toContain("oppvarming_kode");
     expect(PLAN_SCHEMA.required).toContain("ovelser");
   });
 });

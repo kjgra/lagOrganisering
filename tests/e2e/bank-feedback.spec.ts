@@ -76,6 +76,8 @@ test("make a new exercise with KI from the bank", async ({ page }) => {
   await page.getByRole("link", { name: "Endre manuelt i stedet" }).click();
   await expect(page.getByLabel("Status")).toHaveValue("candidate");
   await expect(page.getByLabel("Min. spillere")).toHaveValue("6");
+  // The ordered category is kept, even though KI answered with another one.
+  await expect(page.locator(".nm-field", { has: page.locator(".nm-field__label", { hasText: /^Kategori$/ }) }).locator("select")).toHaveValue("smaaspill");
   // The same exercise again is too much like this one: it is not saved twice.
   await page.goto("/g/G-FOTBALL/alle/trening/ovelser/ki");
   await page.getByLabel("Tema").fill("Samhandling");
