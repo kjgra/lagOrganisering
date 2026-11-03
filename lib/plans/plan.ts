@@ -60,7 +60,8 @@ export interface Plan {
   stikkord: { tittel: string; tekst: string }[];
   stikkord_merknad: string;
   tidsplan: {
-    oppvarming: { minutter: number; tekst: string };
+    /** Common warm-up for all groups; `ovelse` is a bank exercise done by everyone first (issue #74). */
+    oppvarming: { minutter: number; tekst: string; ovelse?: PlanExercise };
     stasjoner: { minutter: number; bytte: number; grupper: number };
     avslutning: { minutter: number; tekst: string };
     merknad: string;
@@ -152,7 +153,11 @@ export function validatePlan(input: unknown): Plan {
     stikkord,
     stikkord_merknad: str(o.stikkord_merknad, "Merknaden til stikkordene", 300),
     tidsplan: {
-      oppvarming: { minutter: int(tp.oppvarming?.minutter, "Oppvarmingen", 0, 60, 0), tekst: str(tp.oppvarming?.tekst, "Oppvarmingsteksten", 200) },
+      oppvarming: {
+        minutter: int(tp.oppvarming?.minutter, "Oppvarmingen", 0, 60, 0),
+        tekst: str(tp.oppvarming?.tekst, "Oppvarmingsteksten", 200),
+        ...(tp.oppvarming?.ovelse ? { ovelse: validatePlanExercise(tp.oppvarming.ovelse as Record<string, unknown>, "Oppvarmingsøvelsen: ") } : {}),
+      },
       stasjoner: {
         minutter: int(tp.stasjoner?.minutter, "Tid per øvelse", 1, 90, 15),
         bytte: int(tp.stasjoner?.bytte, "Byttetiden", 0, 10, 0),
@@ -163,39 +168,41 @@ export function validatePlan(input: unknown): Plan {
     },
     avslutning_sporsmal: strs(o.avslutning_sporsmal, "Spørsmål til avslutningen", 6, 200),
     kilde: str(o.kilde, "Kildelinjen", 500),
-    ovelser: ex.map((raw: Record<string, unknown>, i: number) => {
-      const e = raw ?? {};
-      const w = `Øvelse ${i + 1}: `;
-      const navn = str(e.navn, `${w}Navnet`, 80, true);
-      const nff = str(e.nff_url, `${w}Lenken`, 500);
-      if (nff && !/^https:\/\/\S+$/.test(nff)) throw new PlanError(`${w}Lenken må starte med https://.`);
-      const kilde = txt(e.kilde || "ny") as ExerciseSource;
-      if (!["bank", "justert", "ny"].includes(kilde)) throw new PlanError(`${w}Kilden må være bank, justert eller ny.`);
-      let tegning: Drawing | null = null;
-      try {
-        tegning = validateDrawing(e.tegning ?? null);
-      } catch (err) {
-        if (err instanceof DrawingError) throw new PlanError(w + err.message);
-        throw err;
-      }
-      const lists = Object.fromEntries(TEXT_LISTS.map((k) => [k, strs(e[k], `${w}${LIST_LABEL[k]}`)])) as Record<(typeof TEXT_LISTS)[number], string[]>;
-      return {
-        kode: str(e.kode, `${w}Koden`, 60) || exerciseCode(navn),
-        navn,
-        kategori: str(e.kategori, `${w}Kategorien`, 60),
-        fokus: str(e.fokus, `${w}Fokus`, 300),
-        ...lists,
-        enklere: str(e.enklere, `${w}Enklere`, 400),
-        vanskeligere: str(e.vanskeligere, `${w}Vanskeligere`, 400),
-        nff_url: nff,
-        kilde,
-        basert_pa: str(e.basert_pa, `${w}basert_pa`, 60),
-        naermeste_kode: str(e.naermeste_kode, `${w}naermeste_kode`, 60),
-        hvorfor_ny: str(e.hvorfor_ny, `${w}hvorfor_ny`, 300),
-        tegning,
-        ...planNff(e),
-      };
-    }),
+    ovelser: ex.map((raw: Record<string, unknown>, i: number) => validatePlanExercise(raw, `Øvelse ${i + 1}: `)),
+  };
+}
+
+/** Check one exercise of a plan; `w` starts every error message («Øvelse 2: »). */
+function validatePlanExercise(raw: Record<string, unknown> | null | undefined, w: string): PlanExercise {
+  const e = raw ?? {};
+  const navn = str(e.navn, `${w}Navnet`, 80, true);
+  const nff = str(e.nff_url, `${w}Lenken`, 500);
+  if (nff && !/^https:\/\/\S+$/.test(nff)) throw new PlanError(`${w}Lenken må starte med https://.`);
+  const kilde = txt(e.kilde || "ny") as ExerciseSource;
+  if (!["bank", "justert", "ny"].includes(kilde)) throw new PlanError(`${w}Kilden må være bank, justert eller ny.`);
+  let tegning: Drawing | null = null;
+  try {
+    tegning = validateDrawing(e.tegning ?? null);
+  } catch (err) {
+    if (err instanceof DrawingError) throw new PlanError(w + err.message);
+    throw err;
+  }
+  const lists = Object.fromEntries(TEXT_LISTS.map((k) => [k, strs(e[k], `${w}${LIST_LABEL[k]}`)])) as Record<(typeof TEXT_LISTS)[number], string[]>;
+  return {
+    kode: str(e.kode, `${w}Koden`, 60) || exerciseCode(navn),
+    navn,
+    kategori: str(e.kategori, `${w}Kategorien`, 60),
+    fokus: str(e.fokus, `${w}Fokus`, 300),
+    ...lists,
+    enklere: str(e.enklere, `${w}Enklere`, 400),
+    vanskeligere: str(e.vanskeligere, `${w}Vanskeligere`, 400),
+    nff_url: nff,
+    kilde,
+    basert_pa: str(e.basert_pa, `${w}basert_pa`, 60),
+    naermeste_kode: str(e.naermeste_kode, `${w}naermeste_kode`, 60),
+    hvorfor_ny: str(e.hvorfor_ny, `${w}hvorfor_ny`, 300),
+    tegning,
+    ...planNff(e),
   };
 }
 
@@ -233,7 +240,8 @@ export function schedule(p: Plan, groupNames: string[] = []): { columns: string[
   const rows: ScheduleRow[] = [];
   let t = 0;
   if (tp.oppvarming.minutter > 0) {
-    rows.push({ tid: span(t, t + tp.oppvarming.minutter), felles: true, tekst: tp.oppvarming.tekst || "Felles oppvarming" });
+    const tekst = tp.oppvarming.ovelse ? `Felles oppvarming: ${tp.oppvarming.ovelse.navn}` : tp.oppvarming.tekst || "Felles oppvarming";
+    rows.push({ tid: span(t, t + tp.oppvarming.minutter), felles: true, tekst });
     t += tp.oppvarming.minutter;
   }
   for (let k = 1; k <= n; k++) {
@@ -338,6 +346,8 @@ export interface PlanSettings {
   stikkord: { tittel: string; tekst: string }[];
   oppvarming: number;
   oppvarming_tekst: string;
+  /** The warm-up exercise: "" none, "keep" the base version's, or "b:<code>" from the bank. */
+  oppvarming_ovelse: string;
   stasjon: number;
   bytte: number;
   rotasjon: boolean;
@@ -357,6 +367,7 @@ export function defaultSettings(theme = ""): PlanSettings {
     stikkord: [],
     oppvarming: 10,
     oppvarming_tekst: "Felles oppvarming",
+    oppvarming_ovelse: "",
     stasjon: 15,
     bytte: 2,
     rotasjon: true,
@@ -378,6 +389,7 @@ export function settingsFromPlan(p: Plan): PlanSettings {
     stikkord: p.stikkord,
     oppvarming: tp.oppvarming.minutter,
     oppvarming_tekst: tp.oppvarming.tekst,
+    oppvarming_ovelse: tp.oppvarming.ovelse ? "keep" : "",
     stasjon: tp.stasjoner.minutter,
     bytte: tp.stasjoner.bytte,
     rotasjon: tp.stasjoner.grupper > 1,
@@ -388,8 +400,8 @@ export function settingsFromPlan(p: Plan): PlanSettings {
   };
 }
 
-/** A plan from exercises and the editor's settings. */
-export function buildPlan(ex: PlanExercise[], s: PlanSettings, keep: Partial<Plan> = {}): Plan {
+/** A plan from exercises, the editor's settings and the warm-up exercise (if any). */
+export function buildPlan(ex: PlanExercise[], s: PlanSettings, keep: Partial<Plan> = {}, warmup: PlanExercise | null = null): Plan {
   if (!ex.length) throw new PlanError("Velg minst én øvelse.");
   const texts = [s.tittel, s.tema, s.forsvar, s.angrep, s.sporsmal, s.merknad, s.oppvarming_tekst, s.avslutning_tekst, ...s.stikkord.flatMap((k) => [k.tittel, k.tekst])];
   if (isSensitive(...texts)) throw new PlanError("Opplegget skal ikke inneholde helseopplysninger eller andre sensitive opplysninger.");
@@ -403,7 +415,7 @@ export function buildPlan(ex: PlanExercise[], s: PlanSettings, keep: Partial<Pla
     fokus: { forsvar: s.forsvar, angrep: s.angrep },
     stikkord: s.stikkord.filter((k) => txt(k.tittel)),
     tidsplan: {
-      oppvarming: { minutter: s.oppvarming, tekst: s.oppvarming_tekst },
+      oppvarming: { minutter: s.oppvarming, tekst: s.oppvarming_tekst, ...(warmup ? { ovelse: warmup } : {}) },
       stasjoner: { minutter: s.stasjon, bytte: n > 1 ? s.bytte : 0, grupper: rot ? n : 1 },
       avslutning: { minutter: s.avslutning, tekst: s.avslutning_tekst },
       merknad: s.merknad,

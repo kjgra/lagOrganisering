@@ -57,6 +57,7 @@ const settingsInput = z.object({
   stikkord: z.array(z.object({ tittel: z.string().max(60), tekst: z.string().max(200) })).max(5),
   oppvarming: z.number().int().min(0).max(60),
   oppvarming_tekst: z.string().max(300),
+  oppvarming_ovelse: z.union([z.literal(""), z.literal("keep"), z.string().regex(/^b:[a-z0-9-]{1,60}$/)]).default(""),
   stasjon: z.number().int().min(1).max(60),
   bytte: z.number().int().min(0).max(10),
   rotasjon: z.boolean(),
@@ -98,7 +99,18 @@ export async function savePlanAction(input: z.input<typeof planInput>): Promise<
       if (!e) throw new UserError("Ukjent øvelse i forrige versjon.");
       return e;
     });
-    const plan = buildPlan(ex, v.settings, base ? { kilde: base.plan.kilde, stikkord_merknad: base.plan.stikkord_merknad } : {});
+    // The common warm-up: a bank exercise, or the one in the version this is based on.
+    const w = v.settings.oppvarming_ovelse;
+    let warmup: PlanExercise | null = null;
+    if (w === "keep") {
+      warmup = base?.plan.tidsplan.oppvarming.ovelse ?? null;
+      if (!warmup) throw new UserError("Ukjent oppvarmingsøvelse i forrige versjon.");
+    } else if (w.startsWith("b:")) {
+      const b = bank.find((e) => e.code === w.slice(2) && e.status !== "archived");
+      if (!b) throw new UserError("Oppvarmingsøvelsen finnes ikke lenger i banken.");
+      warmup = exerciseFromBank(b);
+    }
+    const plan = buildPlan(ex, v.settings, base ? { kilde: base.plan.kilde, stikkord_merknad: base.plan.stikkord_merknad } : {}, warmup);
     const saved = await savePlan(d, user.access, group.id, event.id, plan, { source: "manual", eventStart: event.start, eventEnd: event.end });
     // A trainer's own version of a plan KI made for this event: which exercises were kept, removed and added.
     if (base?.source === "ai" && base.eventId === event.id) {

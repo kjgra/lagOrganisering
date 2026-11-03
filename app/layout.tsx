@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { cookies } from "next/headers";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ToastProvider } from "@/components/ui/toast";
 import { appTitle } from "@/lib/env";
 import "./globals.css";
@@ -58,6 +59,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="nb" data-theme={theme} className={`${barlow.variable} ${barlowCondensed.variable}`}>
       <body>
         <ToastProvider>{children}</ToastProvider>
+        {/* Load times measured on real phones (Vercel Speed Insights): no cookies, no names. Does nothing outside Vercel. */}
+        <SpeedInsights />
       </body>
     </html>
   );

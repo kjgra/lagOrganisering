@@ -232,8 +232,11 @@ async function mockCall(c: CallInput, t0: number): Promise<CallResult> {
         ovelser: base.ovelser.map((e) => ({ ...e, kilde: "uendret", tegning_json: "" })),
       });
     } else {
+      // The first warm-up exercise in the catalogue, as the common warm-up.
+      const warmup = /^- ([a-z0-9-]+) \| [^|\n]+ \| oppvarming \|/m.exec(`${c.system.join("\n")}\n${c.user}`)?.[1] ?? "";
       text = JSON.stringify({
         ...ref,
+        oppvarming_kode: warmup,
         tittel: theme || ref.tittel,
         merknad: `${ref.merknad} (Laget av simulert KI – eksempeløkt.)`.slice(0, 500),
         ovelser: ref.ovelser.map((e) => ({ ...e, kilde: "ny", hvorfor_ny: "Eksempeløvelse fra simulert KI." })),

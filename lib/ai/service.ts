@@ -2,7 +2,7 @@ import "server-only";
 import type { CurrentUser } from "@/lib/auth/current";
 import type { Db } from "@/lib/db";
 import { osloMonthStart, shortDate } from "@/lib/format";
-import type { BankExercise, Plan } from "@/lib/plans/plan";
+import { CATEGORIES, type BankExercise, type Plan } from "@/lib/plans/plan";
 import { FEEDBACK_TAGS, USE_AGAIN } from "@/lib/plans/feedback";
 import { isSensitive, memberNames, namesProblem, redactNames } from "@/lib/sensitive";
 import { UserError, type Rights } from "@/lib/store/access";
@@ -200,6 +200,8 @@ export async function runKi(d: Db, user: CurrentUser, prep: KiPrep, eventId: str
 
 export interface ExerciseKiPrep extends Omit<KiPrep, "answerCtx"> {
   theme: string;
+  /** The category the trainer ordered («Kategori (valgfritt)»); the saved exercise gets it. */
+  category: string;
   linkUrls: string[];
   base: BankExercise | null;
 }
@@ -227,6 +229,7 @@ export async function prepareExerciseKi(
     bank,
     call: { model, system, user: base ? exerciseRevisionText(base, order) : exerciseOrderText(order), schema: EXERCISE_SCHEMA, maxTokens: EXERCISE_MAX_TOKENS, kind: "exercise" },
     theme: order.theme,
+    category: !base && order.category in CATEGORIES ? order.category : "",
     linkUrls: order.links.map((l) => l.url),
     base,
   };
@@ -241,6 +244,8 @@ async function callExerciseKi(d: Db, user: KiActor, prep: ExerciseKiPrep) {
   if (r.ok) {
     try {
       result = exerciseFromAnswer(r.text, prep.bank, { linkUrls: prep.linkUrls, base: prep.base });
+      // An ordered category is kept, also when KI chose another one.
+      if (prep.category) result.exercise.kategori = CATEGORIES[prep.category];
     } catch (err) {
       errorCode = "ugyldig_svar";
       message = `KI-svaret kunne ikke brukes: ${(err as Error).message}`;

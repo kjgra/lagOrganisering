@@ -121,8 +121,9 @@ export default async function SessionPage(props: PageProps<"/g/[groupId]/[sub]/a
               <h2 className="nm-section-label" id="okt-ov">
                 Øvelser
               </h2>
+              {plan.tidsplan.oppvarming.ovelse ? <ExerciseDetails e={plan.tidsplan.oppvarming.ovelse} n={null} open /> : null}
               {plan.ovelser.map((e, i) => (
-                <ExerciseDetails key={i} e={e} n={i + 1} open={i === 0} />
+                <ExerciseDetails key={i} e={e} n={i + 1} open={i === 0 && !plan.tidsplan.oppvarming.ovelse} />
               ))}
             </section>
           </>

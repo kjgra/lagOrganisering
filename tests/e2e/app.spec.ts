@@ -125,8 +125,11 @@ test("training plan: from the bank, approve, adjust with KI, PDF", async ({ page
   const eventUrl = page.url().split("?")[0];
   await page.goto(`${eventUrl}/opplegg/endre`);
   for (let i = 0; i < 3; i++) await page.getByRole("button", { name: "Legg til" }).first().click();
+  // A new plan starts with the bank's warm-up exercise as the common warm-up.
+  await expect(page.getByLabel("Felles oppvarming")).toHaveValue("b:sistemann-oppvarming");
   await page.getByRole("button", { name: /Lagre opplegget/ }).click();
   await expect(page).toHaveURL(/opplegg=/);
+  await expect(page.getByText("Felles oppvarming: Sistemann med ball").first()).toBeVisible();
   await page.getByRole("button", { name: /Godkjenn versjon \d+/ }).click();
   await expect(page.locator(".nm-toast")).toContainText(/er godkjent/);
   await expect(page.getByLabel("Treningsopplegg").locator(".nm-badge", { hasText: "Godkjent" })).toBeVisible();
@@ -142,6 +145,10 @@ test("training plan: from the bank, approve, adjust with KI, PDF", async ({ page
   const pdf = await page.request.get(href!);
   expect(pdf.status()).toBe(200);
   expect(pdf.headers()["content-type"]).toBe("application/pdf");
+
+  // Today's session: the warm-up is the first exercise, for all teams.
+  await page.goto(`${eventUrl}/dagens-okt`);
+  await expect(page.locator(".nm-exercise summary").first()).toContainText("Felles oppvarming: Sistemann med ball");
 });
 
 test("training plan: reuse the plan of the training before", async ({ page }, info) => {
@@ -151,7 +158,7 @@ test("training plan: reuse the plan of the training before", async ({ page }, in
   await expect(page).toHaveURL(/arrangementer\/E-/);
   await page.getByRole("link", { name: /^Bruk opplegget fra / }).click();
   await expect(page).toHaveURL(/opplegg\/endre\?fra=\d+/);
-  await expect(page.getByText("fra forrige økt").first()).toBeVisible();
+  await expect(page.locator(".nm-pick", { hasText: "fra forrige økt" }).first()).toBeVisible();
   await page.getByRole("button", { name: "Lagre opplegget" }).click();
   await expect(page).toHaveURL(/opplegg=/);
   await expect(page.locator(".nm-toast")).toContainText("Versjon 1 er lagret");
