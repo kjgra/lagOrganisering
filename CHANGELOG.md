@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.16.0] – 2026-11-03
+
+Offentlig demo som alltid er lik prod.
+
+### Lagt til
+
+- Demo-app: et eget Vercel-prosjekt med `APP_ENV=DEMO` kjører `main` med falsk Spond-innlogging, falske spillere og simulert KI, uten database. DEMO står ved logoen. Appen nekter å starte i demo hvis en database, KI-nøkkel eller GitHub-token er satt. Oppsett i `docs/publisering.md` avsnitt 11.
+
 ## [1.15.0] – 2026-11-03
 
 Øvelsene er åpne data.
