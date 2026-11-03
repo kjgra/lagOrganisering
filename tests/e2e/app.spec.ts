@@ -158,7 +158,7 @@ test("training plan: reuse the plan of the training before", async ({ page }, in
   await expect(page).toHaveURL(/arrangementer\/E-/);
   await page.getByRole("link", { name: /^Bruk opplegget fra / }).click();
   await expect(page).toHaveURL(/opplegg\/endre\?fra=\d+/);
-  await expect(page.getByText("fra forrige økt").first()).toBeVisible();
+  await expect(page.locator(".nm-pick", { hasText: "fra forrige økt" }).first()).toBeVisible();
   await page.getByRole("button", { name: "Lagre opplegget" }).click();
   await expect(page).toHaveURL(/opplegg=/);
   await expect(page.locator(".nm-toast")).toContainText("Versjon 1 er lagret");
