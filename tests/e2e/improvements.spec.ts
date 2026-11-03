@@ -26,7 +26,7 @@ test("two trainers say the same, KI proposes a better version, and a trainer use
   await page.getByLabel("Gjennomføring").fill("Spill 5 mot 5");
   await page.getByRole("button", { name: "Lagre øvelsen" }).click();
   await expect(page).toHaveURL(/\/trening\/ovelser$/);
-  await page.locator(".nm-pick a", { hasText: name }).click();
+  await page.getByRole("link", { name: `Evaluer ${name}`, exact: true }).click();
   await expect(page).toHaveURL(/\/evaluering$/);
   const exercise = page.url().replace(/\/evaluering$/, "");
 
@@ -70,7 +70,7 @@ test("each change is a version, and a trainer can go back to an earlier one", as
   await page.getByLabel("Gjennomføring").fill("Spill 3 mot 3");
   await page.getByRole("button", { name: "Lagre øvelsen" }).click();
   await expect(page).toHaveURL(/\/trening\/ovelser$/);
-  await page.locator(".nm-pick a", { hasText: name }).click();
+  await page.getByRole("link", { name: `Evaluer ${name}`, exact: true }).click();
   await expect(page).toHaveURL(/\/evaluering$/);
   const exercise = page.url().replace(/\/evaluering$/, "");
 

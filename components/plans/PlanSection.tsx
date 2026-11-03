@@ -30,6 +30,30 @@ function Lines({ title, items }: { title: string; items: string[] }) {
   );
 }
 
+/** The content of an exercise: drawing, organisation, execution and so on. */
+export function ExerciseBody({ e }: { e: PlanExercise }) {
+  return (
+    <>
+      {e.fokus ? <p style={{ margin: "0 0 var(--space-2)" }}>Fokus: {e.fokus.replaceAll("**", "")}</p> : null}
+      {e.tegning ? <DrawingSvg drawing={e.tegning} title={`Tegning av ${e.navn}`} /> : null}
+      <Lines title="Organisering" items={e.organisering} />
+      <Lines title="Gjennomføring" items={e.gjennomforing} />
+      <Lines title="Tilpasning" items={e.tilpasning} />
+      <Lines title="Læringsmomenter" items={e.laeringsmomenter} />
+      <Lines title="Spørsmål til spillerne" items={e.sporsmal} />
+      <Lines title="Variasjoner" items={[e.enklere && `Enklere: ${e.enklere}`, e.vanskeligere && `Vanskeligere: ${e.vanskeligere}`].filter(Boolean)} />
+      {e.nff_url ? (
+        <p style={{ margin: "var(--space-2) 0 0", fontSize: "var(--fs-caption)" }}>
+          Kilde:{" "}
+          <a href={e.nff_url} target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>
+            {e.nff_url}
+          </a>
+        </p>
+      ) : null}
+    </>
+  );
+}
+
 export function ExerciseDetails({ e, n, open }: { e: PlanExercise; n: number; open?: boolean }) {
   return (
     <details className="nm-exercise" open={open}>
@@ -41,22 +65,7 @@ export function ExerciseDetails({ e, n, open }: { e: PlanExercise; n: number; op
         </span>
       </summary>
       <div style={{ paddingTop: "var(--space-2)" }}>
-        {e.fokus ? <p style={{ margin: "0 0 var(--space-2)" }}>Fokus: {e.fokus.replaceAll("**", "")}</p> : null}
-        {e.tegning ? <DrawingSvg drawing={e.tegning} title={`Tegning av ${e.navn}`} /> : null}
-        <Lines title="Organisering" items={e.organisering} />
-        <Lines title="Gjennomføring" items={e.gjennomforing} />
-        <Lines title="Tilpasning" items={e.tilpasning} />
-        <Lines title="Læringsmomenter" items={e.laeringsmomenter} />
-        <Lines title="Spørsmål til spillerne" items={e.sporsmal} />
-        <Lines title="Variasjoner" items={[e.enklere && `Enklere: ${e.enklere}`, e.vanskeligere && `Vanskeligere: ${e.vanskeligere}`].filter(Boolean)} />
-        {e.nff_url ? (
-          <p style={{ margin: "var(--space-2) 0 0", fontSize: "var(--fs-caption)" }}>
-            Kilde:{" "}
-            <a href={e.nff_url} target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>
-              {e.nff_url}
-            </a>
-          </p>
-        ) : null}
+        <ExerciseBody e={e} />
       </div>
     </details>
   );

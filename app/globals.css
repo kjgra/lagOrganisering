@@ -363,6 +363,8 @@ select.nm-input { appearance: auto; }
 .nm-pick { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row-min); padding: 6px 0; border-top: var(--border-1) solid var(--line); }
 .nm-pick > div { flex: 1; min-width: 0; }
 .nm-pick--new { outline: var(--border-2) solid var(--border-focus); outline-offset: calc(var(--border-2) * -1); border-radius: var(--radius-sm); scroll-margin-top: calc(var(--space-7) * 2); }
+/* Icon buttons in a row stay at the touch minimum, so the name keeps its room on a phone. */
+.nm-pick > .nm-btn--ghost { padding: 0; }
 .nm-rate { display: flex; gap: 6px; flex-wrap: wrap; }
 .nm-rate button[aria-pressed="true"], .nm-chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 .nm-table { width: 100%; border-collapse: collapse; font-size: 15px; }

@@ -8,6 +8,16 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.13.0] – 2026-11-03
+
+Trykk på en øvelse i øvelsesbanken for å se den.
+
+### Endret
+
+- I øvelsesbanken viser et trykk på navnet nå selve øvelsen: tegning, organisering, gjennomføring, læringsmomenter og variasjoner, uten at noe kan endres ved et uhell. Derfra kan du evaluere, justere med KI eller endre øvelsen.
+- Evaluering har fått sin egen knapp (skjema-ikonet) i lista, ved siden av stjernene for «Juster med KI». Før sendte et trykk på navnet deg rett til evalueringen.
+- «Se øvelsen» fra et forbedringsforslag viser også øvelsen i stedet for å åpne redigeringen.
+
 ## [1.12.0] – 2026-11-02
 
 Navn holdes utenfor databasen.
