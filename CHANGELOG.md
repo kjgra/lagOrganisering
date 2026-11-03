@@ -8,6 +8,12 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.20.2] – 2026-11-03
+
+### Fikset
+
+- Postgres-loggen i Supabase var full av feilen `schema "pg_pgrst_no_exposed_schemas" does not exist` (rundt 110 i timen). Den kommer fra Supabase sitt Data API, som appen ikke bruker. En migrering lager det tomme skjemaet `data_api_tom` uten rettigheter, og Data API skal nå bare eksponere det (`docs/publisering.md`).
+
 ## [1.20.1] – 2026-11-03
 
 ### Fikset
