@@ -1,4 +1,4 @@
-import { ClipboardList, Plus, Sparkles } from "lucide-react";
+import { ClipboardList, Grid3x3, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/shell/AppShell";
 import { TrainingTabs } from "@/components/training/TrainingTabs";
@@ -50,6 +50,10 @@ export default async function ExercisesPage(props: PageProps<"/g/[groupId]/[sub]
           Ny øvelse
         </Link>
       )}
+      <Link href={`${base}/dekning`} className="nm-btn nm-btn--secondary">
+        <Icon icon={Grid3x3} />
+        Dekning av fagplanen
+      </Link>
     </div>
   );
   // Import from a file is for the superadmin only, a quiet link like «Lag øvelse uten KI».
