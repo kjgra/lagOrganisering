@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import { exerciseOrderContext } from "@/lib/plan-data";
 import { adjustedValues, exerciseInputFrom, type ExerciseValues } from "@/lib/plans/exercise-values";
 import { UserError } from "@/lib/store/access";
+import { memberNames, storedNamesProblem } from "@/lib/sensitive";
 import { decideProposal, getProposal } from "@/lib/store/improvements";
 import { exerciseVersions } from "@/lib/store/versions";
 import { deleteExercise, getExercise, saveExercise, saveLearning, savePrinciples, saveSeason, saveTeamSettings, followMainGroup, type Part } from "@/lib/store/training";
@@ -56,7 +57,9 @@ export async function saveTeamSettingsAction(groupId: string, sub: string, input
 export async function savePrinciplesAction(groupId: string, sub: string, body: string): Promise<ActionResult> {
   return runAction("Lagring av prinsipper", async () => {
     const v = z.object({ groupId: sid, sub: subId, body: short }).parse({ groupId, sub, body });
-    const { user, d } = await trainer(v.groupId, v.sub);
+    const { user, group, d } = await trainer(v.groupId, v.sub);
+    const np = storedNamesProblem([v.body], memberNames(group.members));
+    if (np) throw new UserError(np);
     await savePrinciples(d, user.access, v.groupId, v.sub, v.body);
     refresh();
     return { data: undefined, message: "Prinsippene er lagret." };
@@ -66,7 +69,9 @@ export async function savePrinciplesAction(groupId: string, sub: string, body: s
 export async function saveLearningAction(groupId: string, sub: string, body: string): Promise<ActionResult> {
   return runAction("Lagring av lærdommer", async () => {
     const v = z.object({ groupId: sid, sub: subId, body: short }).parse({ groupId, sub, body });
-    const { user, d } = await trainer(v.groupId, v.sub);
+    const { user, group, d } = await trainer(v.groupId, v.sub);
+    const np = storedNamesProblem([v.body], memberNames(group.members));
+    if (np) throw new UserError(np);
     await saveLearning(d, user.access, v.groupId, v.sub, v.body, "manual");
     refresh();
     return { data: undefined, message: "Lærdommene er lagret." };

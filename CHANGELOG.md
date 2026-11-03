@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.12.0] – 2026-11-02
+
+Navn holdes utenfor databasen.
+
+### Endret
+
+- Tagger, kommentarer på lagforslag, navn på lagforslag og lag, prinsipper og lærdommer kan ikke inneholde navn på spillere eller trenere i gruppen. Appen lagrer bare Spond-ID-er og henter navnene fra Spond, og slik holder det seg. Skriv for eksempel «en av keeperne» i stedet.
+
 ## [1.11.0] – 2026-11-02
 
 Personvernerklæring i appen.
