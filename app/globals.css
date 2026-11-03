@@ -363,8 +363,6 @@ select.nm-input { appearance: auto; }
 .nm-pick { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row-min); padding: 6px 0; border-top: var(--border-1) solid var(--line); }
 .nm-pick > div { flex: 1; min-width: 0; }
 .nm-pick--new { outline: var(--border-2) solid var(--border-focus); outline-offset: calc(var(--border-2) * -1); border-radius: var(--radius-sm); scroll-margin-top: calc(var(--space-7) * 2); }
-/* Icon buttons in a row stay at the touch minimum, so the name keeps its room on a phone. */
-.nm-pick > .nm-btn--ghost { padding: 0; }
 .nm-rate { display: flex; gap: 6px; flex-wrap: wrap; }
 .nm-rate button[aria-pressed="true"], .nm-chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 .nm-table { width: 100%; border-collapse: collapse; font-size: 15px; }
@@ -510,3 +508,33 @@ body:has(.nm-actions):has(.nm-bottomnav) .nm-toast { bottom: calc(158px + env(sa
 .nm-figure { display: grid; gap: var(--space-1); padding: var(--space-3) var(--space-4); }
 .nm-figure__value { font-family: var(--font-display); font-weight: 800; font-size: 40px; line-height: 44px; }
 .nm-figure--main { border-color: var(--primary); }
+
+/* Øvelsesbanken: a list on a phone; from 1024px a grid of cards with thumbnails and filters (ExerciseBank). */
+.nm-pick__end { display: contents; }
+/* Icon buttons in a row stay at the touch minimum, so the name keeps its room on a phone. */
+.nm-pick .nm-btn--ghost { padding: 0; }
+.nm-thumb, .nm-pick__cat, .nm-wide-only { display: none; }
+@media (min-width: 1024px) {
+  .nm-main__inner:has(.nm-bank-wrap) { max-width: none; }
+  .nm-main__inner:has(.nm-bank-wrap) > :not(.nm-bank-wrap) { max-width: 760px; }
+  .nm-wide-only { display: revert; }
+  .nm-bank-filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-3); align-items: end; margin-bottom: var(--space-4); padding: var(--space-4); border: var(--border-2) solid var(--line); border-radius: var(--radius-lg); background: var(--surface-raised); }
+  .nm-bank-filters__q { grid-column: span 2; }
+  .nm-bank-filters__count { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--space-3); }
+  /* One grid for all categories: the sections and lists step aside, and each card names its category. */
+  .nm-bank-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); }
+  .nm-bank-grid > .nm-section, .nm-bank-grid .nm-bank { display: contents; }
+  .nm-bank-grid .nm-section-label { display: none; }
+  .nm-bank > .nm-pick { min-height: 0; flex-direction: column; align-items: stretch; gap: var(--space-2); padding: 0 0 var(--space-2); border: var(--border-2) solid var(--line); border-radius: var(--radius-lg); background: var(--surface-raised); overflow: hidden; }
+  .nm-bank > .nm-pick.nm-pick--new { border-color: var(--border-focus); outline: 0; }
+  .nm-bank > .nm-pick > .nm-pick__main { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 0 var(--space-3); }
+  .nm-bank .nm-pick__end { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); padding: 0 var(--space-3); }
+  .nm-bank .nm-pick__end > a:first-of-type { margin-left: auto; }
+  .nm-thumb { position: relative; display: block; aspect-ratio: 16 / 10; overflow: hidden; background: var(--surface-muted); border-bottom: var(--border-1) solid var(--line); }
+  .nm-thumb > svg { width: 100%; height: 100%; border-radius: 0 !important; }
+  .nm-thumb__made { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: var(--line); }
+  .nm-thumb__made > svg { position: absolute; inset: var(--space-2); width: calc(100% - var(--space-2) * 2); height: calc(100% - var(--space-2) * 2); }
+  .nm-thumb__icon { position: relative; display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: var(--radius-pill); background: var(--surface-raised); border: var(--border-2) solid var(--line-strong); color: var(--ink); }
+  .nm-thumb__facts { position: absolute; left: var(--space-2); bottom: var(--space-2); padding: 0 var(--space-2); border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--ink-muted); font-size: 14px; line-height: 20px; font-weight: 700; }
+  .nm-pick__cat { display: block; font-family: var(--font-display); font-size: 14px; line-height: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-muted); }
+}
