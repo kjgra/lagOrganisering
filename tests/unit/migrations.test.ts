@@ -48,6 +48,17 @@ describe("migrations", () => {
     await d.close();
   });
 
+  it("the schema for Supabase's Data API exists, is empty, and the app's role has no rights in it", async () => {
+    const d = await testDb({ admin: true });
+    const [s] = await d.query<{ objects: number; usage: boolean }>(
+      `SELECT (SELECT count(*)::int FROM pg_class WHERE relnamespace = 'data_api_tom'::regnamespace)
+            + (SELECT count(*)::int FROM pg_proc WHERE pronamespace = 'data_api_tom'::regnamespace) AS objects,
+              has_schema_privilege('nymark_app', 'data_api_tom', 'USAGE') AS usage`,
+    );
+    expect(s).toEqual({ objects: 0, usage: false });
+    await d.close();
+  });
+
   it("file names follow the Supabase CLI format", async () => {
     for (const m of await migrationFiles()) expect(m.name).toMatch(/^\d{14}_[a-z0-9_]+\.sql$/);
   });

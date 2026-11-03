@@ -16,7 +16,11 @@ Appen kjører simulert til alt er satt opp. Slik kobles ekte tjenester på.
    npx supabase db push
    ```
    Migreringene slår på RLS for alle tabeller og tar bort rettighetene til `anon` og `authenticated`.
-2. **Slå av Data API** (anbefalt): Project Settings → Data API → slå av, eller fjern `public` fra «Exposed schemas». Appen bruker ikke Supabase-klienten, bare direkte Postgres fra serveren.
+2. **Data API med tomt skjema**: Appen bruker ikke Supabase-klienten, bare direkte Postgres fra serveren. Men når Data API er slått av eller ikke har noe skjema, prøver Supabase likevel å finne et skjema hvert 32. sekund, og Postgres-loggen fylles med `schema "pg_pgrst_no_exposed_schemas" does not exist`. Gjør derfor slik etter at migreringene har kjørt:
+   1. Project Settings → Data API → slå **på** «Enable Data API».
+   2. Under «Exposed schemas»: fjern `public` og `graphql_public`, og legg til bare `data_api_tom`. Lagre.
+
+   Skjemaet `data_api_tom` er tomt, og verken `anon`, `authenticated` eller appen har rettigheter i det, så API-et kommer ikke til noen data.
 3. **Tilkoblingsstreng**: Connect → «Transaction pooler» (port **6543**). Den passer for Vercel sine serverløse funksjoner. Bruk den som `DATABASE_URL`.
 4. Ikke bruk `service_role`- eller `anon`-nøkkelen i appen; de trengs ikke.
 5. Slå på daglig backup (Pro) eller sett opp en egen eksport.
@@ -89,7 +93,7 @@ Kjør prøvekjøringen først og se gjennom tabellen før du kjører med `--appl
 
 Vercel Preview kan bruke en egen Supabase-database med en kopi av prod i stedet for minnedatabasen. Supabase sin innebygde branching krever Pro, så dette er et eget prosjekt.
 
-1. **Nytt Supabase-prosjekt**, f.eks. `nymark-preview`, samme region som prod. Gratisplanen har plass til to aktive prosjekter. Slå av Data API som i prod.
+1. **Nytt Supabase-prosjekt**, f.eks. `nymark-preview`, samme region som prod. Gratisplanen har plass til to aktive prosjekter. Sett opp Data API som i prod (bare `data_api_tom`).
 2. **Secret i GitHub**: `SUPABASE_PREVIEW_DB_URL` = preview-prosjektets «Session pooler» (port 5432), som for prod.
 3. **Fyll databasen**: Actions → «Preview-database» → «Run workflow» på `main` med «Nullstill fra prod» krysset av. Den sletter alt i preview, kjører migreringene fra `main` og kopierer alle rader fra prod (samme ID-er; redigeringslåser kopieres ikke). Kjør den igjen når du vil ha ferske data, eller når preview har fått migreringer fra en PR som ikke ble merget.
 4. **Vercel** → Environment Variables, bare **Preview**:
@@ -187,7 +191,7 @@ Uten `APP_ENV=DEMO` nekter Production fortsatt simulering, så prod-prosjektet k
 ## Sjekkliste
 
 - [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt
-- [ ] Data API av
+- [ ] Data API med bare `data_api_tom` eksponert
 - [ ] Egen databasebruker `nymark_app` i `DATABASE_URL`, «Enforce SSL» på, tofaktor på kontoene
 - [ ] Eventuelt `pnpm copy:test-to-prod --apply`
 - [ ] Miljøvariabler i Vercel (Production og Preview)
