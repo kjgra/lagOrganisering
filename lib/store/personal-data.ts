@@ -54,6 +54,9 @@ export const TRAINER_REFS = [
   { table: "member_levels", column: "updated_by", on: "anonymise" },
   { table: "member_pairs", column: "created_by", on: "anonymise" },
   { table: "member_tags", column: "created_by", on: "anonymise" },
+  { table: "nff_hidden", column: "hidden_by", on: "anonymise" },
+  { table: "nff_learning_points", column: "created_by", on: "anonymise" },
+  { table: "nff_topics", column: "created_by", on: "anonymise" },
   { table: "proposal_comments", column: "author", on: "anonymise" },
   { table: "proposal_history", column: "actor", on: "anonymise" },
   { table: "season_themes", column: "updated_by", on: "anonymise" },
@@ -68,7 +71,7 @@ export const TRAINER_REFS = [
 /** Column names that hold a person's Spond id (for the completeness test). */
 export const PERSON_COLUMNS = [
   "spond_member_id", "member_a", "member_b", "spond_profile_id", "author", "actor", "created_by",
-  "updated_by", "approved_by", "decided_by", "confirmed_by", "run_by", "editor",
+  "updated_by", "approved_by", "decided_by", "confirmed_by", "run_by", "editor", "hidden_by",
 ];
 
 export type Rows = Record<string, Record<string, unknown>[]>;
