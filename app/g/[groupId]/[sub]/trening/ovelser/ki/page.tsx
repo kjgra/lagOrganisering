@@ -7,7 +7,7 @@ import { aiMode } from "@/lib/env";
 import { decimal, osloMonthStart, osloParts } from "@/lib/format";
 import { CATEGORIES, pitchFacts } from "@/lib/plans/plan";
 import { aiSpend, getAiSettings } from "@/lib/store/ai";
-import { getTeamSettings, seasonTheme, teamPitches } from "@/lib/store/training";
+import { seasonTheme, teamPitches } from "@/lib/store/training";
 
 /** «Ny øvelse med KI»: one exercise for the bank, ordered like a session plan. */
 export default async function ExerciseKiPage(props: PageProps<"/g/[groupId]/[sub]/trening/ovelser/ki">) {
@@ -24,9 +24,8 @@ export default async function ExerciseKiPage(props: PageProps<"/g/[groupId]/[sub
   const sub = ctx.subgroup?.id ?? "";
   const now = new Date();
   const { year, month } = osloParts(now);
-  const [settings, team, pitches, season, spend] = await Promise.all([
+  const [settings, pitches, season, spend] = await Promise.all([
     getAiSettings(d),
-    getTeamSettings(d, ctx.user.access, ctx.group.id, sub),
     teamPitches(d, ctx.user.access, ctx.group.id, sub),
     seasonTheme(d, ctx.user.access, ctx.group.id, sub, year, month),
     aiSpend(d, ctx.user.access, ctx.group.id, osloMonthStart(now)),
@@ -42,7 +41,7 @@ export default async function ExerciseKiPage(props: PageProps<"/g/[groupId]/[sub
         themeNote={season?.theme ? `Månedens tema i årshjulet${season.description ? `: ${season.description}` : ""}` : ""}
         categories={CATEGORIES}
         pitches={pitches.map((x) => ({ id: x.id, name: x.name, facts: pitchFacts(x) }))}
-        pitchNote={team.pitch}
+        pitchNote=""
         standardHref={ctx.path("/trening/laget")}
         models={Object.entries(AI_MODELS).map(([id, m]) => ({ id, label: m.label, choice: m.choice }))}
         model={settings.model}

@@ -4,21 +4,23 @@ import { refresh } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 import { runAction, type ActionResult } from "@/lib/actions";
-import { findGroup, requireUser } from "@/lib/auth/current";
+import { findGroup, requireUser, type CurrentUser } from "@/lib/auth/current";
 import { estimateKi, fillFeedbackWithKi, prepareKi, runKi } from "@/lib/ai/service";
 import { AI_MODELS } from "@/lib/ai/plan-ai";
-import { db } from "@/lib/db";
+import { db, type Db } from "@/lib/db";
 import { findEvent } from "@/lib/events-data";
 import { analyseBank } from "@/lib/observe";
-import { orderContext } from "@/lib/plan-data";
+import { orderContext, pitchEvent } from "@/lib/plan-data";
 import { quickCreate, quickPrep } from "@/lib/quick";
 import { planChanges } from "@/lib/plans/exercise-edits";
 import { FEEDBACK_TEXT_MAX, validateBankFeedback, validateFeedback, type FeedbackFill } from "@/lib/plans/feedback";
 import { bankCandidates, buildPlan, exerciseFromBank, type PlanExercise } from "@/lib/plans/plan";
 import { memberNames, namesProblem } from "@/lib/sensitive";
 import { eventIsPast } from "@/lib/spond/events";
+import type { SpondEvent } from "@/lib/spond/types";
 import { UserError } from "@/lib/store/access";
 import { logEdit } from "@/lib/store/edits";
+import { setEventPitches } from "@/lib/store/pitch-schedule";
 import {
   addPlanComment,
   approvePlan,
@@ -228,7 +230,13 @@ async function kiPrep(input: z.input<typeof kiInput>) {
   if (base && (base.groupId !== group.id || base.eventId !== event.id)) throw new UserError("Opplegget hører til et annet arrangement.");
   const { order, commentIds } = await orderContext(d, user, group, event, v);
   const prep = await prepareKi(d, user, user.rights, group, order, { base: base?.plan ?? null, model: v.model });
-  return { d, user, event, prep, commentIds };
+  return { d, user, group, event, prep, commentIds, pitchIds: v.pitchIds };
+}
+
+/** The pitches chosen for a KI plan become the training's own when they are not the fixed ones. */
+async function rememberPitches(d: Db, user: CurrentUser, groupId: string, event: SpondEvent, pitchIds: number[]) {
+  if (!pitchIds.length) return;
+  await setEventPitches(d, user.access, groupId, pitchEvent(event), pitchIds).catch((err) => reportError("Lagring av baner for treningen", err));
 }
 
 /** Price estimate per model, before the trainer starts KI. */
@@ -241,8 +249,9 @@ export async function kiEstimateAction(input: z.input<typeof kiInput>): Promise<
 
 export async function kiRunAction(input: z.input<typeof kiInput>): Promise<ActionResult<{ id: number; version: number }>> {
   return runAction("KI", async () => {
-    const { d, user, event, prep, commentIds } = await kiPrep(input);
+    const { d, user, group, event, prep, commentIds, pitchIds } = await kiPrep(input);
     const r = await runKi(d, user, prep, event.id, commentIds, event);
+    await rememberPitches(d, user, group.id, event, pitchIds);
     refresh();
     const warn = r.warnings.length ? ` Merk: ${r.warnings.join(" ")}` : "";
     return { data: { id: r.id, version: r.version }, message: `Versjon ${r.version} er laget med KI (${r.costText}).${warn}` };
@@ -281,7 +290,9 @@ export async function quickEstimateAction(input: z.input<typeof quickInput>): Pr
 export async function quickCreateAction(input: z.input<typeof quickInput>): Promise<ActionResult<{ proposalId: number; planId: number | null }>> {
   return runAction("Hurtigoppretting", async () => {
     const { v, user, group, event, sub } = await quickFor(input);
-    const r = await quickCreate(await db(), user, group, sub, event, v);
+    const d = await db();
+    const r = await quickCreate(d, user, group, sub, event, v);
+    await rememberPitches(d, user, group.id, event, v.pitchIds);
     refresh();
     const message = r.plan
       ? `Lag og opplegg er laget som utkast (${r.plan.costText}). Se over og godkjenn.${r.plan.warnings.length ? ` Merk: ${r.plan.warnings.join(" ")}` : ""}`

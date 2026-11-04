@@ -631,6 +631,33 @@ export function pitchText(pitches: Pitch[], note: string): string {
 }
 
 /** Pitches in list order with their depth below the main pitch (0 for a main pitch). */
+/** A pitch to choose, under its main pitch. */
+export interface PitchOption {
+  id: number;
+  /** Below the main pitch: 0 for the main pitch itself. */
+  depth: number;
+  name: string;
+  /** «7er · Kunstgress … · 48 × 30 m · lys 150 lux» */
+  facts: string;
+}
+
+/** A main pitch with its sub-pitches, as one foldable group. */
+export interface PitchGroup {
+  title: string;
+  pitches: PitchOption[];
+}
+
+/** Main pitches with their sub-pitches; retired pitches only when chosen. */
+export function pitchGroups(pitches: Pitch[], chosen: number[] = []): PitchGroup[] {
+  const groups: PitchGroup[] = [];
+  for (const { pitch: p, depth } of pitchTree(pitches)) {
+    if (depth === 0) groups.push({ title: p.name, pitches: [] });
+    if (p.retired && !chosen.includes(p.id)) continue;
+    groups.at(-1)?.pitches.push({ id: p.id, depth, name: p.name, facts: pitchFacts(p) });
+  }
+  return groups.filter((g) => g.pitches.length);
+}
+
 export function pitchTree(pitches: Pitch[]): { pitch: Pitch; depth: number }[] {
   const byId = new Map(pitches.map((p) => [p.id, p]));
   const depth = (p: Pitch, seen = 0): number => {

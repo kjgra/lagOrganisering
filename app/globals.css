@@ -350,6 +350,9 @@ select.nm-input { appearance: auto; }
 .nm-check input { width: 22px; height: 22px; margin-top: 1px; accent-color: var(--ink); flex: none; }
 .nm-form { display: grid; gap: var(--space-4); }
 .nm-form-row { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.nm-form-row > * { min-width: 0; }
+/* iOS gives date fields a fixed native width that overflows narrow columns. */
+.nm-input[type="date"] { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; display: block; line-height: var(--control-md); }
 .nm-hint { font-size: 15px; line-height: 20px; color: var(--ink-muted); }
 .nm-changes__title { margin: 0 0 var(--space-2); font-family: var(--font-display); font-size: 22px; line-height: 28px; font-weight: 800; }
 .nm-changes__title .nm-hint { font-family: var(--font-sans); font-weight: 400; }

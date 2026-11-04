@@ -1,4 +1,4 @@
-import { ClipboardCheck, Play, RefreshCw } from "lucide-react";
+import { AlarmClock, ClipboardCheck, MapPin, Play, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { EventCard } from "@/components/events/EventCard";
 import { PushToggle } from "@/components/notifications/PushToggle";
@@ -16,6 +16,9 @@ import type { SpondEvent } from "@/lib/spond/types";
 import { activeLocks, listProposals, pendingProposals } from "@/lib/store/proposals";
 import { pendingEvaluations, syncPlanTimes } from "@/lib/store/reminders";
 import { latestPlans } from "@/lib/store/training";
+import { pitchEvent } from "@/lib/plan-data";
+import { endedText, endingSoon, endingText } from "@/lib/plans/pitch-schedule";
+import { listWeekdayPitches, pitchesForEvents } from "@/lib/store/pitch-schedule";
 import { reportError } from "@/lib/errors";
 
 const UNSENT_STEP = 5;
@@ -73,6 +76,20 @@ export default async function EventsPage(props: PageProps<"/g/[groupId]/[sub]/ar
   const push = vapid();
 
   const todayKey = osloDate(new Date());
+
+  // Faste baner: a reminder before they end, and trainings left without pitches after.
+  const trainings = past ? [] : events.filter((e) => !e.match && !e.cancelled);
+  const [fixed, forEvents] = past
+    ? [null, new Map()]
+    : await Promise.all([
+        listWeekdayPitches(d, ctx.user.access, ctx.group.id, sub ?? ""),
+        pitchesForEvents(d, ctx.user.access, ctx.group.id, trainings.map(pitchEvent)),
+      ]).catch(async (err) => (await reportError("Faste baner", err), [null, new Map()] as const));
+  const pitchEnding = fixed ? endingText(endingSoon(fixed.rows, todayKey), todayKey) : null;
+  const noPitch = trainings.filter((e) => forEvents.get(e.id)?.expired);
+  const ended = [...new Map(noPitch.map((e) => [forEvents.get(e.id)!.expired!.id, forEvents.get(e.id)!.expired!])).values()];
+  const noPitchText = endedText(ended, todayKey);
+  const lagetPath = `${ctx.path("/trening/laget")}#faste-baner`;
   const today = past ? [] : events.filter((e) => e.start && !e.cancelled && !e.notSent && osloDate(e.start) === todayKey);
 
   const sections: { title: string; events: SpondEvent[] }[] = [];
@@ -117,6 +134,22 @@ export default async function EventsPage(props: PageProps<"/g/[groupId]/[sub]/ar
             Se forslagene
           </Link>
         </div>
+      ) : null}
+
+      {noPitch.length ? (
+        <Link href={lagetPath} className="nm-note" style={{ marginTop: "var(--space-3)" }}>
+          <Icon icon={MapPin} size={20} />
+          <span style={{ flex: 1 }}>
+            {noPitch.length === 1 ? "1 trening" : `${noPitch.length} treninger`} mangler bane fordi {noPitchText} Velg baner på treningen, eller legg inn nye faste baner.
+          </span>
+          <span style={{ fontWeight: 700 }}>Faste baner</span>
+        </Link>
+      ) : pitchEnding ? (
+        <Link href={lagetPath} className="nm-note" style={{ marginTop: "var(--space-3)" }}>
+          <Icon icon={AlarmClock} size={20} />
+          <span style={{ flex: 1 }}>{pitchEnding} Legg inn nye når neste banefordeling er klar.</span>
+          <span style={{ fontWeight: 700 }}>Faste baner</span>
+        </Link>
       ) : null}
 
       {toEvaluate.map((x) => (

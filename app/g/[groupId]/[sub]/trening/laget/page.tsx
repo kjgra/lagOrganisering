@@ -1,30 +1,29 @@
 import { AppShell } from "@/components/shell/AppShell";
-import { ScopeNote, TeamSettingsForm, type PitchGroup } from "@/components/training/forms";
+import { ScopeNote, TeamSettingsForm } from "@/components/training/forms";
 import { TrainingTabs } from "@/components/training/TrainingTabs";
+import { WeekdayPitches } from "@/components/training/WeekdayPitches";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
-import { osloParts, savedAt } from "@/lib/format";
-import { pitchFacts, pitchTree, type Pitch } from "@/lib/plans/plan";
+import { osloDate, osloParts, savedAt } from "@/lib/format";
+import { currentRows, endingSoon, endingText, rowStatus, spanText } from "@/lib/plans/pitch-schedule";
+import { pitchGroups } from "@/lib/plans/plan";
 import { profileName } from "@/lib/proposal-view";
+import { listWeekdayPitches } from "@/lib/store/pitch-schedule";
 import { getTeamSettings, listPitches } from "@/lib/store/training";
-
-/** Main pitches with their sub-pitches; retired pitches only when the team has them. */
-function pitchGroups(pitches: Pitch[], chosen: number[]): PitchGroup[] {
-  const groups: PitchGroup[] = [];
-  for (const { pitch: p, depth } of pitchTree(pitches)) {
-    if (depth === 0) groups.push({ title: p.name, pitches: [] });
-    if (p.retired && !chosen.includes(p.id)) continue;
-    groups.at(-1)?.pitches.push({ id: p.id, depth, name: p.name, facts: pitchFacts(p) });
-  }
-  return groups.filter((g) => g.pitches.length);
-}
 
 /** «Laget»: age, session length, pitches and equipment, as the starting point for every session. */
 export default async function TeamPage(props: PageProps<"/g/[groupId]/[sub]/trening/laget">) {
   const ctx = await contextFromParams(props.params);
   const d = await db();
   const sub = ctx.subgroup?.id ?? "";
-  const [s, pitches] = await Promise.all([getTeamSettings(d, ctx.user.access, ctx.group.id, sub), listPitches(d)]);
+  const [s, pitches, fixed] = await Promise.all([
+    getTeamSettings(d, ctx.user.access, ctx.group.id, sub),
+    listPitches(d),
+    listWeekdayPitches(d, ctx.user.access, ctx.group.id, sub),
+  ]);
+  const today = osloDate(new Date());
+  const ending = endingSoon(fixed.rows, today);
+  const nameOf = new Map(pitches.map((p) => [p.id, p.name]));
   return (
     <AppShell ctx={ctx} title="Trening" section="training">
       <TrainingTabs ctx={ctx} current="laget" />
@@ -39,11 +38,9 @@ export default async function TeamPage(props: PageProps<"/g/[groupId]/[sub]/tren
           birth_year: s.birth_year ? String(s.birth_year) : "",
           gender: s.gender ?? "",
           session_minutes: s.session_minutes ? String(s.session_minutes) : "",
-          pitch: s.pitch,
+          pitch: "",
           equipment: s.equipment,
         }}
-        initialPitches={s.pitch_ids}
-        pitchGroups={pitchGroups(pitches, s.pitch_ids)}
         year={osloParts(new Date()).year}
       />
       {s.updated_by && s.updated_at ? (
@@ -51,6 +48,35 @@ export default async function TeamPage(props: PageProps<"/g/[groupId]/[sub]/tren
           Sist endret av {profileName(ctx.group, s.updated_by)} {savedAt(s.updated_at)}.
         </p>
       ) : null}
+      <h2 className="nm-section-label" id="faste-baner">
+        Faste baner per ukedag
+      </h2>
+      {fixed.inherited && fixed.rows.length ? (
+        <p className="nm-hint" style={{ marginTop: 0 }}>
+          {ctx.label} følger {ctx.group.name}. Lagrer du, får {ctx.label} sine egne.
+        </p>
+      ) : null}
+      <WeekdayPitches
+        groupId={ctx.group.id}
+        sub={sub}
+        groups={pitchGroups(pitches, fixed.rows.flatMap((r) => r.pitch_ids))}
+        rows={currentRows(fixed.rows, today)
+          .filter((r) => !r.valid_to || r.valid_to >= today)
+          // In force first by weekday, then the coming ones by start.
+          .sort((a, b) => Number(a.valid_from > today) - Number(b.valid_from > today) || (a.valid_from > today ? a.valid_from.localeCompare(b.valid_from) : 0) || a.weekday - b.weekday)
+          .map((r) => ({
+            id: r.id,
+            weekday: r.weekday,
+            from: r.valid_from,
+            to: r.valid_to,
+            pitchIds: r.pitch_ids,
+            pitchNames: r.pitch_ids.map((id) => nameOf.get(id) ?? "Ukjent bane"),
+            span: spanText(r),
+            status: rowStatus(r, today, ending) as "now" | "coming" | "ending",
+          }))}
+        today={today}
+        ending={endingText(ending, today)}
+      />
     </AppShell>
   );
 }

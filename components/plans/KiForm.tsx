@@ -20,6 +20,8 @@ export interface KiFormProps {
   coaches: number;
   /** The team's pitches from «Trening › Laget»; one or more are chosen per session. */
   pitches: { id: number; name: string; facts: string }[];
+  /** Chosen from the start: the training's pitches (fixed for the weekday, or its own). */
+  pitchIds?: number[];
   /** The team's note about the pitches. */
   pitchNote: string;
   /** Href to «Trening › Laget». */
@@ -45,7 +47,7 @@ export function KiForm(p: KiFormProps) {
   const [links, setLinks] = useState("");
   const [model, setModel] = useState(p.model);
   const [picked, setPicked] = useState<number[]>(p.comments.map((c) => c.id));
-  const [pitchIds, setPitchIds] = useState<number[]>(p.pitches.length === 1 ? [p.pitches[0].id] : []);
+  const [pitchIds, setPitchIds] = useState<number[]>(p.pitchIds?.length ? p.pitchIds : p.pitches.length === 1 ? [p.pitches[0].id] : []);
   const [prices, setPrices] = useState<Record<string, string> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
