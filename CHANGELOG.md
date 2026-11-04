@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.21.0] – 2026-11-03
+
+Dekning av fagplanen.
+
+### Lagt til
+
+- «Dekning av fagplanen» under Trening › Øvelser viser hvor godt øvelsesbanken dekker NFFs fagplan: et rutenett med aldersbånd, hovedtema og aktivitet (40 celler) med antall gode øvelser og kandidater i hver, og delferdighetene per aldersbånd. Trykk på en celle for å se øvelsene i den. «Last ned hullene» gir en liste over det som mangler, som bestilling på neste serie med øvelser.
+
 ## [1.20.2] – 2026-11-03
 
 ### Fikset
