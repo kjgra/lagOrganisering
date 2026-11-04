@@ -2,8 +2,11 @@ import { Bug, ChevronLeft, ChevronRight, Inbox, ShieldCheck, Sparkles, Users, Wr
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Brand } from "@/components/Brand";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { Icon } from "@/components/ui/icon";
+import { adminAttention, tabAttention } from "@/lib/attention";
 import type { CurrentUser } from "@/lib/auth/current";
+import { db } from "@/lib/db";
 import { envLabel } from "@/lib/env";
 
 export const ADMIN_TABS = [
@@ -31,7 +34,7 @@ export type AdminTab = (typeof ADMIN_TABS)[number]["key"];
  * for admins: administration of the app itself (trainers' access, KI,
  * maintenance), per main group. Training content is under «Trening».
  */
-export function SettingsShell({
+export async function SettingsShell({
   user,
   back,
   tab,
@@ -49,6 +52,9 @@ export function SettingsShell({
   const label = envLabel();
   const q = (extra = "") => `?fra=${encodeURIComponent(back)}${groupId ? `&lag=${encodeURIComponent(groupId)}` : ""}${extra}`;
   const tabs = user.rights.admin ? ADMIN_TABS.filter((t) => !("superadmin" in t) || user.rights.superadmin) : [];
+  // What waits for this person, as a number on the tab (see lib/attention.ts).
+  const attention = tabs.length ? await adminAttention(await db(), user.rights) : {};
+  const badge = (key: string) => <CountBadge n={attention[key] ?? 0} label={tabAttention(attention, key)} />;
   return (
     <div className="nm-app">
       <aside className="nm-side nm-chrome">
@@ -60,6 +66,7 @@ export function SettingsShell({
           {tabs.map((t) => (
             <Link key={t.key} href={`/innstillinger/${t.key}${q()}`} aria-current={tab === t.key ? "page" : undefined}>
               {t.label}
+              {badge(t.key)}
             </Link>
           ))}
           <Link href={`/innstillinger/nytt${q()}`} aria-current={tab === "nytt" ? "page" : undefined}>
@@ -105,6 +112,7 @@ export function SettingsShell({
                     <Link href={`/innstillinger/${t.key}${q()}`}>
                       <Icon icon={TAB_ICONS[t.key]} />
                       <span className="nm-list__name">{t.label}</span>
+                      {badge(t.key)}
                       <Icon icon={ChevronRight} />
                     </Link>
                   </li>

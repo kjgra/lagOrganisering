@@ -3,7 +3,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Brand } from "@/components/Brand";
 import { FeedbackButton } from "@/components/feedback/FeedbackButton";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { Icon } from "@/components/ui/icon";
+import { adminAttention, attentionTotal, settingsLabel } from "@/lib/attention";
 import type { GroupContext } from "@/lib/context";
 import { db } from "@/lib/db";
 import { envLabel } from "@/lib/env";
@@ -46,18 +48,14 @@ export async function AppShell({
   children: ReactNode;
 }) {
   const d = await db();
-  const [prefs, pending] = await Promise.all([
+  const [prefs, pending, attention] = await Promise.all([
     getPreferences(d, ctx.user.session.profileId),
     pendingProposals(d, ctx.user.access, ctx.group.id).catch(() => []),
+    adminAttention(d, ctx.user.rights),
   ]);
   // Proposals waiting for approval, as a number on «Lagforslag» in both menus.
   const badge = (key: Section) =>
-    key === "proposals" && pending.length ? (
-      <span className="nm-navbadge">
-        {pending.length}
-        <span className="nm-sr"> venter på godkjenning</span>
-      </span>
-    ) : null;
+    key === "proposals" ? <CountBadge n={pending.length} label={`${pending.length} venter på godkjenning`} /> : null;
   const label = envLabel();
   const top = !back;
   const sectionPath = NAV.find((n) => n.key === section)!.path;
@@ -121,8 +119,10 @@ export async function AppShell({
             </>
           )}
           <FeedbackButton groupId={ctx.group.id} />
-          <Link href={`/innstillinger?fra=${encodeURIComponent(ctx.path(sectionPath))}&lag=${encodeURIComponent(ctx.group.id)}`} className="nm-iconbtn nm-iconbtn--chrome" aria-label="Innstillinger">
+          <Link href={`/innstillinger?fra=${encodeURIComponent(ctx.path(sectionPath))}&lag=${encodeURIComponent(ctx.group.id)}`} className="nm-iconbtn nm-iconbtn--chrome nm-iconbtn--badged" aria-label={settingsLabel(attention)}>
             <Icon icon={Settings} />
+            {/* Things in the admin panel that wait for this person; the link's name says what. */}
+            <CountBadge n={attentionTotal(attention)} />
           </Link>
         </header>
         <main className={wide ? "nm-main nm-main--wide" : "nm-main"}>

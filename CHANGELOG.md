@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.26.0] – 2026-11-04
+
+Varsel om ting som venter i admin.
+
+### Lagt til
+
+- Når det ligger tilbakemeldinger som venter på deg, viser tannhjulet et lite tall, og fanen «Tilbakemeldinger» i admin viser hvor mange. Tallet forsvinner når tilbakemeldingene er sendt til GitHub eller avvist, ikke bare når du har sett dem, slik at ingenting blir glemt. Skjermlesere leser opp hva som venter. Andre faner som trenger gjennomgang kan senere få samme varsel.
+
 ## [1.25.0] – 2026-11-04
 
 Bedre valg av øvelser fra banken.

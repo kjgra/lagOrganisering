@@ -25,6 +25,10 @@ test("a trainer sends feedback, and the superadmin edits and sends it to GitHub"
   await page.context().clearCookies();
   await login(page);
   await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  // The gear and the tab say that feedback waits.
+  await page.goto("/g/G-FOTBALL/S-G2016/arrangementer");
+  await page.getByRole("link", { name: /^Innstillinger: \d+ tilbakemelding(er)? venter$/ }).click();
+  await expect(page.getByRole("link", { name: /Tilbakemeldinger \d+ tilbakemelding(er)? venter/ }).first()).toBeVisible();
   await page.goto("/innstillinger/tilbakemeldinger");
   const item = page.getByRole("listitem").filter({ has: page.getByRole("textbox", { name: "Tekst som publiseres" }) }).filter({ hasText: /arrangementer/ }).last();
   const edit = item.getByRole("textbox", { name: "Tekst som publiseres" });
