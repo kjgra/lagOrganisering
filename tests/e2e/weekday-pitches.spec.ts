@@ -23,7 +23,17 @@ test("Faste baner: set per weekday, shown on the training, changed for one train
   await tuesday.getByRole("checkbox", { name: /^Nymark Kunstgress 04 9er B/ }).check();
   await form.getByRole("button", { name: "Lagre faste baner" }).click();
   await expect(page.locator(".nm-toast")).toContainText("Faste baner for tirsdager er lagret.");
-  await expect(page.getByText("Til neste endring", { exact: false }).first()).toBeVisible();
+  // One card per day: the dates after the weekday, one pitch per line.
+  const card = page.getByRole("region", { name: /^Tirsdag fra \d\d\.\d\d\.\d\d$/ });
+  await expect(card).toBeVisible();
+  await expect(card.getByRole("listitem")).toHaveText(["Nymark Kunstgress 04 9er A", "Nymark Kunstgress 04 9er B"]);
+
+  // Editing opens the whole banefordeling: here, take the 9er B out.
+  await card.getByRole("button", { name: "Endre banefordelingen" }).click();
+  const edit = page.getByRole("form", { name: "Endre banefordelingen" });
+  await edit.getByRole("group", { name: "Baner tirsdag" }).getByRole("checkbox", { name: /^Nymark Kunstgress 04 9er B/ }).uncheck();
+  await edit.getByRole("button", { name: "Lagre faste baner" }).click();
+  await expect(card.getByRole("listitem")).toHaveText(["Nymark Kunstgress 04 9er A"]);
 
   await page.goto("/g/G-FOTBALL/S-J2015/arrangementer");
   await page
@@ -38,7 +48,7 @@ test("Faste baner: set per weekday, shown on the training, changed for one train
     await expect(page.getByRole("form", { name: "Baner for denne treningen" })).toBeVisible({ timeout: 1000 });
   }).toPass();
   const one = page.getByRole("form", { name: "Baner for denne treningen" });
-  await one.getByRole("checkbox", { name: /^Nymark Kunstgress 04 9er A/ }).uncheck();
+  await one.getByRole("checkbox", { name: /^Nymark Kunstgress 04 9er B/ }).check();
   await one.getByRole("button", { name: "Lagre baner" }).click();
   await expect(page.locator(".nm-toast")).toContainText("Banene for treningen er lagret.");
   await expect(page.getByText("endret for denne treningen")).toBeVisible();

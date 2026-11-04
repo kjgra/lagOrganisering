@@ -197,3 +197,14 @@ export function endedText(rows: WeekdayPitches[], today: string): string {
   const parts = [...byDate].map(([to, days]) => `${listText(days)} ${to < today ? "sluttet" : "slutter"} ${dateText(to, today)}`);
   return `de faste banene for ${listText(parts)}.`;
 }
+
+/** «04.11.26» */
+export function numericDate(key: string): string {
+  const [y, m, d] = key.split("-");
+  return `${d}.${m}.${y.slice(2)}`;
+}
+
+/** «04.11.26–31.03.27», or «fra 04.11.26» without an end. */
+export function spanText(r: { valid_from: string; valid_to: string | null }): string {
+  return r.valid_to ? `${numericDate(r.valid_from)}–${numericDate(r.valid_to)}` : `fra ${numericDate(r.valid_from)}`;
+}

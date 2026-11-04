@@ -5,7 +5,7 @@ import { WeekdayPitches } from "@/components/training/WeekdayPitches";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
 import { osloDate, osloParts, savedAt } from "@/lib/format";
-import { currentRows, endingSoon, endingText, periodText, rowStatus } from "@/lib/plans/pitch-schedule";
+import { currentRows, endingSoon, endingText, rowStatus, spanText } from "@/lib/plans/pitch-schedule";
 import { pitchGroups } from "@/lib/plans/plan";
 import { profileName } from "@/lib/proposal-view";
 import { listWeekdayPitches } from "@/lib/store/pitch-schedule";
@@ -59,18 +59,21 @@ export default async function TeamPage(props: PageProps<"/g/[groupId]/[sub]/tren
       <WeekdayPitches
         groupId={ctx.group.id}
         sub={sub}
-        inherited={fixed.inherited}
         groups={pitchGroups(pitches, fixed.rows.flatMap((r) => r.pitch_ids))}
-        rows={currentRows(fixed.rows, today).map((r) => ({
-          id: r.id,
-          weekday: r.weekday,
-          from: r.valid_from,
-          to: r.valid_to,
-          pitchIds: r.pitch_ids,
-          pitchNames: r.pitch_ids.map((id) => nameOf.get(id) ?? "Ukjent bane").join(", "),
-          period: periodText(r, today),
-          status: rowStatus(r, today, ending),
-        }))}
+        rows={currentRows(fixed.rows, today)
+          .filter((r) => !r.valid_to || r.valid_to >= today)
+          // In force first by weekday, then the coming ones by start.
+          .sort((a, b) => Number(a.valid_from > today) - Number(b.valid_from > today) || (a.valid_from > today ? a.valid_from.localeCompare(b.valid_from) : 0) || a.weekday - b.weekday)
+          .map((r) => ({
+            id: r.id,
+            weekday: r.weekday,
+            from: r.valid_from,
+            to: r.valid_to,
+            pitchIds: r.pitch_ids,
+            pitchNames: r.pitch_ids.map((id) => nameOf.get(id) ?? "Ukjent bane"),
+            span: spanText(r),
+            status: rowStatus(r, today, ending) as "now" | "coming" | "ending",
+          }))}
         today={today}
         ending={endingText(ending, today)}
       />

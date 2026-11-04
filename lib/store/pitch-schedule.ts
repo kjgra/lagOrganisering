@@ -63,22 +63,44 @@ export async function fixedPitchIds(d: Db, access: Access, groupId: string, sub:
  * left as they are. A subgroup that followed the main group first gets a copy
  * of the main group's rows, so its other weekdays keep their pitches.
  */
-export async function saveWeekdayPitches(d: Db, access: Access, groupId: string, sub: string, input: WeekdayPitchesInput): Promise<void> {
+/** A banefordeling: the rows saved together, with the same start and end. */
+export interface Period {
+  from: string;
+  to: string | null;
+}
+
+/** A subgroup that followed the main group gets a copy of its rows before its first change. */
+async function ownCopy(t: Db, groupId: string, sub: string) {
+  if (!sub) return;
+  const own = await t.query<{ n: number }>("SELECT count(*)::int AS n FROM weekday_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
+  if (own[0]?.n) return;
+  await t.query(
+    `INSERT INTO weekday_pitches (spond_group_id, spond_subgroup_id, weekday, valid_from, valid_to, pitch_ids, updated_by, updated_at)
+     SELECT spond_group_id, $2, weekday, valid_from, valid_to, pitch_ids, updated_by, updated_at
+       FROM weekday_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = ''`,
+    [groupId, sub],
+  );
+}
+
+const IN_PERIOD = "valid_from = $3::date AND valid_to IS NOT DISTINCT FROM $4::date";
+
+export async function saveWeekdayPitches(
+  d: Db,
+  access: Access,
+  groupId: string,
+  sub: string,
+  input: WeekdayPitchesInput,
+  /** Editing a banefordeling: its rows are replaced by these (days left out are removed). */
+  replace?: Period,
+): Promise<void> {
   assertGroup(access, groupId);
   const problem = validateWeekdayPitches(input);
   if (problem) throw new UserError(problem);
   await checkPitches(d, [...new Set(input.days.flatMap((x) => x.pitch_ids))]);
   await d.tx(async (t) => {
-    if (sub) {
-      const own = await t.query<{ n: number }>("SELECT count(*)::int AS n FROM weekday_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
-      if (!own[0]?.n) {
-        await t.query(
-          `INSERT INTO weekday_pitches (spond_group_id, spond_subgroup_id, weekday, valid_from, valid_to, pitch_ids, updated_by, updated_at)
-           SELECT spond_group_id, $2, weekday, valid_from, valid_to, pitch_ids, updated_by, updated_at
-             FROM weekday_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = ''`,
-          [groupId, sub],
-        );
-      }
+    await ownCopy(t, groupId, sub);
+    if (replace) {
+      await t.query(`DELETE FROM weekday_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = $2 AND ${IN_PERIOD}`, [groupId, sub, replace.from, replace.to]);
     }
     for (const day of input.days) {
       await t.query(
@@ -97,6 +119,16 @@ export async function deleteWeekdayPitches(d: Db, access: Access, groupId: strin
   assertGroup(access, groupId);
   const gone = await d.query("DELETE FROM weekday_pitches WHERE id = $1 AND spond_group_id = $2 AND spond_subgroup_id = $3 RETURNING id", [id, groupId, sub]);
   if (!gone.length) throw new UserError("Fant ikke de faste banene.");
+}
+
+/** Delete a whole banefordeling of the scope (a subgroup that followed the main group gets its own first). */
+export async function deletePeriod(d: Db, access: Access, groupId: string, sub: string, period: Period): Promise<void> {
+  assertGroup(access, groupId);
+  await d.tx(async (t) => {
+    await ownCopy(t, groupId, sub);
+    const gone = await t.query(`DELETE FROM weekday_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = $2 AND ${IN_PERIOD} RETURNING id`, [groupId, sub, period.from, period.to]);
+    if (!gone.length) throw new UserError("Fant ikke banefordelingen.");
+  });
 }
 
 /** Subgroup back to the main group's fixed pitches. */

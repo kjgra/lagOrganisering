@@ -11,11 +11,13 @@ import {
   isDateKey,
   isoWeekday,
   periodText,
+  spanText,
   validateWeekdayPitches,
   type WeekdayPitches,
 } from "@/lib/plans/pitch-schedule";
 import type { Access } from "@/lib/store/access";
 import {
+  deletePeriod,
   deleteWeekdayPitches,
   eventOverrides,
   listWeekdayPitches,
@@ -126,6 +128,17 @@ describe("store", () => {
     ]);
   });
 
+  it("edits a whole banefordeling: days left out are removed, and it can be deleted", async () => {
+    const period = { from: "2027-04-01", to: "2027-09-30" };
+    await saveWeekdayPitches(d, access, "G1", "", { ...period, days: [{ weekday: 1, pitch_ids: [ids[0]] }, { weekday: 3, pitch_ids: [ids[1]] }] });
+    await saveWeekdayPitches(d, access, "G1", "", { from: "2027-04-02", to: "2027-09-30", days: [{ weekday: 3, pitch_ids: [ids[2]] }] }, period);
+    const after = (await listWeekdayPitches(d, access, "G1", "")).rows.filter((r) => r.valid_from >= "2027-04-01");
+    expect(after.map((r) => [r.weekday, r.valid_from, r.pitch_ids])).toEqual([[3, "2027-04-02", [ids[2]]]]);
+    await deletePeriod(d, access, "G1", "", { from: "2027-04-02", to: "2027-09-30" });
+    expect((await listWeekdayPitches(d, access, "G1", "")).rows.filter((r) => r.valid_from >= "2027-04-01")).toEqual([]);
+    await expect(deletePeriod(d, access, "G1", "", period)).rejects.toThrow(/Fant ikke/);
+  });
+
   it("takes any pitch at the facility, and other groups are closed", async () => {
     await expect(saveWeekdayPitches(d, access, "G1", "", { from: MON, to: null, days: [{ weekday: 3, pitch_ids: [999999] }] })).rejects.toThrow(/Ukjent bane/);
     await expect(listWeekdayPitches(d, access, "G2", "")).rejects.toThrow(/tilgang/);
@@ -178,6 +191,11 @@ describe("store", () => {
 });
 
 describe("text", () => {
+  it("shows the dates as numbers", () => {
+    expect(spanText({ valid_from: "2026-02-01", valid_to: "2026-08-01" })).toBe("01.02.26–01.08.26");
+    expect(spanText({ valid_from: "2026-11-04", valid_to: null })).toBe("fra 04.11.26");
+  });
+
   it("says when the fixed pitches end", () => {
     const rows = [row(4, "2026-08-01", "2026-11-20", [1]), row(2, "2026-08-01", "2026-11-20", [2]), row(1, "2026-08-01", "2026-10-30", [3])];
     expect(endedText(rows, MON)).toBe("de faste banene for mandager sluttet 30. okt og tirsdager og torsdager slutter 20. nov.");

@@ -1,8 +1,8 @@
 "use client";
 
-import { AlarmClock, CalendarClock, CalendarPlus, CircleOff, MapPin, Pencil, Trash2 } from "lucide-react";
+import { AlarmClock, CalendarClock, CalendarPlus, MapPin, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { deleteWeekdayPitchesAction, saveWeekdayPitchesAction } from "@/app/actions/pitches";
+import { deletePeriodAction, saveWeekdayPitchesAction } from "@/app/actions/pitches";
 import { Field, SaveButton, useSave } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
 import { PitchTree } from "@/components/training/PitchTree";
@@ -17,16 +17,18 @@ export interface WeekdayRow {
   from: string;
   to: string | null;
   pitchIds: number[];
-  pitchNames: string;
-  /** «Fra 4. nov til og med 31. mar» */
-  period: string;
-  status: "now" | "coming" | "ending" | "ended";
+  pitchNames: string[];
+  /** «04.11.26–31.03.27» */
+  span: string;
+  status: "now" | "coming" | "ending";
 }
 
 interface Draft {
   from: string;
   to: string;
   days: Record<number, number[]>;
+  /** Editing this banefordeling (its start and end), not adding a new one. */
+  editing: { from: string; to: string | null } | null;
 }
 
 /**
@@ -37,7 +39,6 @@ interface Draft {
 export function WeekdayPitches({
   groupId,
   sub,
-  inherited,
   groups,
   rows,
   today,
@@ -45,8 +46,6 @@ export function WeekdayPitches({
 }: {
   groupId: string;
   sub: string;
-  /** A subgroup showing the main group's: saving gives it its own. */
-  inherited: boolean;
   /** All the pitches at the facility, by main pitch. */
   groups: PitchGroup[];
   rows: WeekdayRow[];
@@ -55,13 +54,18 @@ export function WeekdayPitches({
   ending: string | null;
 }) {
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [confirm, setConfirm] = useState<number | null>(null);
+  const [confirm, setConfirm] = useState(false);
   const { pending, run, errorBox } = useSave();
   const chosenDays = draft ? Object.keys(draft.days).map(Number).sort() : [];
 
   const open = (d: Draft) => {
-    setConfirm(null);
+    setConfirm(false);
     setDraft(d);
+  };
+  /** The whole banefordeling a row belongs to: every day with the same start and end. */
+  const edit = (r: WeekdayRow) => {
+    const same = rows.filter((x) => x.from === r.from && x.to === r.to);
+    open({ from: r.from, to: r.to ?? "", days: Object.fromEntries(same.map((x) => [x.weekday, x.pitchIds])), editing: { from: r.from, to: r.to } });
   };
   const toggleDay = (wd: number, on: boolean) =>
     setDraft((d) => {
@@ -86,66 +90,42 @@ export function WeekdayPitches({
         </div>
       ) : null}
       {rows.length ? (
-        <ul className="nm-list">
+        <div className="nm-stack" style={{ gap: "var(--space-2)" }}>
           {rows.map((r) => (
-            <li key={r.id} style={{ flexWrap: "wrap" }}>
-              <div className="nm-list__main">
-                <span className="nm-list__name">{DAYS[r.weekday - 1]}</span>
-                <span style={{ display: "inline-flex", gap: "var(--space-1)", alignItems: "flex-start" }}>
-                  <Icon icon={MapPin} size={16} />
-                  <span>{r.pitchNames}</span>
-                </span>
-                <span className="nm-hint">{r.period}</span>
+            <section
+              key={r.id}
+              className="nm-card"
+              aria-label={`${DAYS[r.weekday - 1]} ${r.span}`}
+              style={{
+                padding: "var(--space-3)",
+                ...(r.status === "coming" ? { borderStyle: "dashed", background: "var(--surface-muted)" } : {}),
+              }}
+            >
+              <div className="nm-row" style={{ gap: "var(--space-2)", flexWrap: "wrap", alignItems: "baseline" }}>
+                <strong style={{ fontSize: "var(--fs-body-lg)" }}>{DAYS[r.weekday - 1]}</strong>
+                <span className="nm-muted">({r.span})</span>
                 {r.status !== "now" ? (
-                  <span className="nm-badge nm-badge--neutral" style={{ alignSelf: "flex-start" }}>
-                    <Icon icon={r.status === "coming" ? CalendarClock : r.status === "ending" ? AlarmClock : CircleOff} size={16} />
-                    {r.status === "coming" ? "Kommer" : r.status === "ending" ? "Slutter snart" : "Sluttet"}
+                  <span className="nm-badge nm-badge--neutral">
+                    <Icon icon={r.status === "coming" ? CalendarClock : AlarmClock} size={16} />
+                    {r.status === "coming" ? "Kommer" : "Slutter snart"}
                   </span>
                 ) : null}
               </div>
-              <div className="nm-row" style={{ gap: "var(--space-1)" }}>
-                <button
-                  type="button"
-                  className="nm-btn nm-btn--ghost"
-                  onClick={() =>
-                    open({
-                      from: r.status === "coming" ? r.from : today,
-                      to: r.status === "ended" ? "" : (r.to ?? ""),
-                      days: { [r.weekday]: r.status === "ended" ? [] : r.pitchIds },
-                    })
-                  }
-                >
-                  <Icon icon={Pencil} />
-                  Endre fra dato
-                </button>
-                {!inherited ? (
-                  <button type="button" className="nm-btn nm-btn--ghost" aria-label={`Slett ${DAYS[r.weekday - 1].toLowerCase()} ${r.period.toLowerCase()}`} onClick={() => setConfirm(r.id)}>
-                    <Icon icon={Trash2} />
-                    Slett
-                  </button>
-                ) : null}
-              </div>
-              {confirm === r.id ? (
-                <div className="nm-row" style={{ gap: "var(--space-2)", flexWrap: "wrap", width: "100%" }}>
-                  <span role="alert" style={{ alignSelf: "center" }}>
-                    Slette {DAYS[r.weekday - 1].toLowerCase()} ({r.period.toLowerCase()})?
-                  </span>
-                  <button
-                    type="button"
-                    className="nm-btn nm-btn--danger"
-                    disabled={pending}
-                    onClick={() => run(() => deleteWeekdayPitchesAction(groupId, sub, r.id), () => setConfirm(null))}
-                  >
-                    Ja, slett
-                  </button>
-                  <button type="button" className="nm-btn nm-btn--ghost" onClick={() => setConfirm(null)}>
-                    Avbryt
-                  </button>
-                </div>
-              ) : null}
-            </li>
+              <ul style={{ listStyle: "none", margin: "var(--space-2) 0", padding: 0, display: "grid", gap: "var(--space-1)" }}>
+                {r.pitchNames.map((n) => (
+                  <li key={n} style={{ display: "flex", gap: "var(--space-1)", alignItems: "flex-start" }}>
+                    <Icon icon={MapPin} size={16} />
+                    <span>{n}</span>
+                  </li>
+                ))}
+              </ul>
+              <button type="button" className="nm-btn nm-btn--ghost" onClick={() => edit(r)}>
+                <Icon icon={Pencil} />
+                Endre banefordelingen
+              </button>
+            </section>
           ))}
-        </ul>
+        </div>
       ) : (
         <p className="nm-muted" style={{ margin: 0 }}>
           Ingen faste baner ennå. Banene velges for hver trening.
@@ -156,7 +136,7 @@ export function WeekdayPitches({
         <form
           className="nm-form nm-card"
           style={{ maxWidth: 640, padding: "var(--space-3)" }}
-          aria-label="Faste baner fra dato"
+          aria-label={draft.editing ? "Endre banefordelingen" : "Faste baner fra dato"}
           onSubmit={(e) => {
             e.preventDefault();
             run(
@@ -167,6 +147,7 @@ export function WeekdayPitches({
                   from: draft.from,
                   to: draft.to || null,
                   days: chosenDays.map((wd) => ({ weekday: wd, pitch_ids: draft.days[wd] })),
+                  replace: draft.editing ?? undefined,
                 }),
               () => setDraft(null),
             );
@@ -183,7 +164,9 @@ export function WeekdayPitches({
               Treningsdager
             </legend>
             <p className="nm-hint" style={{ margin: "0 0 var(--space-2)" }}>
-              Velg bare dagene som endres. De andre dagene beholder banene sine.
+              {draft.editing
+                ? "Fjern haken for en dag for å ta den ut av banefordelingen."
+                : "Velg bare dagene som endres. De andre dagene beholder banene sine."}
             </p>
             {DAYS.map((name, i) => {
               const wd = i + 1;
@@ -209,13 +192,37 @@ export function WeekdayPitches({
             <button type="button" className="nm-btn nm-btn--ghost" onClick={() => setDraft(null)}>
               Avbryt
             </button>
+            {draft.editing && !confirm ? (
+              <button type="button" className="nm-btn nm-btn--ghost" onClick={() => setConfirm(true)}>
+                <Icon icon={Trash2} />
+                Slett banefordelingen
+              </button>
+            ) : null}
           </div>
+          {draft.editing && confirm ? (
+            <div className="nm-row" style={{ gap: "var(--space-2)", flexWrap: "wrap" }}>
+              <span role="alert" style={{ alignSelf: "center" }}>
+                Slette banefordelingen for alle dagene?
+              </span>
+              <button
+                type="button"
+                className="nm-btn nm-btn--danger"
+                disabled={pending}
+                onClick={() => run(() => deletePeriodAction(groupId, sub, draft.editing!.from, draft.editing!.to), () => setDraft(null))}
+              >
+                Ja, slett
+              </button>
+              <button type="button" className="nm-btn nm-btn--ghost" onClick={() => setConfirm(false)}>
+                Avbryt
+              </button>
+            </div>
+          ) : null}
         </form>
       ) : (
         <>
           {errorBox}
           <div>
-            <button type="button" className="nm-btn nm-btn--secondary" onClick={() => open({ from: today, to: "", days: {} })}>
+            <button type="button" className="nm-btn nm-btn--secondary" onClick={() => open({ from: today, to: "", days: {}, editing: null })}>
               <Icon icon={CalendarPlus} />
               Nye faste baner
             </button>
