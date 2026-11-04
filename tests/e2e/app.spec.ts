@@ -202,6 +202,10 @@ test("admin: save the team's pitches, and choose among them for a session", asyn
   const pitches = page.getByRole("group", { name: "Baner for økta" });
   await expect(pitches.getByRole("checkbox")).toHaveCount(3);
   await expect(pitches.getByText("7er · Kunstgress m/innfyll som ikke er av plast · 60 × 50 m · lys 150 lux")).toBeVisible();
+  // The training's pitches (the demo's fixed ones, or chosen earlier) are chosen already.
+  const checked = pitches.getByRole("checkbox", { checked: true });
+  await expect(checked.first()).toBeVisible();
+  while ((await checked.count()) > 0) await checked.first().uncheck();
   await page.getByRole("button", { name: "Lag opplegg med KI" }).click();
   await expect(page.locator(".nm-alert")).toContainText("Velg minst én bane for økta.");
   await pitches.getByRole("checkbox", { name: /Nymark Kunstgress 03 7er A/ }).check();

@@ -1,6 +1,7 @@
 import { Ban, CalendarDays, Clock, MapPin, Pencil, Play, Plus, Send, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { EventPitches } from "@/components/events/EventPitches";
 import { ParticipantList, type ParticipantRow } from "@/components/events/ParticipantList";
 import { ProposalCard } from "@/components/proposals/ProposalCard";
 import { AutoRefresh } from "@/components/ui/AutoRefresh";
@@ -13,6 +14,7 @@ import { AI_MODELS, budgetCheck } from "@/lib/ai/plan-ai";
 import { contextFromParams, pairCandidates } from "@/lib/context";
 import { db } from "@/lib/db";
 import { aiMode, env } from "@/lib/env";
+import { eventPitchView } from "@/lib/event-pitches";
 import { findEvent } from "@/lib/events-data";
 import { clock, dayLabel, decimal, osloDate, osloMonthStart, shortDate, timeRange } from "@/lib/format";
 import { profileName, proposalView } from "@/lib/proposal-view";
@@ -33,10 +35,11 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
   if (!event) notFound();
 
   const d = await db();
-  const [info, proposals, locks] = await Promise.all([
+  const [info, proposals, locks, pitches] = await Promise.all([
     listPlayerTags(d, ctx.user.access, ctx.user.rights, ctx.group.id),
     listProposals(d, ctx.user.access, ctx.group.id, { eventIds: [event.id], drafts: false }),
     activeLocks(d, ctx.user.access, ctx.group.id),
+    event.match ? null : eventPitchView(d, ctx.user.access, ctx.group.id, event, osloDate(new Date())),
   ]);
   const past = eventIsPast(event);
   const counts = responseCounts(event, ctx.group);
@@ -151,6 +154,21 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
               </span>
             ) : null}
           </div>
+          {pitches && (pitches.pool.length || pitches.resolved.ids.length) ? (
+            <EventPitches
+              key={pitches.resolved.ids.join(",")}
+              groupId={ctx.group.id}
+              eventId={event.id}
+              pool={pitches.pool.map((p) => ({ id: p.id, name: p.name }))}
+              chosen={pitches.resolved.ids}
+              chosenNames={pitches.chosenNames}
+              source={pitches.resolved.source}
+              sourceText={pitches.sourceText}
+              warning={past || event.cancelled ? null : pitches.warning}
+              fixedNames={pitches.fixedNames}
+              canEdit={!past && !event.cancelled && pitches.pool.length > 0}
+            />
+          ) : null}
           {coaches.length ? (
             <p style={{ margin: "var(--space-2) 0 0", fontSize: "var(--fs-body)" }}>
               <strong>Trenere:</strong> {coaches.map((c) => c.displayName).join(", ")}

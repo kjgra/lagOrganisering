@@ -41,6 +41,7 @@ export const TRAINER_REFS = [
   { table: "archive_log", column: "confirmed_by", on: "anonymise" },
   { table: "board_settings", column: "updated_by", on: "anonymise" },
   { table: "edit_log", column: "author", on: "anonymise" },
+  { table: "event_pitches", column: "updated_by", on: "anonymise" },
   { table: "exercise_feedback", column: "author", on: "anonymise" },
   { table: "exercise_versions", column: "created_by", on: "anonymise" },
   { table: "exercises", column: "created_by", on: "anonymise" },
@@ -66,6 +67,7 @@ export const TRAINER_REFS = [
   { table: "training_plan_comments", column: "author", on: "anonymise" },
   { table: "training_plans", column: "approved_by", on: "anonymise" },
   { table: "training_plans", column: "created_by", on: "anonymise" },
+  { table: "weekday_pitches", column: "updated_by", on: "anonymise" },
 ] as const;
 
 /** Column names that hold a person's Spond id (for the completeness test). */

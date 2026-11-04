@@ -8,6 +8,16 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.23.0] – 2026-11-04
+
+Faste baner per ukedag.
+
+### Lagt til
+
+- «Faste baner per ukedag» under Trening › Laget. Etter banefordelingen velger dere baner bare for dagene dere trener, f.eks. mandag og tirsdag, fra en dato. De gjelder til neste endring, og dagene dere ikke velger, beholder banene sine. En endring midt i perioden legges inn med «Endre fra dato».
+- Sluttdato for de faste banene (når neste fordeling ventes). Tre uker før kommer en påminnelse på Trening › Laget og i arrangementslista. Etter sluttdatoen sier treningene fra om at de mangler bane, til nye faste baner er lagt inn.
+- Arrangementet viser banene for treningen («fast for mandager»), og de kan endres for bare den treningen. Banene er valgt på forhånd i KI-skjemaet og i Hurtigopprett, og baner valgt der huskes for treningen.
+
 ## [1.22.0] – 2026-11-04
 
 NFF-katalogen i databasen.

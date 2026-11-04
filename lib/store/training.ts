@@ -77,6 +77,7 @@ export async function followMainGroup(d: Db, access: Access, groupId: string, su
     if (part === "team") {
       await t.query("DELETE FROM team_settings WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
       await t.query("DELETE FROM team_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
+      await t.query("DELETE FROM weekday_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
     }
     if (part === "principles") await t.query("DELETE FROM team_principles WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
     if (part === "learnings") await t.query("DELETE FROM team_learnings WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);

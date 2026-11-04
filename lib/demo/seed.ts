@@ -1,6 +1,6 @@
 import "server-only";
 import type { Db } from "@/lib/db";
-import { osloParts } from "@/lib/format";
+import { osloDate, osloParts } from "@/lib/format";
 import { compactDrawing } from "@/lib/plans/drawing";
 import { HOVEDTEMA, temaTag } from "@/lib/nff/fagplan";
 import { emptyValues, gapCode, gapReason, metadataReason, missingFields } from "@/lib/plans/bank-proposals";
@@ -156,6 +156,12 @@ async function seedTraining(d: Db): Promise<void> {
     );
     await t.query("INSERT INTO team_principles (spond_group_id, body, created_by) VALUES ('G-FOTBALL', 'Mye ballkontakt, lite kø. Alle skal oppleve mestring.', 'P-KJETIL')");
     await t.query("INSERT INTO team_pitches (spond_group_id, pitch_id) VALUES ('G-FOTBALL', 8876), ('G-FOTBALL', 3985)");
+    // Faste baner for tirsdag og torsdag that end in two weeks, so the reminder can be seen.
+    await t.query(
+      `INSERT INTO weekday_pitches (spond_group_id, weekday, valid_from, valid_to, pitch_ids, updated_by)
+       VALUES ('G-FOTBALL', 2, $1::date, $2::date, '{8876}', 'P-KJETIL'), ('G-FOTBALL', 4, $1::date, $2::date, '{3985}', 'P-KJETIL')`,
+      [osloDate(new Date(Date.now() - 60 * 86_400_000)), osloDate(new Date(Date.now() + 14 * 86_400_000))],
+    );
     await seedProposals(t);
   });
 }

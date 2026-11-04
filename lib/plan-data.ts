@@ -3,7 +3,7 @@ import type { CurrentUser } from "@/lib/auth/current";
 import type { Db } from "@/lib/db";
 import { fetchLinks, parseLinks } from "@/lib/ai/links";
 import { AiError, WISH_MAX, fagplanText, type ExerciseOrderContext, type OrderContext } from "@/lib/ai/plan-ai";
-import { osloParts } from "@/lib/format";
+import { osloDate, osloParts } from "@/lib/format";
 import { teamAgeText, teamBand } from "@/lib/nff/bands";
 import { CATEGORIES, pitchText } from "@/lib/plans/plan";
 import { teamTitle } from "@/lib/proposal-view";
@@ -13,6 +13,7 @@ import { eventParticipants, placeable } from "@/lib/spond/events";
 import type { Group, SpondEvent } from "@/lib/spond/types";
 import { approvedForEvent } from "@/lib/store/proposals";
 import { getAiSettings } from "@/lib/store/ai";
+import type { PitchEvent } from "@/lib/store/pitch-schedule";
 import { getTeamSettings, latestPrinciples, listPlanComments, seasonTheme, teamPitches } from "@/lib/store/training";
 
 /**
@@ -42,6 +43,11 @@ export async function planGroups(d: Db, user: CurrentUser, group: Group, eventId
  */
 export function eventSub(event: SpondEvent): string {
   return event.subgroupIds.length === 1 ? event.subgroupIds[0] : "";
+}
+
+/** A training as the pitch rules need it: its scope and Oslo date. */
+export function pitchEvent(event: SpondEvent): PitchEvent {
+  return { id: event.id, sub: eventSub(event), date: event.start ? osloDate(event.start) : null };
 }
 
 /** The month's theme for an event (Oslo time), if the season plan has one. */

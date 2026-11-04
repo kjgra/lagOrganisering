@@ -5,7 +5,8 @@ import { AiError } from "@/lib/ai/plan-ai";
 import { prepareKi, runKi } from "@/lib/ai/service";
 import { DEFAULT_SETTINGS, distribute, HISTORY_TRAININGS, type BoardMember, type BoardSettings } from "@/lib/board";
 import { trainingsBefore } from "@/lib/events-data";
-import { eventSub, orderContext, themeForEvent } from "@/lib/plan-data";
+import { eventSub, orderContext, pitchEvent, themeForEvent } from "@/lib/plan-data";
+import { pitchesForEvent } from "@/lib/store/pitch-schedule";
 import { isPlayerKind } from "@/lib/spond/data";
 import { eventIsPast, eventParticipants, placeable, responseCounts } from "@/lib/spond/events";
 import type { Group, SpondEvent } from "@/lib/spond/types";
@@ -76,7 +77,7 @@ export interface QuickDefaults {
   minutes: number;
   coaches: number;
   pitches: { id: number; name: string }[];
-  /** Chosen for the trainer: the last KI plan's pitches, or the team's only pitch. */
+  /** Chosen for the trainer: the training's pitches (fixed or its own), the last KI plan's, or the team's only pitch. */
   pitchIds: number[];
 }
 
@@ -89,13 +90,14 @@ interface Basis {
 }
 
 async function basis(d: Db, user: CurrentUser, group: Group, sub: string | null, event: SpondEvent): Promise<Basis> {
-  const [info, settings, team, pitches, season, lastPitches] = await Promise.all([
+  const [info, settings, team, pitches, season, lastPitches, forEvent] = await Promise.all([
     listPlayerTags(d, user.access, user.rights, group.id),
     getBoardSettings(d, user.access, user.rights, group.id, sub ?? ""),
     getTeamSettings(d, user.access, group.id, eventSub(event)),
     teamPitches(d, user.access, group.id, eventSub(event)),
     themeForEvent(d, user, group, event),
     lastPlanPitches(d, user.access, group.id),
+    pitchesForEvent(d, user.access, group.id, pitchEvent(event)),
   ]);
   // «Forrige treninger» works on tags, so (as on the board) only with the tags right.
   const earlier = settings ? await trainingsBefore(user, group.id, sub, event).catch(() => []) : [];
@@ -112,6 +114,7 @@ async function basis(d: Db, user: CurrentUser, group: Group, sub: string | null,
   const coaches = responseCounts(event, group).coachesComing;
   const teams = quickTeamCount(members.length, coaches, previous[0]?.length ?? null);
   const known = new Set(pitches.map((p) => p.id));
+  const fromEvent = forEvent.ids.filter((id) => known.has(id));
   const fromLast = lastPitches.filter((id) => known.has(id));
   return {
     defaults: {
@@ -124,7 +127,7 @@ async function basis(d: Db, user: CurrentUser, group: Group, sub: string | null,
       minutes: quickMinutes(team.session_minutes, event.start, event.end),
       coaches,
       pitches: pitches.map((p) => ({ id: p.id, name: p.name })),
-      pitchIds: fromLast.length ? fromLast : pitches.length === 1 ? [pitches[0].id] : [],
+      pitchIds: fromEvent.length ? fromEvent : fromLast.length ? fromLast : pitches.length === 1 ? [pitches[0].id] : [],
     },
     members,
     settings,

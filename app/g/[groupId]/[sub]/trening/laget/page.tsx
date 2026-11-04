@@ -1,12 +1,15 @@
 import { AppShell } from "@/components/shell/AppShell";
 import { ScopeNote, TeamSettingsForm, type PitchGroup } from "@/components/training/forms";
 import { TrainingTabs } from "@/components/training/TrainingTabs";
+import { WeekdayPitches } from "@/components/training/WeekdayPitches";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
-import { osloParts, savedAt } from "@/lib/format";
+import { osloDate, osloParts, savedAt } from "@/lib/format";
+import { currentRows, endingSoon, endingText, periodText, rowStatus } from "@/lib/plans/pitch-schedule";
 import { pitchFacts, pitchTree, type Pitch } from "@/lib/plans/plan";
 import { profileName } from "@/lib/proposal-view";
-import { getTeamSettings, listPitches } from "@/lib/store/training";
+import { listWeekdayPitches } from "@/lib/store/pitch-schedule";
+import { getTeamSettings, listPitches, teamPitches } from "@/lib/store/training";
 
 /** Main pitches with their sub-pitches; retired pitches only when the team has them. */
 function pitchGroups(pitches: Pitch[], chosen: number[]): PitchGroup[] {
@@ -24,7 +27,15 @@ export default async function TeamPage(props: PageProps<"/g/[groupId]/[sub]/tren
   const ctx = await contextFromParams(props.params);
   const d = await db();
   const sub = ctx.subgroup?.id ?? "";
-  const [s, pitches] = await Promise.all([getTeamSettings(d, ctx.user.access, ctx.group.id, sub), listPitches(d)]);
+  const [s, pitches, pool, fixed] = await Promise.all([
+    getTeamSettings(d, ctx.user.access, ctx.group.id, sub),
+    listPitches(d),
+    teamPitches(d, ctx.user.access, ctx.group.id, sub),
+    listWeekdayPitches(d, ctx.user.access, ctx.group.id, sub),
+  ]);
+  const today = osloDate(new Date());
+  const ending = endingSoon(fixed.rows, today);
+  const nameOf = new Map(pitches.map((p) => [p.id, p.name]));
   return (
     <AppShell ctx={ctx} title="Trening" section="training">
       <TrainingTabs ctx={ctx} current="laget" />
@@ -51,6 +62,32 @@ export default async function TeamPage(props: PageProps<"/g/[groupId]/[sub]/tren
           Sist endret av {profileName(ctx.group, s.updated_by)} {savedAt(s.updated_at)}.
         </p>
       ) : null}
+      <h2 className="nm-section-label" id="faste-baner">
+        Faste baner per ukedag
+      </h2>
+      {fixed.inherited && fixed.rows.length ? (
+        <p className="nm-hint" style={{ marginTop: 0 }}>
+          {ctx.label} følger {ctx.group.name}. Lagrer du, får {ctx.label} sine egne.
+        </p>
+      ) : null}
+      <WeekdayPitches
+        groupId={ctx.group.id}
+        sub={sub}
+        inherited={fixed.inherited}
+        pool={pool.map((p) => ({ id: p.id, name: p.name }))}
+        rows={currentRows(fixed.rows, today).map((r) => ({
+          id: r.id,
+          weekday: r.weekday,
+          from: r.valid_from,
+          to: r.valid_to,
+          pitchIds: r.pitch_ids,
+          pitchNames: r.pitch_ids.map((id) => nameOf.get(id) ?? "Ukjent bane").join(", "),
+          period: periodText(r, today),
+          status: rowStatus(r, today, ending),
+        }))}
+        today={today}
+        ending={endingText(ending, today)}
+      />
     </AppShell>
   );
 }
