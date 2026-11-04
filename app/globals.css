@@ -470,6 +470,8 @@ body:has(.nm-actions):has(.nm-bottomnav) .nm-toast { bottom: calc(158px + env(sa
 .nm-navbadge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--primary); color: var(--on-primary); font-size: 13px; font-weight: 800; line-height: 1; }
 .nm-bottomnav .nm-navbadge { position: absolute; top: -6px; right: -14px; border: var(--border-2) solid var(--chrome); }
 .nm-side nav .nm-navbadge { margin-left: auto; }
+.nm-iconbtn--badged { position: relative; }
+.nm-iconbtn--badged .nm-navbadge { position: absolute; top: -4px; right: -4px; border: var(--border-2) solid var(--chrome); }
 .nm-side nav a[aria-current="page"] .nm-navbadge { background: var(--chrome); color: var(--on-chrome); }
 
 /* Settings as a list on a phone */
