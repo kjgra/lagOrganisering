@@ -44,11 +44,13 @@ export async function saveSeasonAction(groupId: string, sub: string, year: numbe
   });
 }
 
-export async function saveTeamSettingsAction(groupId: string, sub: string, input: Record<string, string>): Promise<ActionResult> {
+export async function saveTeamSettingsAction(groupId: string, sub: string, input: Record<string, string>, equipment: Record<string, string> = {}): Promise<ActionResult> {
   return runAction("Lagring av laget", async () => {
-    const v = z.object({ groupId: sid, sub: subId, input: z.record(z.string().max(40), short) }).parse({ groupId, sub, input });
+    const v = z
+      .object({ groupId: sid, sub: subId, input: z.record(z.string().max(40), short), equipment: z.record(z.string().max(40), z.string().max(4)) })
+      .parse({ groupId, sub, input, equipment });
     const { user, d } = await trainer(v.groupId, v.sub);
-    await saveTeamSettings(d, user.access, v.groupId, v.sub, v.input);
+    await saveTeamSettings(d, user.access, v.groupId, v.sub, { ...v.input, equipment_counts: v.equipment });
     refresh();
     return { data: undefined, message: "Laget er lagret." };
   });

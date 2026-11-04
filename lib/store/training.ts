@@ -19,6 +19,8 @@ import {
   type Pitch,
   type SimilarMatch,
   type TeamSettings,
+  type EquipmentCounts,
+  type EquipmentKind,
 } from "@/lib/plans/plan";
 import { compactDrawing, validateDrawing } from "@/lib/plans/drawing";
 import { osloDate, osloParts } from "@/lib/format";
@@ -79,6 +81,7 @@ export async function followMainGroup(d: Db, access: Access, groupId: string, su
       await t.query("DELETE FROM team_settings WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
       await t.query("DELETE FROM team_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
       await t.query("DELETE FROM weekday_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
+      await t.query("DELETE FROM team_equipment WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
     }
     if (part === "principles") await t.query("DELETE FROM team_principles WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
     if (part === "learnings") await t.query("DELETE FROM team_learnings WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
@@ -162,10 +165,15 @@ export async function getTeamSettings(d: Db, access: Access, groupId: string, su
     [groupId, scope],
   );
   const pitch_ids = pitches.map((p) => p.pitch_id);
+  const kit = await d.query<{ kind: EquipmentKind; count: number }>(
+    "SELECT kind, count FROM team_equipment WHERE spond_group_id = $1 AND spond_subgroup_id = $2",
+    [groupId, scope],
+  );
+  const equipment_counts: EquipmentCounts = Object.fromEntries(kit.map((k) => [k.kind, Number(k.count)]));
   const row = rows.find((r) => r.spond_subgroup_id === scope);
-  if (!row) return { age_group: "", birth_year: null, gender: null, session_minutes: null, pitch_ids, pitch: "", equipment: "", updated_by: null, updated_at: null, inherited };
+  if (!row) return { age_group: "", birth_year: null, gender: null, session_minutes: null, pitch_ids, pitch: "", equipment: "", equipment_counts, updated_by: null, updated_at: null, inherited };
   const { age_group, birth_year, gender, session_minutes, pitch, equipment, updated_by, updated_at } = row;
-  return { age_group, birth_year, gender, session_minutes, pitch, equipment, updated_by, updated_at, pitch_ids, inherited };
+  return { age_group, birth_year, gender, session_minutes, pitch, equipment, equipment_counts, updated_by, updated_at, pitch_ids, inherited };
 }
 
 /** «Laget»: age, session length, pitches and equipment for the scope. */
@@ -185,6 +193,16 @@ export async function saveTeamSettings(d: Db, access: Access, groupId: string, s
              equipment = EXCLUDED.equipment, updated_by = EXCLUDED.updated_by, updated_at = now()`,
       [groupId, sub, s.age_group, s.birth_year, s.gender, s.session_minutes, s.pitch, s.equipment, access.profileId],
     );
+    // The equipment counts likewise; the form always sends them.
+    if (input.equipment_counts !== undefined) {
+      const kit = Object.entries(s.equipment_counts);
+      await t.query("DELETE FROM team_equipment WHERE spond_group_id = $1 AND spond_subgroup_id = $2 AND NOT (kind = ANY($3::text[]))", [groupId, sub, kit.map(([k]) => k)]);
+      await t.query(
+        `INSERT INTO team_equipment (spond_group_id, spond_subgroup_id, kind, count) SELECT $1, $2, k, c FROM unnest($3::text[], $4::int[]) AS x (k, c)
+         ON CONFLICT (spond_group_id, spond_subgroup_id, kind) DO UPDATE SET count = EXCLUDED.count`,
+        [groupId, sub, kit.map(([k]) => k), kit.map(([, c]) => c)],
+      );
+    }
     if (keepPitches) return;
     await t.query("DELETE FROM team_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = $2 AND NOT (pitch_id = ANY($3::int[]))", [groupId, sub, s.pitch_ids]);
     await t.query(

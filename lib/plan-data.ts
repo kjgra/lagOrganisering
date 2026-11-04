@@ -5,7 +5,7 @@ import { fetchLinks, parseLinks } from "@/lib/ai/links";
 import { AiError, WISH_MAX, fagplanText, type ExerciseOrderContext, type OrderContext } from "@/lib/ai/plan-ai";
 import { osloDate, osloParts } from "@/lib/format";
 import { teamAgeText, teamBand } from "@/lib/nff/bands";
-import { CATEGORIES, pitchText } from "@/lib/plans/plan";
+import { CATEGORIES, equipmentText, pitchText } from "@/lib/plans/plan";
 import { teamTitle } from "@/lib/proposal-view";
 import { memberNames, namesProblem, isSensitive } from "@/lib/sensitive";
 import { isPlayerKind } from "@/lib/spond/data";
@@ -120,7 +120,7 @@ export async function orderContext(
       minutes: input.minutes ?? team.session_minutes,
       theme,
       themeDescription: season && season.theme.toLowerCase() === theme.toLowerCase() ? season.description : "",
-      team: { age_group: teamAgeText(team.birth_year, team.gender, year, team.age_group), pitch: pitchText(chosenPitches, ""), equipment: team.equipment, principles },
+      team: { age_group: teamAgeText(team.birth_year, team.gender, year, team.age_group), pitch: pitchText(chosenPitches, ""), equipment: equipmentText(team.equipment_counts, team.equipment), principles },
       fagplan: fagplanText(band, theme),
       band,
       coaches: input.coaches ?? null,
@@ -174,7 +174,7 @@ export async function exerciseOrderContext(d: Db, user: Pick<CurrentUser, "acces
     sub,
     theme,
     themeDescription: season && theme && season.theme.toLowerCase() === theme.toLowerCase() ? season.description : "",
-    team: { age_group: teamAgeText(team.birth_year, team.gender, year, team.age_group), pitch: pitchText(chosen, ""), equipment: team.equipment, principles },
+    team: { age_group: teamAgeText(team.birth_year, team.gender, year, team.age_group), pitch: pitchText(chosen, ""), equipment: equipmentText(team.equipment_counts, team.equipment), principles },
     fagplan: fagplanText(teamBand(team.birth_year, year), theme || season?.theme || ""),
     band: teamBand(team.birth_year, year),
     players: input.players,
