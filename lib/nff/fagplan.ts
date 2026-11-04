@@ -3,6 +3,11 @@
 // Hentet 2026-10-24 fra https://tiim.no/tema/fagplaner-og-spillmodeller. Teksten er NFFs,
 // med åpenbare skrivefeil rettet. Endrer NFF planverket, oppdateres denne fila; koder som
 // forsvinner, blir ignorert på øvelser som har dem.
+//
+// Katalogen ligger også i databasen (nff_topics, nff_learning_points; se
+// lib/store/nff-catalog.ts), der lagene kan legge til egne og skjule punkter. En
+// endring her trenger en ny migrering, og tests/unit/nff-catalog.test.ts sjekker
+// at de to stemmer.
 
 import type { NffBand } from "./bands";
 

@@ -8,6 +8,15 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.22.0] – 2026-11-04
+
+NFF-katalogen i databasen.
+
+### Lagt til
+
+- Hovedtema, delferdigheter og læringsmomenter fra NFFs fagplaner ligger nå også i databasen, med de samme kodene som øvelsene er tagget med. Hvert lag kan legge til egne (for eksempel omstilling) og skjule punkter de ikke vil bruke. Et skjult punkt blir liggende, så øvelser som viser til det, beholder teksten.
+- Årshjulet kan lagre hovedtema og opptil to læringsmomenter per måned ved siden av fritekstfeltene. Dette er grunnlaget for nedtrekk i årshjul, treningsopplegg og KI. Skjermbildene er ikke endret ennå.
+
 ## [1.21.0] – 2026-11-03
 
 Dekning av fagplanen.
