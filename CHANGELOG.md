@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.26.1] – 2026-11-04
+
+Bedre oversikt for de som utvikler appen.
+
+### Endret
+
+- Utviklerveiledningen i kodebasen er oppdatert med ordliste, miljøer og arbeidsregler. Ingen endring i appen.
+
 ## [1.26.0] – 2026-11-04
 
 Varsel om ting som venter i admin.
