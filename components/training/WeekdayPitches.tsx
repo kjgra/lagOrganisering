@@ -62,6 +62,14 @@ export function WeekdayPitches({
     setConfirm(false);
     setDraft(d);
   };
+  // One card per banefordeling: the days saved together, with the same start and end.
+  const periods: WeekdayRow[][] = [];
+  for (const r of rows) {
+    const p = periods.find((x) => x[0].from === r.from && x[0].to === r.to);
+    if (p) p.push(r);
+    else periods.push([r]);
+  }
+  for (const p of periods) p.sort((a, b) => a.weekday - b.weekday);
   /** The whole banefordeling a row belongs to: every day with the same start and end. */
   const edit = (r: WeekdayRow) => {
     const same = rows.filter((x) => x.from === r.from && x.to === r.to);
@@ -89,42 +97,52 @@ export function WeekdayPitches({
           <span>{ending} Legg inn nye når neste banefordeling er klar.</span>
         </div>
       ) : null}
-      {rows.length ? (
+      {periods.length ? (
         <div className="nm-stack" style={{ gap: "var(--space-2)" }}>
-          {rows.map((r) => (
-            <section
-              key={r.id}
-              className="nm-card"
-              aria-label={`${DAYS[r.weekday - 1]} ${r.span}`}
-              style={{
-                padding: "var(--space-3)",
-                ...(r.status === "coming" ? { borderStyle: "dashed", background: "var(--surface-muted)" } : {}),
-              }}
-            >
-              <div className="nm-row" style={{ gap: "var(--space-2)", flexWrap: "wrap", alignItems: "baseline" }}>
-                <strong style={{ fontSize: "var(--fs-body-lg)" }}>{DAYS[r.weekday - 1]}</strong>
-                <span className="nm-muted">({r.span})</span>
-                {r.status !== "now" ? (
-                  <span className="nm-badge nm-badge--neutral">
-                    <Icon icon={r.status === "coming" ? CalendarClock : AlarmClock} size={16} />
-                    {r.status === "coming" ? "Kommer" : "Slutter snart"}
+          {periods.map((days) => {
+            const r = days[0];
+            const status = days.some((x) => x.status === "ending") ? "ending" : r.status;
+            return (
+              <section
+                key={`${r.from}|${r.to}`}
+                className="nm-card"
+                aria-label={`Banefordeling ${r.span}`}
+                style={{
+                  padding: "var(--space-3)",
+                  ...(status === "coming" ? { borderStyle: "dashed", background: "var(--surface-muted)" } : {}),
+                }}
+              >
+                {status !== "now" ? (
+                  <span className="nm-badge nm-badge--neutral" style={{ marginBottom: "var(--space-2)" }}>
+                    <Icon icon={status === "coming" ? CalendarClock : AlarmClock} size={16} />
+                    {status === "coming" ? "Kommer" : "Slutter snart"}
                   </span>
                 ) : null}
-              </div>
-              <ul style={{ listStyle: "none", margin: "var(--space-2) 0", padding: 0, display: "grid", gap: "var(--space-1)" }}>
-                {r.pitchNames.map((n) => (
-                  <li key={n} style={{ display: "flex", gap: "var(--space-1)", alignItems: "flex-start" }}>
-                    <Icon icon={MapPin} size={16} />
-                    <span>{n}</span>
-                  </li>
-                ))}
-              </ul>
-              <button type="button" className="nm-btn nm-btn--ghost" onClick={() => edit(r)}>
-                <Icon icon={Pencil} />
-                Endre banefordelingen
-              </button>
-            </section>
-          ))}
+                <div className="nm-stack" style={{ gap: "var(--space-3)" }}>
+                  {days.map((x) => (
+                    <div key={x.id} aria-label={`${DAYS[x.weekday - 1]} ${x.span}`} role="group">
+                      <div className="nm-row" style={{ gap: "var(--space-2)", flexWrap: "wrap", alignItems: "baseline" }}>
+                        <strong style={{ fontSize: "var(--fs-body-lg)" }}>{DAYS[x.weekday - 1]}</strong>
+                        <span className="nm-muted">({x.span})</span>
+                      </div>
+                      <ul style={{ listStyle: "none", margin: "var(--space-1) 0 0", padding: 0, display: "grid", gap: "var(--space-1)" }}>
+                        {x.pitchNames.map((n) => (
+                          <li key={n} style={{ display: "flex", gap: "var(--space-1)", alignItems: "flex-start" }}>
+                            <Icon icon={MapPin} size={16} />
+                            <span>{n}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" className="nm-btn nm-btn--ghost" style={{ marginTop: "var(--space-2)" }} onClick={() => edit(r)}>
+                  <Icon icon={Pencil} />
+                  Endre banefordelingen
+                </button>
+              </section>
+            );
+          })}
         </div>
       ) : (
         <p className="nm-muted" style={{ margin: 0 }}>

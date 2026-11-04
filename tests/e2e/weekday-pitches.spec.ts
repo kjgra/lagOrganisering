@@ -23,9 +23,9 @@ test("Faste baner: set per weekday, shown on the training, changed for one train
   await tuesday.getByRole("checkbox", { name: /^Nymark Kunstgress 04 9er B/ }).check();
   await form.getByRole("button", { name: "Lagre faste baner" }).click();
   await expect(page.locator(".nm-toast")).toContainText("Faste baner for tirsdager er lagret.");
-  // One card per day: the dates after the weekday, one pitch per line.
-  const card = page.getByRole("region", { name: /^Tirsdag fra \d\d\.\d\d\.\d\d$/ });
-  await expect(card).toBeVisible();
+  // One card per banefordeling; each day with its dates and one pitch per line.
+  const card = page.getByRole("region", { name: /^Banefordeling fra \d\d\.\d\d\.\d\d$/ });
+  await expect(card.getByRole("group", { name: /^Tirsdag fra / })).toBeVisible();
   await expect(card.getByRole("listitem")).toHaveText(["Nymark Kunstgress 04 9er A", "Nymark Kunstgress 04 9er B"]);
 
   // Editing opens the whole banefordeling: here, take the 9er B out.
