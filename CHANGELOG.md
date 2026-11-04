@@ -8,6 +8,10 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+### Endret
+
+- KI finner flere passende øvelser i banken. Øvelser som er tagget med øktas hovedtema, kommer først selv om temaet er skrevet med andre ord. Øvelser for nabobåndet (for eksempel 8–9 år for et 10–12-lag) kommer etter lagets eget bånd, og KI kan gjøre dem vanskeligere eller enklere slik at de passer.
+
 ## [1.22.0] – 2026-11-04
 
 NFF-katalogen i databasen.

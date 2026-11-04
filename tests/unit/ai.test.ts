@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import ref from "@/lib/plans/reference-plan.json";
 import {
   answerFromPlan,
+  bandFit,
   catalogue,
   exerciseAnswerFromBank,
   exerciseFromAnswer,
@@ -121,6 +122,27 @@ describe("KI answer", () => {
     const unknown = planFromAnswer(JSON.stringify({ ...a, oppvarming_kode: "finnes-ikke" }), [], { theme: "", minutes: null, maxNew: 6, linkUrls: [] });
     expect(unknown.plan.tidsplan.oppvarming.ovelse).toBeUndefined();
     expect(unknown.warnings.join(" ")).toMatch(/Oppvarmingsøvelsen «finnes-ikke»/);
+  });
+  it("puts exercises tagged with the theme's hovedtema first, even when their theme text differs", () => {
+    const plain = Array.from({ length: 3 }, (_, i) => bankRow(`a-${i}`, { name: `A ${i}`, themes: [] }));
+    const tagged = bankRow("framover", { name: "Framover", themes: ["Pasningsspill"], nff_tags: ["tema.spille-framover"] });
+    const c = catalogue([...plain, tagged], "Spille oss framover i banen", 2, { band: "10-12" });
+    expect(c).toContain("framover | Framover");
+    expect(c).not.toContain("a-2");
+  });
+  it("puts the team's band first and a neighbouring band before the rest", () => {
+    expect(bandFit(["10-12"], "10-12")).toBe(2);
+    expect(bandFit(["8-9"], "10-12")).toBe(1);
+    expect(bandFit(["6-7"], "10-12")).toBe(0);
+    expect(bandFit(["8-9"], null)).toBe(0);
+    const rows = [
+      bankRow("liten", { name: "Liten", themes: [], bands: ["6-7"] }),
+      bankRow("nabo", { name: "Nabo", themes: [], bands: ["8-9"] }),
+      bankRow("egen", { name: "Egen", themes: [], bands: ["10-12"] }),
+    ];
+    const c = catalogue(rows, "", 2, { band: "10-12" });
+    expect(c.indexOf("egen | Egen")).toBeLessThan(c.indexOf("nabo | Nabo"));
+    expect(c).not.toContain("liten");
   });
   it("always lists warm-up exercises in the catalogue", () => {
     const many = Array.from({ length: 4 }, (_, i) => bankRow(`rondo-${i}`));

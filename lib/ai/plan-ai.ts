@@ -19,6 +19,7 @@ import { bandLabel, type ExercisePattern } from "@/lib/plans/observations";
 import referencePlan from "@/lib/plans/reference-plan.json";
 import {
   AKTIVITETER,
+  BAND_KEYS,
   DELFERDIGHETER,
   HOVEDTEMA,
   LEARNING_POINTS,
@@ -340,10 +341,11 @@ export interface CatalogueFit {
 
 /**
  * The bank as a short catalogue. Archived and badly rated exercises are left
- * out; exercises with the month's theme first, then those tagged for the
- * team's age band and those that fit the group size, then active before
- * candidates. An exercise's rating is the one for the team's age band when
- * enough trainers have rated it there.
+ * out; exercises with the month's theme first (by name, or tagged with the
+ * hovedtema the theme means), then those tagged for the team's age band, then
+ * those tagged for a neighbouring band (KI may adjust them), then those that
+ * fit the group size, then active before candidates. An exercise's rating is
+ * the one for the team's age band when enough trainers have rated it there.
  */
 export function catalogue(bank: BankExercise[], theme = "", max = 30, fit: CatalogueFit = {}): string {
   const band = fit.band ?? null;
@@ -353,13 +355,15 @@ export function catalogue(bank: BankExercise[], theme = "", max = 30, fit: Catal
   const usable = bank.filter((b) => b.status !== "archived" && !shouldAvoid(b));
   if (!usable.length) return "# Øvelsesbanken\n\nBanken er tom.";
   const cats = Object.keys(CATEGORIES);
-  const hit = (b: BankExercise) => !!theme && b.themes.some((t) => t.toLowerCase() === theme.toLowerCase());
-  const tagged = (b: BankExercise) => !!band && b.bands.includes(band);
+  const hoved = band && theme ? matchHovedtema(theme, band) : undefined;
+  const hit = (b: BankExercise) =>
+    (!!theme && b.themes.some((t) => t.toLowerCase() === theme.toLowerCase())) || (!!hoved && b.nff_tags.includes(temaTag(hoved.key)));
+  const tagged = (b: BankExercise) => bandFit(b.bands, band);
   const fits = (b: BankExercise) => !fit.players || ((b.min_players ?? 0) <= fit.players && fit.players <= (b.max_players ?? 99));
   const sorted = [...usable].sort(
     (a, b) =>
       Number(hit(b)) - Number(hit(a)) ||
-      Number(tagged(b)) - Number(tagged(a)) ||
+      tagged(b) - tagged(a) ||
       Number(fits(b)) - Number(fits(a)) ||
       Number(a.status !== "active") - Number(b.status !== "active") ||
       cats.indexOf(a.category) - cats.indexOf(b.category) ||
@@ -391,6 +395,14 @@ export function catalogue(bank: BankExercise[], theme = "", max = 30, fit: Catal
     return `- ${parts.join(" | ")}`;
   });
   return `# Øvelsesbanken\n\nkode | navn | kategori | tema | NFF | spillere | minutter | merknader | kort beskrivelse\n\n${lines.join("\n")}`;
+}
+
+/** 2 when tagged for the team's band, 1 for a band next to it, else 0. */
+export function bandFit(bands: string[], band: BandKey | null): number {
+  if (!band) return 0;
+  if (bands.includes(band)) return 2;
+  const i = BAND_KEYS.indexOf(band);
+  return [BAND_KEYS[i - 1], BAND_KEYS[i + 1]].some((n) => n && bands.includes(n)) ? 1 : 0;
 }
 
 /** «snitt 8–9 år 2,7/3 (5)» when the team's band has enough ratings, else «snitt 2,5/3 (4)» for all. */
