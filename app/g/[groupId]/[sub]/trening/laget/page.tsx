@@ -41,6 +41,7 @@ export default async function TeamPage(props: PageProps<"/g/[groupId]/[sub]/tren
           pitch: "",
           equipment: s.equipment,
         }}
+        initialEquipment={Object.fromEntries(Object.entries(s.equipment_counts).map(([k, n]) => [k, String(n)]))}
         year={osloParts(new Date()).year}
       />
       {s.updated_by && s.updated_at ? (

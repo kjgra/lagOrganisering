@@ -192,8 +192,14 @@ test("admin: save the team, and the training's pitches are chosen in the KI form
   await expect(page.getByText(/^G\d+ \(født 2016\) · NFF-bånd/)).toBeVisible();
   // Pitches are set per weekday now, not in a list for the team.
   await expect(page.getByRole("checkbox", { name: /^Nymark Kunstgress 03 7er A/ })).toHaveCount(0);
+  // Equipment per kind, vests per colour.
+  await expect(page.getByLabel("Baller")).toHaveValue("20");
+  await expect(page.getByRole("group", { name: "Utstyr" }).getByLabel("Blå")).toHaveValue("8");
+  await page.getByLabel("Dukkemål").fill("6");
   await page.getByRole("button", { name: "Lagre", exact: true }).click();
   await expect(page.locator(".nm-toast")).toContainText(/Laget er lagret/);
+  await page.reload();
+  await expect(page.getByLabel("Dukkemål")).toHaveValue("6");
 
   await page.goto(`${eventUrl}/opplegg/ki`);
   const pitches = page.getByRole("group", { name: "Baner for økta" });

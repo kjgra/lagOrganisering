@@ -8,6 +8,19 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.24.0] – 2026-11-04
+
+Utstyr per lag.
+
+### Lagt til
+
+- Under Trening › Laget kan dere nå fylle inn hvor mye utstyr laget har: baller, kjegler og markører, dukkemål, småmål (3er/5er), 7er-mål og vester per farge. Som resten av «Laget» gjelder det for laget, og en undergruppe uten egne innstillinger bruker hovedgruppas.
+- KI får utstyret med antall og lager opplegg der øvelsene som pågår samtidig ikke trenger mer enn laget har. Mangler det, velger KI først en variant som trenger mindre, så NFFs rekkefølge (Sjef over ballen → Spille med og mot → Spill) holder, og ellers lar den gruppene starte på ulike stasjoner.
+
+### Endret
+
+- Fritekstfeltet «Utstyr» heter nå «Annet utstyr», for det som ikke har et eget tall.
+
 ## [1.23.0] – 2026-11-04
 
 Faste baner per ukedag.

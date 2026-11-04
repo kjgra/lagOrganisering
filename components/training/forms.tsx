@@ -7,6 +7,7 @@ import { followMainGroupAction, learningKiAction, savePrinciplesAction, saveLear
 import { Field, SaveButton, useSave } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
 import { GENDERS, teamAgeText, type Gender } from "@/lib/nff/bands";
+import { EQUIPMENT, isVest, type EquipmentKind } from "@/lib/plans/plan";
 
 // Season plan ------------------------------------------------------------------------------
 
@@ -79,15 +80,19 @@ export function TeamSettingsForm({
   groupId,
   sub,
   initial,
+  initialEquipment,
   year,
 }: {
   groupId: string;
   sub: string;
   initial: Record<string, string>;
+  /** Count per equipment kind, as text ('' for none). */
+  initialEquipment: Record<string, string>;
   /** The season year (Oslo), for the team's age. */
   year: number;
 }) {
   const [v, setV] = useState(initial);
+  const [kit, setKit] = useState(initialEquipment);
   const { pending, run, errorBox } = useSave();
   const set = (k: string) => (e: { target: { value: string } }) => setV((x) => ({ ...x, [k]: e.target.value }));
   const by = /^\d{4}$/.test(v.birth_year.trim()) ? Number(v.birth_year) : null;
@@ -103,7 +108,7 @@ export function TeamSettingsForm({
       style={{ maxWidth: 640 }}
       onSubmit={(e) => {
         e.preventDefault();
-        run(() => saveTeamSettingsAction(groupId, sub, v));
+        run(() => saveTeamSettingsAction(groupId, sub, v, kit));
       }}
     >
       <div className="nm-form-row">
@@ -124,12 +129,47 @@ export function TeamSettingsForm({
           <input className="nm-input" inputMode="numeric" value={v.session_minutes} onChange={set("session_minutes")} />
         </Field>
       </div>
-      <Field label="Utstyr">
+      <EquipmentFields kit={kit} setKit={setKit} />
+      <Field label="Annet utstyr" hint="F.eks. «stiger og hekker», eller hva som er felles med andre lag.">
         <textarea className="nm-input" value={v.equipment} maxLength={1000} onChange={set("equipment")} />
       </Field>
       {errorBox}
       <SaveButton pending={pending} />
     </form>
+  );
+}
+
+const KINDS = Object.keys(EQUIPMENT) as EquipmentKind[];
+
+/** One number per kind of equipment; vests per colour. */
+function EquipmentFields({ kit, setKit }: { kit: Record<string, string>; setKit: (f: (x: Record<string, string>) => Record<string, string>) => void }) {
+  const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(9rem, 1fr))", gap: "var(--space-3)" } as const;
+  const input = (k: EquipmentKind) => (
+    <Field key={k} label={EQUIPMENT[k].label}>
+      <input
+        className="nm-input"
+        inputMode="numeric"
+        maxLength={3}
+        placeholder="0"
+        value={kit[k] ?? ""}
+        onChange={(e) => setKit((x) => ({ ...x, [k]: e.target.value.replace(/\D/g, "") }))}
+      />
+    </Field>
+  );
+  return (
+    <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+      <legend className="nm-field__label" style={{ marginBottom: "var(--space-1)" }}>
+        Utstyr
+      </legend>
+      <p className="nm-hint" style={{ margin: "0 0 var(--space-2)" }}>
+        Hvor mye laget har med på trening. KI tilpasser øvelsene, så gruppene som trener samtidig ikke trenger mer enn dette.
+      </p>
+      <div style={grid}>{KINDS.filter((k) => !isVest(k)).map(input)}</div>
+      <p className="nm-field__label" style={{ margin: "var(--space-3) 0 var(--space-1)" }}>
+        Vester per farge
+      </p>
+      <div style={grid}>{KINDS.filter(isVest).map(input)}</div>
+    </fieldset>
   );
 }
 

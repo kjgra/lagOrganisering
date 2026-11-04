@@ -152,7 +152,12 @@ async function seedTraining(d: Db): Promise<void> {
     }
     await t.query(
       `INSERT INTO team_settings (spond_group_id, birth_year, gender, session_minutes, pitch, equipment, updated_by)
-       VALUES ('G-FOTBALL', 2016, 'gutter', 75, 'Deler med G11 annenhver uke', 'Kjegler, vester i fire farger, 6 småmål, 20 baller', 'P-KJETIL')`,
+       VALUES ('G-FOTBALL', 2016, 'gutter', 75, 'Deler med G11 annenhver uke', 'Stiger og hekker i bua', 'P-KJETIL')`,
+    );
+    await t.query(
+      `INSERT INTO team_equipment (spond_group_id, kind, count)
+       VALUES ('G-FOTBALL', 'ball', 20), ('G-FOTBALL', 'kjegle', 40), ('G-FOTBALL', 'smaamaal', 6), ('G-FOTBALL', 'dukkemaal', 4),
+              ('G-FOTBALL', 'vest_gul', 8), ('G-FOTBALL', 'vest_bla', 8), ('G-FOTBALL', 'vest_rod', 8), ('G-FOTBALL', 'vest_gronn', 8)`,
     );
     await t.query("INSERT INTO team_principles (spond_group_id, body, created_by) VALUES ('G-FOTBALL', 'Mye ballkontakt, lite kø. Alle skal oppleve mestring.', 'P-KJETIL')");
     await t.query("INSERT INTO team_pitches (spond_group_id, pitch_id) VALUES ('G-FOTBALL', 8876), ('G-FOTBALL', 3985)");
