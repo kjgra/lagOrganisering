@@ -38,7 +38,7 @@ export default async function TeamPage(props: PageProps<"/g/[groupId]/[sub]/tren
           birth_year: s.birth_year ? String(s.birth_year) : "",
           gender: s.gender ?? "",
           session_minutes: s.session_minutes ? String(s.session_minutes) : "",
-          pitch: s.pitch,
+          pitch: "",
           equipment: s.equipment,
         }}
         year={osloParts(new Date()).year}

@@ -124,9 +124,6 @@ export function TeamSettingsForm({
           <input className="nm-input" inputMode="numeric" value={v.session_minutes} onChange={set("session_minutes")} />
         </Field>
       </div>
-      <Field label="Merknad om baner" hint="F.eks. «deler banen med G12 på tirsdager».">
-        <input className="nm-input" value={v.pitch} maxLength={200} onChange={set("pitch")} />
-      </Field>
       <Field label="Utstyr">
         <textarea className="nm-input" value={v.equipment} maxLength={1000} onChange={set("equipment")} />
       </Field>

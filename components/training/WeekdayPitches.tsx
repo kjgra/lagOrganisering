@@ -172,14 +172,12 @@ export function WeekdayPitches({
             );
           }}
         >
-          <div className="nm-form-row">
-            <Field label="Gjelder fra">
-              <input className="nm-input" type="date" required value={draft.from} onChange={(e) => setDraft({ ...draft, from: e.target.value })} />
-            </Field>
-            <Field label="Til og med (valgfritt)" hint="Når neste banefordeling ventes. Dere får en påminnelse før.">
-              <input className="nm-input" type="date" min={draft.from || undefined} value={draft.to} onChange={(e) => setDraft({ ...draft, to: e.target.value })} />
-            </Field>
-          </div>
+          <Field label="Gjelder fra">
+            <input className="nm-input" type="date" required value={draft.from} onChange={(e) => setDraft({ ...draft, from: e.target.value })} />
+          </Field>
+          <Field label="Til og med (valgfritt)" hint="Når neste banefordeling ventes. Dere får en påminnelse før.">
+            <input className="nm-input" type="date" min={draft.from || undefined} value={draft.to} onChange={(e) => setDraft({ ...draft, to: e.target.value })} />
+          </Field>
           <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
             <legend className="nm-field__label" style={{ marginBottom: "var(--space-1)" }}>
               Treningsdager

@@ -57,7 +57,7 @@ export default async function KiPage(props: PageProps<"/g/[groupId]/[sub]/arrang
         coaches={responseCounts(event, ctx.group).coachesComing}
         pitches={pitches.map((x) => ({ id: x.id, name: x.name, facts: pitchFacts(x) }))}
         pitchIds={forEvent.ids}
-        pitchNote={team.pitch}
+        pitchNote=""
         standardHref={ctx.path("/trening/laget")}
         models={Object.entries(AI_MODELS).map(([id, m]) => ({ id, label: m.label, choice: m.choice }))}
         model={settings.model}

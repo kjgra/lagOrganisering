@@ -21,6 +21,7 @@ Faste baner per ukedag.
 ### Endret
 
 - Lista over lagets baner under Trening › Laget er fjernet. Banene settes nå per ukedag, og lagets baner er de faste banene som gjelder nå eller senere.
+- Feltet «Merknad om baner» under Trening › Laget er fjernet, og KI bruker ikke lenger merknaden.
 
 ## [1.22.0] – 2026-11-04
 
