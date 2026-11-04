@@ -183,28 +183,35 @@ test("admin: give KI access and save the season plan", async ({ page }) => {
   await expect(page.locator(".nm-toast")).toContainText(/Årshjulet for \d{4} er lagret/);
 });
 
-test("admin: save the team's pitches, and choose among them for a session", async ({ page }) => {
+test("admin: save the team, and the training's pitches are chosen in the KI form", async ({ page }) => {
   await loginToEvents(page);
   await openNextTraining(page);
   const eventUrl = page.url().split("?")[0];
   await page.goto("/g/G-FOTBALL/alle/trening/laget");
   await expect(page.getByLabel("Fødselsår")).toHaveValue("2016");
   await expect(page.getByText(/^G\d+ \(født 2016\) · NFF-bånd/)).toBeVisible();
-  // The group is folded unless the team already has one of its pitches (mobile runs first).
-  const box = page.getByRole("checkbox", { name: /^Nymark Kunstgress 03 7er A/ });
-  if (!(await box.isVisible())) await page.locator("summary", { hasText: /^Nymark Kunstgress 03/ }).click();
-  await box.check();
-  await expect(page.getByText(/Valgt: .*Nymark Kunstgress 03 7er A/)).toBeVisible();
-  await page.getByRole("button", { name: "Lagre" }).click();
+  // Pitches are set per weekday now, not in a list for the team.
+  await expect(page.getByRole("checkbox", { name: /^Nymark Kunstgress 03 7er A/ })).toHaveCount(0);
+  // Equipment per kind, vests per colour.
+  await expect(page.getByLabel("Baller")).toHaveValue("20");
+  await expect(page.getByRole("group", { name: "Utstyr" }).getByLabel("Blå")).toHaveValue("8");
+  await page.getByLabel("Dukkemål").fill("6");
+  await page.getByRole("button", { name: "Lagre", exact: true }).click();
   await expect(page.locator(".nm-toast")).toContainText(/Laget er lagret/);
+  await page.reload();
+  await expect(page.getByLabel("Dukkemål")).toHaveValue("6");
 
   await page.goto(`${eventUrl}/opplegg/ki`);
   const pitches = page.getByRole("group", { name: "Baner for økta" });
-  await expect(pitches.getByRole("checkbox")).toHaveCount(3);
-  await expect(pitches.getByText("7er · Kunstgress m/innfyll som ikke er av plast · 60 × 50 m · lys 150 lux")).toBeVisible();
+  // The training's pitches (the demo's fixed ones, or chosen earlier) are chosen already.
+  const checked = pitches.getByRole("checkbox", { checked: true });
+  await expect(checked.first()).toBeVisible();
+  await expect(pitches.getByText(/^9er · Kunstgress/).first()).toBeVisible();
+  const first = pitches.getByRole("checkbox").first();
+  while ((await checked.count()) > 0) await checked.first().uncheck();
   await page.getByRole("button", { name: "Lag opplegg med KI" }).click();
   await expect(page.locator(".nm-alert")).toContainText("Velg minst én bane for økta.");
-  await pitches.getByRole("checkbox", { name: /Nymark Kunstgress 03 7er A/ }).check();
+  await first.check();
   // Trainers who said yes in Spond are filled in; the trainer can change it.
   const coaches = page.getByLabel("Trenere på økta");
   await expect(page.getByText(/har svart ja i Spond|Ingen trenere har svart ja/)).toBeVisible();

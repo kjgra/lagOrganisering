@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { osloParts } from "@/lib/format";
 import type { Db } from "@/lib/db";
 import { runMaintenance } from "@/lib/maintenance";
-import { pitchText, pitchTree, validatePlan } from "@/lib/plans/plan";
+import { equipmentText, pitchText, pitchTree, validatePlan } from "@/lib/plans/plan";
 import reference from "@/lib/plans/reference-plan.json";
 import { NO_RIGHTS, type Access, type Rights } from "@/lib/store/access";
 import { archivePending, buildArchive, confirmArchive } from "@/lib/store/archive";
@@ -192,6 +192,22 @@ describe("pitches and team settings", () => {
     await saveTeamSettings(d, me, "G1", "", { pitch_ids: [] });
     expect(await teamPitches(d, me, "G1", "")).toEqual([]);
   });
+
+  it("saves the team's equipment per kind, drops empty and 0, and refuses unknown kinds and bad numbers", async () => {
+    await saveTeamSettings(d, me, "G1", "", { equipment: "Stiger", equipment_counts: { ball: "20", dukkemaal: "4", vest_gul: "8", kjegle: "", smaamaal: "0" } });
+    let s = await getTeamSettings(d, me, "G1", "");
+    expect(s.equipment_counts).toEqual({ ball: 20, dukkemaal: 4, vest_gul: 8 });
+    expect(equipmentText(s.equipment_counts, s.equipment)).toBe("20 baller, 4 dukkemål, vester: 8 gule. Annet: Stiger");
+    await saveTeamSettings(d, me, "G1", "", { equipment_counts: { ball: "15", maal_7er: "1" } });
+    s = await getTeamSettings(d, me, "G1", "");
+    expect(s.equipment_counts).toEqual({ ball: 15, maal_7er: 1 });
+    expect(equipmentText(s.equipment_counts, "")).toBe("15 baller, 1 7er-mål");
+    await expect(saveTeamSettings(d, me, "G1", "", { equipment_counts: { stige: "2" } })).rejects.toThrow(/Ukjent utstyr/);
+    await expect(saveTeamSettings(d, me, "G1", "", { equipment_counts: { ball: "501" } })).rejects.toThrow(/Baller/);
+    await expect(saveTeamSettings(d, me, "G1", "", { equipment_counts: { ball: "-1" } })).rejects.toThrow(/Baller/);
+    expect((await getTeamSettings(d, me, "G1", "")).equipment_counts).toEqual({ ball: 15, maal_7er: 1 });
+    expect(equipmentText({}, "Kjegler")).toBe("Kjegler");
+  });
 });
 
 describe("«Trening» for every trainer, per subgroup", () => {
@@ -222,26 +238,27 @@ describe("«Trening» for every trainer, per subgroup", () => {
     const months = (theme: string) => Array.from({ length: 12 }, (_, i) => (i === 0 ? theme : ""));
     const none = Array(12).fill("");
     await saveSeason(d, t, "G6", "", 2026, months("Pasning"), none);
-    await saveTeamSettings(d, t, "G6", "", { session_minutes: "60", pitch_ids: [686] });
+    await saveTeamSettings(d, t, "G6", "", { session_minutes: "60", pitch_ids: [686], equipment_counts: { ball: "12" } });
     await savePrinciples(d, t, "G6", "", "Hele gruppa");
     await saveLearning(d, t, "G6", "", "Lærdom for alle", "manual");
 
     // Jenter follows the main group.
     expect(await listSeason(d, t, "G6", "J", 2026)).toMatchObject({ inherited: true, rows: [{ theme: "Pasning" }] });
-    expect(await getTeamSettings(d, t, "G6", "J")).toMatchObject({ inherited: true, session_minutes: 60, pitch_ids: [686] });
+    expect(await getTeamSettings(d, t, "G6", "J")).toMatchObject({ inherited: true, session_minutes: 60, pitch_ids: [686], equipment_counts: { ball: 12 } });
     expect((await teamPitches(d, t, "G6", "J")).map((p) => p.id)).toEqual([686]);
     expect(await principlesState(d, t, "G6", "J")).toMatchObject({ inherited: true, versions: [{ body: "Hele gruppa" }] });
     expect(await latestLearning(d, t, "G6", "J")).toBe("Lærdom for alle");
 
     // Its own, and the main group's stays as it was.
     await saveSeason(d, t, "G6", "J", 2026, months("Vending"), none);
-    await saveTeamSettings(d, t, "G6", "J", { session_minutes: "90", pitch_ids: [18049] });
+    await saveTeamSettings(d, t, "G6", "J", { session_minutes: "90", pitch_ids: [18049], equipment_counts: { ball: "8", dukkemaal: "2" } });
     await savePrinciples(d, t, "G6", "J", "Jentene");
     await saveLearning(d, t, "G6", "J", "Lærdom for jentene", "manual");
     expect(await seasonTheme(d, t, "G6", "J", 2026, 1)).toMatchObject({ theme: "Vending" });
     expect(await seasonTheme(d, t, "G6", "", 2026, 1)).toMatchObject({ theme: "Pasning" });
     expect(await seasonTheme(d, t, "G6", "G", 2026, 1)).toMatchObject({ theme: "Pasning" });
-    expect(await getTeamSettings(d, t, "G6", "J")).toMatchObject({ inherited: false, session_minutes: 90, pitch_ids: [18049] });
+    expect(await getTeamSettings(d, t, "G6", "J")).toMatchObject({ inherited: false, session_minutes: 90, pitch_ids: [18049], equipment_counts: { ball: 8, dukkemaal: 2 } });
+    expect((await getTeamSettings(d, t, "G6", "")).equipment_counts).toEqual({ ball: 12 });
     expect((await teamPitches(d, t, "G6", "J")).map((p) => p.id)).toEqual([18049]);
     expect((await teamPitches(d, t, "G6", "")).map((p) => p.id)).toEqual([686]);
     expect(await latestPrinciples(d, t, "G6", "J")).toBe("Jentene");
@@ -250,7 +267,8 @@ describe("«Trening» for every trainer, per subgroup", () => {
 
     for (const part of ["season", "team", "principles", "learnings"] as const) await followMainGroup(d, t, "G6", "J", part, 2026);
     expect((await listSeason(d, t, "G6", "J", 2026)).inherited).toBe(true);
-    expect(await getTeamSettings(d, t, "G6", "J")).toMatchObject({ inherited: true, session_minutes: 60 });
+    expect(await getTeamSettings(d, t, "G6", "J")).toMatchObject({ inherited: true, session_minutes: 60, equipment_counts: { ball: 12 } });
+    expect(await d.query("SELECT kind FROM team_equipment WHERE spond_subgroup_id = 'J'")).toEqual([]);
     expect(await latestPrinciples(d, t, "G6", "J")).toBe("Hele gruppa");
     expect(await latestLearning(d, t, "G6", "J")).toBe("Lærdom for alle");
     await expect(followMainGroup(d, t, "G6", "", "team")).rejects.toThrow(/Hovedgruppa/);

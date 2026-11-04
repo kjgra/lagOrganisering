@@ -557,7 +557,58 @@ export interface TeamSettings {
   pitch_ids: number[];
   /** Free-text note about the pitches, e.g. «deler med G12». */
   pitch: string;
+  /** Free-text note about other equipment. */
   equipment: string;
+  /** How many the team has of each kind (`team_equipment`); kinds it has none of are left out. */
+  equipment_counts: EquipmentCounts;
+}
+
+// Equipment ---------------------------------------------------------------------------------
+
+/** The kinds of equipment a team counts, in the order shown. Matches the CHECK on `team_equipment.kind`. */
+export const EQUIPMENT = {
+  ball: { label: "Baller", one: "ball", many: "baller" },
+  kjegle: { label: "Kjegler og markører", one: "kjegle", many: "kjegler" },
+  dukkemaal: { label: "Dukkemål", one: "dukkemål", many: "dukkemål" },
+  smaamaal: { label: "Småmål (3er/5er)", one: "småmål (3er/5er)", many: "småmål (3er/5er)" },
+  maal_7er: { label: "7er-mål", one: "7er-mål", many: "7er-mål" },
+  vest_gul: { label: "Gul", one: "gul", many: "gule" },
+  vest_oransje: { label: "Oransje", one: "oransje", many: "oransje" },
+  vest_gronn: { label: "Grønn", one: "grønn", many: "grønne" },
+  vest_bla: { label: "Blå", one: "blå", many: "blå" },
+  vest_rod: { label: "Rød", one: "rød", many: "røde" },
+  vest_rosa: { label: "Rosa", one: "rosa", many: "rosa" },
+} as const;
+
+export type EquipmentKind = keyof typeof EQUIPMENT;
+export type EquipmentCounts = Partial<Record<EquipmentKind, number>>;
+export const EQUIPMENT_MAX = 500;
+
+export const isVest = (k: EquipmentKind) => k.startsWith("vest_");
+
+/** Counts from a form: known kinds only, whole numbers 0–500; empty and 0 are left out. */
+export function equipmentCounts(x: unknown): EquipmentCounts {
+  if (x === undefined || x === null || x === "") return {};
+  if (typeof x !== "object" || Array.isArray(x)) throw new PlanError("Ukjent utstyr.");
+  const out: EquipmentCounts = {};
+  for (const [k, v] of Object.entries(x)) {
+    if (!(k in EQUIPMENT)) throw new PlanError("Ukjent utstyr.");
+    const n = intOrNull(v, EQUIPMENT[k as EquipmentKind].label, 0, EQUIPMENT_MAX);
+    if (n) out[k as EquipmentKind] = n;
+  }
+  return out;
+}
+
+/** The equipment as one line for the KI, e.g. «20 baller, 6 dukkemål, vester: 8 gule, 8 blå. Annet: stiger». */
+export function equipmentText(counts: EquipmentCounts, note: string): string {
+  const say = (k: EquipmentKind, n: number) => `${n} ${n === 1 ? EQUIPMENT[k].one : EQUIPMENT[k].many}`;
+  const kinds = (Object.keys(EQUIPMENT) as EquipmentKind[]).filter((k) => counts[k]);
+  const items = kinds.filter((k) => !isVest(k)).map((k) => say(k, counts[k]!));
+  const vests = kinds.filter(isVest).map((k) => say(k, counts[k]!));
+  if (vests.length) items.push(`vester: ${vests.join(", ")}`);
+  const n = note.trim();
+  if (!items.length) return n;
+  return `${items.join(", ")}${n ? `. Annet: ${n}` : ""}`;
 }
 
 /** Pitch ids from a list or «1,2,3»: whole numbers, no duplicates, at most 50. */
@@ -584,6 +635,7 @@ export function validateTeamSettings(s: Record<string, unknown>): TeamSettings {
     pitch_ids: pitchIds(s.pitch_ids),
     pitch: txt(s.pitch),
     equipment: txt(s.equipment),
+    equipment_counts: equipmentCounts(s.equipment_counts),
   };
   const max = { age_group: 40, pitch: 200, equipment: 1000 };
   for (const [k, m] of Object.entries(max)) {
@@ -631,6 +683,33 @@ export function pitchText(pitches: Pitch[], note: string): string {
 }
 
 /** Pitches in list order with their depth below the main pitch (0 for a main pitch). */
+/** A pitch to choose, under its main pitch. */
+export interface PitchOption {
+  id: number;
+  /** Below the main pitch: 0 for the main pitch itself. */
+  depth: number;
+  name: string;
+  /** «7er · Kunstgress … · 48 × 30 m · lys 150 lux» */
+  facts: string;
+}
+
+/** A main pitch with its sub-pitches, as one foldable group. */
+export interface PitchGroup {
+  title: string;
+  pitches: PitchOption[];
+}
+
+/** Main pitches with their sub-pitches; retired pitches only when chosen. */
+export function pitchGroups(pitches: Pitch[], chosen: number[] = []): PitchGroup[] {
+  const groups: PitchGroup[] = [];
+  for (const { pitch: p, depth } of pitchTree(pitches)) {
+    if (depth === 0) groups.push({ title: p.name, pitches: [] });
+    if (p.retired && !chosen.includes(p.id)) continue;
+    groups.at(-1)?.pitches.push({ id: p.id, depth, name: p.name, facts: pitchFacts(p) });
+  }
+  return groups.filter((g) => g.pitches.length);
+}
+
 export function pitchTree(pitches: Pitch[]): { pitch: Pitch; depth: number }[] {
   const byId = new Map(pitches.map((p) => [p.id, p]));
   const depth = (p: Pitch, seen = 0): number => {

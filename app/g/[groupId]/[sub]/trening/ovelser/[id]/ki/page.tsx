@@ -11,7 +11,7 @@ import { aiMode } from "@/lib/env";
 import { decimal, osloMonthStart } from "@/lib/format";
 import { CATEGORIES, EXERCISE_STATUSES, pitchFacts } from "@/lib/plans/plan";
 import { aiSpend, getAiSettings } from "@/lib/store/ai";
-import { getExercise, getTeamSettings, teamPitches } from "@/lib/store/training";
+import { getExercise, teamPitches } from "@/lib/store/training";
 
 /** «Juster med KI»: the usual way to change an exercise in the bank. Manual edit is a link away. */
 export default async function ExerciseRevisePage(props: PageProps<"/g/[groupId]/[sub]/trening/ovelser/[id]/ki">) {
@@ -36,9 +36,8 @@ export default async function ExerciseRevisePage(props: PageProps<"/g/[groupId]/
     );
   }
   const sub = ctx.subgroup?.id ?? "";
-  const [settings, team, pitches, spend] = await Promise.all([
+  const [settings, pitches, spend] = await Promise.all([
     getAiSettings(d),
-    getTeamSettings(d, ctx.user.access, ctx.group.id, sub),
     teamPitches(d, ctx.user.access, ctx.group.id, sub),
     aiSpend(d, ctx.user.access, ctx.group.id, osloMonthStart(new Date())),
   ]);
@@ -53,7 +52,7 @@ export default async function ExerciseRevisePage(props: PageProps<"/g/[groupId]/
         id={b.id}
         name={b.name}
         pitches={pitches.map((x) => ({ id: x.id, name: x.name, facts: pitchFacts(x) }))}
-        pitchNote={team.pitch}
+        pitchNote=""
         standardHref={ctx.path("/trening/laget")}
         models={Object.entries(AI_MODELS).map(([mid, m]) => ({ id: mid, label: m.label, choice: m.choice }))}
         model={settings.model}

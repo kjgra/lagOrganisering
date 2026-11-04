@@ -7,6 +7,7 @@ import { followMainGroupAction, learningKiAction, savePrinciplesAction, saveLear
 import { Field, SaveButton, useSave } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
 import { GENDERS, teamAgeText, type Gender } from "@/lib/nff/bands";
+import { EQUIPMENT, isVest, type EquipmentKind } from "@/lib/plans/plan";
 
 // Season plan ------------------------------------------------------------------------------
 
@@ -73,42 +74,27 @@ export function SeasonForm({
 
 // Team settings -----------------------------------------------------------------------------
 
-export interface PitchOption {
-  id: number;
-  /** Below the main pitch: 0 for the main pitch itself. */
-  depth: number;
-  name: string;
-  /** «7er · Kunstgress … · 48 × 30 m · lys 150 lux» */
-  facts: string;
-}
-
-/** A main pitch with its sub-pitches, as one foldable group. */
-export interface PitchGroup {
-  title: string;
-  pitches: PitchOption[];
-}
+export type { PitchGroup, PitchOption } from "@/lib/plans/plan";
 
 export function TeamSettingsForm({
   groupId,
   sub,
   initial,
-  pitchGroups,
-  initialPitches,
+  initialEquipment,
   year,
 }: {
   groupId: string;
   sub: string;
   initial: Record<string, string>;
-  pitchGroups: PitchGroup[];
-  initialPitches: number[];
+  /** Count per equipment kind, as text ('' for none). */
+  initialEquipment: Record<string, string>;
   /** The season year (Oslo), for the team's age. */
   year: number;
 }) {
   const [v, setV] = useState(initial);
-  const [chosen, setChosen] = useState(initialPitches);
+  const [kit, setKit] = useState(initialEquipment);
   const { pending, run, errorBox } = useSave();
   const set = (k: string) => (e: { target: { value: string } }) => setV((x) => ({ ...x, [k]: e.target.value }));
-  const all = pitchGroups.flatMap((g) => g.pitches);
   const by = /^\d{4}$/.test(v.birth_year.trim()) ? Number(v.birth_year) : null;
   const ageHint =
     by !== null
@@ -122,7 +108,7 @@ export function TeamSettingsForm({
       style={{ maxWidth: 640 }}
       onSubmit={(e) => {
         e.preventDefault();
-        run(() => saveTeamSettingsAction(groupId, sub, v, chosen));
+        run(() => saveTeamSettingsAction(groupId, sub, v, kit));
       }}
     >
       <div className="nm-form-row">
@@ -143,51 +129,47 @@ export function TeamSettingsForm({
           <input className="nm-input" inputMode="numeric" value={v.session_minutes} onChange={set("session_minutes")} />
         </Field>
       </div>
-      <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-        <legend className="nm-field__label" style={{ marginBottom: "var(--space-1)" }}>
-          Baner
-        </legend>
-        <p className="nm-hint" style={{ margin: "0 0 var(--space-2)" }}>
-          {chosen.length
-            ? `Valgt: ${all
-                .filter((p) => chosen.includes(p.id))
-                .map((p) => p.name)
-                .join(", ")}. For hver trening velger dere blant disse når KI lager opplegget.`
-            : "Velg banene laget bruker. For hver trening velger dere blant disse når KI lager opplegget."}
-        </p>
-        {pitchGroups.map((g) => (
-          <details key={g.title} className="nm-exercise" open={g.pitches.some((p) => initialPitches.includes(p.id))}>
-            <summary style={{ cursor: "pointer", minHeight: "var(--touch-min)", display: "flex", alignItems: "center", fontWeight: 700 }}>
-              {g.title}
-              {g.pitches.some((p) => chosen.includes(p.id)) ? ` (${g.pitches.filter((p) => chosen.includes(p.id)).length} valgt)` : ""}
-            </summary>
-            {g.pitches.map((p) => (
-              <label key={p.id} className="nm-check" style={{ paddingLeft: `calc(var(--space-4) * ${p.depth})` }}>
-                <input
-                  type="checkbox"
-                  checked={chosen.includes(p.id)}
-                  onChange={(e) => setChosen((x) => (e.target.checked ? [...x, p.id] : x.filter((y) => y !== p.id)))}
-                />
-                <span>
-                  {p.name}
-                  <span className="nm-hint" style={{ display: "block" }}>
-                    {p.facts}
-                  </span>
-                </span>
-              </label>
-            ))}
-          </details>
-        ))}
-      </fieldset>
-      <Field label="Merknad om baner" hint="F.eks. «deler banen med G12 på tirsdager».">
-        <input className="nm-input" value={v.pitch} maxLength={200} onChange={set("pitch")} />
-      </Field>
-      <Field label="Utstyr">
+      <EquipmentFields kit={kit} setKit={setKit} />
+      <Field label="Annet utstyr" hint="F.eks. «stiger og hekker», eller hva som er felles med andre lag.">
         <textarea className="nm-input" value={v.equipment} maxLength={1000} onChange={set("equipment")} />
       </Field>
       {errorBox}
       <SaveButton pending={pending} />
     </form>
+  );
+}
+
+const KINDS = Object.keys(EQUIPMENT) as EquipmentKind[];
+
+/** One number per kind of equipment; vests per colour. */
+function EquipmentFields({ kit, setKit }: { kit: Record<string, string>; setKit: (f: (x: Record<string, string>) => Record<string, string>) => void }) {
+  const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(9rem, 1fr))", gap: "var(--space-3)" } as const;
+  const input = (k: EquipmentKind) => (
+    <Field key={k} label={EQUIPMENT[k].label}>
+      <input
+        className="nm-input"
+        inputMode="numeric"
+        maxLength={3}
+        placeholder="0"
+        value={kit[k] ?? ""}
+        onChange={(e) => setKit((x) => ({ ...x, [k]: e.target.value.replace(/\D/g, "") }))}
+      />
+    </Field>
+  );
+  return (
+    <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+      <legend className="nm-field__label" style={{ marginBottom: "var(--space-1)" }}>
+        Utstyr
+      </legend>
+      <p className="nm-hint" style={{ margin: "0 0 var(--space-2)" }}>
+        Hvor mye laget har med på trening. KI tilpasser øvelsene, så gruppene som trener samtidig ikke trenger mer enn dette.
+      </p>
+      <div style={grid}>{KINDS.filter((k) => !isVest(k)).map(input)}</div>
+      <p className="nm-field__label" style={{ margin: "var(--space-3) 0 var(--space-1)" }}>
+        Vester per farge
+      </p>
+      <div style={grid}>{KINDS.filter(isVest).map(input)}</div>
+    </fieldset>
   );
 }
 

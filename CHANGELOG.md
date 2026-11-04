@@ -8,9 +8,41 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.25.0] – 2026-11-04
+
+Bedre valg av øvelser fra banken.
+
 ### Endret
 
 - KI finner flere passende øvelser i banken. Øvelser som er tagget med øktas hovedtema, kommer først selv om temaet er skrevet med andre ord. Øvelser for nabobåndet (for eksempel 8–9 år for et 10–12-lag) kommer etter lagets eget bånd, og KI kan gjøre dem vanskeligere eller enklere slik at de passer.
+
+## [1.24.0] – 2026-11-04
+
+Utstyr per lag.
+
+### Lagt til
+
+- Under Trening › Laget kan dere nå fylle inn hvor mye utstyr laget har: baller, kjegler og markører, dukkemål, småmål (3er/5er), 7er-mål og vester per farge. Som resten av «Laget» gjelder det for laget, og en undergruppe uten egne innstillinger bruker hovedgruppas.
+- KI får utstyret med antall og lager opplegg der øvelsene som pågår samtidig ikke trenger mer enn laget har. Mangler det, velger KI først en variant som trenger mindre, så NFFs rekkefølge (Sjef over ballen → Spille med og mot → Spill) holder, og ellers lar den gruppene starte på ulike stasjoner.
+
+### Endret
+
+- Fritekstfeltet «Utstyr» heter nå «Annet utstyr», for det som ikke har et eget tall.
+
+## [1.23.0] – 2026-11-04
+
+Faste baner per ukedag.
+
+### Lagt til
+
+- «Faste baner per ukedag» under Trening › Laget. Etter banefordelingen velger dere baner bare for dagene dere trener, f.eks. mandag og tirsdag, fra en dato. Når dere huker av for en dag, kan dere velge blant alle banene på Nymark, gruppert per hovedbane. De gjelder til neste endring, og dagene dere ikke velger, beholder banene sine. Hver banefordeling vises som ett kort med dagene, datoene og banene, og «Endre banefordelingen» endrer dager, datoer og baner samlet. Kommende banefordelinger er merket «Kommer», og utgåtte vises ikke.
+- Sluttdato for de faste banene (når neste fordeling ventes). Tre uker før kommer en påminnelse på Trening › Laget og i arrangementslista. Etter sluttdatoen sier treningene fra om at de mangler bane, til nye faste baner er lagt inn.
+- Arrangementet viser banene for treningen («fast for mandager»), og de kan endres for bare den treningen. Banene er valgt på forhånd i KI-skjemaet og i Hurtigopprett, og baner valgt der huskes for treningen.
+
+### Endret
+
+- Lista over lagets baner under Trening › Laget er fjernet. Banene settes nå per ukedag, og lagets baner er de faste banene som gjelder nå eller senere.
+- Feltet «Merknad om baner» under Trening › Laget er fjernet, og KI bruker ikke lenger merknaden.
 
 ## [1.22.0] – 2026-11-04
 

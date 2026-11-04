@@ -3,9 +3,9 @@ import type { CurrentUser } from "@/lib/auth/current";
 import type { Db } from "@/lib/db";
 import { fetchLinks, parseLinks } from "@/lib/ai/links";
 import { AiError, WISH_MAX, fagplanText, type ExerciseOrderContext, type OrderContext } from "@/lib/ai/plan-ai";
-import { osloParts } from "@/lib/format";
+import { osloDate, osloParts } from "@/lib/format";
 import { teamAgeText, teamBand } from "@/lib/nff/bands";
-import { CATEGORIES, pitchText } from "@/lib/plans/plan";
+import { CATEGORIES, equipmentText, pitchText } from "@/lib/plans/plan";
 import { teamTitle } from "@/lib/proposal-view";
 import { memberNames, namesProblem, isSensitive } from "@/lib/sensitive";
 import { isPlayerKind } from "@/lib/spond/data";
@@ -13,7 +13,8 @@ import { eventParticipants, placeable } from "@/lib/spond/events";
 import type { Group, SpondEvent } from "@/lib/spond/types";
 import { approvedForEvent } from "@/lib/store/proposals";
 import { getAiSettings } from "@/lib/store/ai";
-import { getTeamSettings, latestPrinciples, listPlanComments, seasonTheme, teamPitches } from "@/lib/store/training";
+import type { PitchEvent } from "@/lib/store/pitch-schedule";
+import { getTeamSettings, latestPrinciples, listPitches, listPlanComments, seasonTheme, teamPitches } from "@/lib/store/training";
 
 /**
  * The groups of the approved team proposal for an event, with names. Used
@@ -42,6 +43,11 @@ export async function planGroups(d: Db, user: CurrentUser, group: Group, eventId
  */
 export function eventSub(event: SpondEvent): string {
   return event.subgroupIds.length === 1 ? event.subgroupIds[0] : "";
+}
+
+/** A training as the pitch rules need it: its scope and Oslo date. */
+export function pitchEvent(event: SpondEvent): PitchEvent {
+  return { id: event.id, sub: eventSub(event), date: event.start ? osloDate(event.start) : null };
 }
 
 /** The month's theme for an event (Oslo time), if the season plan has one. */
@@ -95,8 +101,9 @@ export async function orderContext(
     listPlanComments(d, user.access, group.id, event.id),
     urls.length ? fetchLinks(urls, settings.link_domains) : Promise.resolve([]),
   ]);
-  const chosenPitches = pitches.filter((p) => input.pitchIds.includes(p.id));
-  if (chosenPitches.length !== new Set(input.pitchIds).size) throw new AiError("Banene må være blant lagets baner.");
+  // Any pitch at the facility (the training's own can be outside the team's fixed ones).
+  const chosenPitches = (await listPitches(d)).filter((p) => input.pitchIds.includes(p.id));
+  if (chosenPitches.length !== new Set(input.pitchIds).size) throw new AiError("Ukjent bane.");
   if (pitches.length && !chosenPitches.length) throw new AiError("Velg minst én bane for økta.");
   const chosen = comments.filter((c) => input.commentIds.includes(c.id) && c.used_in_plan_id === null);
   const theme = input.theme.trim() || season?.theme || "";
@@ -113,7 +120,7 @@ export async function orderContext(
       minutes: input.minutes ?? team.session_minutes,
       theme,
       themeDescription: season && season.theme.toLowerCase() === theme.toLowerCase() ? season.description : "",
-      team: { age_group: teamAgeText(team.birth_year, team.gender, year, team.age_group), pitch: pitchText(chosenPitches, team.pitch), equipment: team.equipment, principles },
+      team: { age_group: teamAgeText(team.birth_year, team.gender, year, team.age_group), pitch: pitchText(chosenPitches, ""), equipment: equipmentText(team.equipment_counts, team.equipment), principles },
       fagplan: fagplanText(band, theme),
       band,
       coaches: input.coaches ?? null,
@@ -167,7 +174,7 @@ export async function exerciseOrderContext(d: Db, user: Pick<CurrentUser, "acces
     sub,
     theme,
     themeDescription: season && theme && season.theme.toLowerCase() === theme.toLowerCase() ? season.description : "",
-    team: { age_group: teamAgeText(team.birth_year, team.gender, year, team.age_group), pitch: pitchText(chosen, team.pitch), equipment: team.equipment, principles },
+    team: { age_group: teamAgeText(team.birth_year, team.gender, year, team.age_group), pitch: pitchText(chosen, ""), equipment: equipmentText(team.equipment_counts, team.equipment), principles },
     fagplan: fagplanText(teamBand(team.birth_year, year), theme || season?.theme || ""),
     band: teamBand(team.birth_year, year),
     players: input.players,
