@@ -5,6 +5,8 @@ import { useState } from "react";
 import { setEventPitchesAction } from "@/app/actions/pitches";
 import { SaveButton, useSave } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
+import { PitchTree } from "@/components/training/PitchTree";
+import type { PitchGroup } from "@/lib/plans/plan";
 
 /**
  * The pitches for a training on the event page: the weekday's fixed ones, or
@@ -14,7 +16,7 @@ import { Icon } from "@/components/ui/icon";
 export function EventPitches({
   groupId,
   eventId,
-  pool,
+  groups,
   chosen,
   chosenNames,
   source,
@@ -25,7 +27,8 @@ export function EventPitches({
 }: {
   groupId: string;
   eventId: string;
-  pool: { id: number; name: string }[];
+  /** All the pitches at the facility, by main pitch. */
+  groups: PitchGroup[];
   chosen: number[];
   /** Names of the chosen pitches, «Ikke valgt» when none. */
   chosenNames: string;
@@ -85,12 +88,7 @@ export function EventPitches({
           <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
             <legend className="nm-field__label">Baner for denne treningen</legend>
             {fixedNames !== null ? <p className="nm-hint" style={{ margin: "0 0 var(--space-2)" }}>Faste baner: {fixedNames}. Endringen gjelder bare denne treningen.</p> : null}
-            {pool.map((p) => (
-              <label key={p.id} className="nm-check">
-                <input type="checkbox" checked={ids.includes(p.id)} onChange={(e) => setIds((x) => (e.target.checked ? [...x, p.id] : x.filter((y) => y !== p.id)))} />
-                <span>{p.name}</span>
-              </label>
-            ))}
+            <PitchTree groups={groups} label="Baner" value={ids} onChange={setIds} />
           </fieldset>
           {errorBox}
           <div className="nm-row" style={{ gap: "var(--space-2)", flexWrap: "wrap" }}>

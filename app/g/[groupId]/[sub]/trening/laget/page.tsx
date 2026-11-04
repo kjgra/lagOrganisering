@@ -1,36 +1,24 @@
 import { AppShell } from "@/components/shell/AppShell";
-import { ScopeNote, TeamSettingsForm, type PitchGroup } from "@/components/training/forms";
+import { ScopeNote, TeamSettingsForm } from "@/components/training/forms";
 import { TrainingTabs } from "@/components/training/TrainingTabs";
 import { WeekdayPitches } from "@/components/training/WeekdayPitches";
 import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
 import { osloDate, osloParts, savedAt } from "@/lib/format";
 import { currentRows, endingSoon, endingText, periodText, rowStatus } from "@/lib/plans/pitch-schedule";
-import { pitchFacts, pitchTree, type Pitch } from "@/lib/plans/plan";
+import { pitchGroups } from "@/lib/plans/plan";
 import { profileName } from "@/lib/proposal-view";
 import { listWeekdayPitches } from "@/lib/store/pitch-schedule";
-import { getTeamSettings, listPitches, teamPitches } from "@/lib/store/training";
-
-/** Main pitches with their sub-pitches; retired pitches only when the team has them. */
-function pitchGroups(pitches: Pitch[], chosen: number[]): PitchGroup[] {
-  const groups: PitchGroup[] = [];
-  for (const { pitch: p, depth } of pitchTree(pitches)) {
-    if (depth === 0) groups.push({ title: p.name, pitches: [] });
-    if (p.retired && !chosen.includes(p.id)) continue;
-    groups.at(-1)?.pitches.push({ id: p.id, depth, name: p.name, facts: pitchFacts(p) });
-  }
-  return groups.filter((g) => g.pitches.length);
-}
+import { getTeamSettings, listPitches } from "@/lib/store/training";
 
 /** «Laget»: age, session length, pitches and equipment, as the starting point for every session. */
 export default async function TeamPage(props: PageProps<"/g/[groupId]/[sub]/trening/laget">) {
   const ctx = await contextFromParams(props.params);
   const d = await db();
   const sub = ctx.subgroup?.id ?? "";
-  const [s, pitches, pool, fixed] = await Promise.all([
+  const [s, pitches, fixed] = await Promise.all([
     getTeamSettings(d, ctx.user.access, ctx.group.id, sub),
     listPitches(d),
-    teamPitches(d, ctx.user.access, ctx.group.id, sub),
     listWeekdayPitches(d, ctx.user.access, ctx.group.id, sub),
   ]);
   const today = osloDate(new Date());
@@ -53,8 +41,6 @@ export default async function TeamPage(props: PageProps<"/g/[groupId]/[sub]/tren
           pitch: s.pitch,
           equipment: s.equipment,
         }}
-        initialPitches={s.pitch_ids}
-        pitchGroups={pitchGroups(pitches, s.pitch_ids)}
         year={osloParts(new Date()).year}
       />
       {s.updated_by && s.updated_at ? (
@@ -74,7 +60,7 @@ export default async function TeamPage(props: PageProps<"/g/[groupId]/[sub]/tren
         groupId={ctx.group.id}
         sub={sub}
         inherited={fixed.inherited}
-        pool={pool.map((p) => ({ id: p.id, name: p.name }))}
+        groups={pitchGroups(pitches, fixed.rows.flatMap((r) => r.pitch_ids))}
         rows={currentRows(fixed.rows, today).map((r) => ({
           id: r.id,
           weekday: r.weekday,

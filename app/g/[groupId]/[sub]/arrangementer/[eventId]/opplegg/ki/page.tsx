@@ -12,7 +12,7 @@ import { pitchFacts } from "@/lib/plans/plan";
 import { eventIsPast, responseCounts } from "@/lib/spond/events";
 import { aiSpend, getAiSettings } from "@/lib/store/ai";
 import { pitchesForEvent } from "@/lib/store/pitch-schedule";
-import { getPlan, getTeamSettings, listPlanComments, teamPitches } from "@/lib/store/training";
+import { getPlan, getTeamSettings, listPitches, listPlanComments, teamPitches } from "@/lib/store/training";
 
 export default async function KiPage(props: PageProps<"/g/[groupId]/[sub]/arrangementer/[eventId]/opplegg/ki">) {
   const ctx = await contextFromParams(props.params);
@@ -24,7 +24,7 @@ export default async function KiPage(props: PageProps<"/g/[groupId]/[sub]/arrang
   if (eventIsPast(event) || !ctx.user.rights.ai) redirect(eventPath);
   const d = await db();
   const fromId = Number(typeof sp.fra === "string" ? sp.fra : "") || null;
-  const [settings, team, pitches, season, comments, spend, base, forEvent] = await Promise.all([
+  const [settings, team, teamOwn, season, comments, spend, base, forEvent, all] = await Promise.all([
     getAiSettings(d),
     getTeamSettings(d, ctx.user.access, ctx.group.id, eventSub(event)),
     teamPitches(d, ctx.user.access, ctx.group.id, eventSub(event)),
@@ -33,7 +33,10 @@ export default async function KiPage(props: PageProps<"/g/[groupId]/[sub]/arrang
     aiSpend(d, ctx.user.access, ctx.group.id, osloMonthStart(new Date())),
     fromId ? getPlan(d, ctx.user.access, fromId).catch(() => null) : Promise.resolve(null),
     pitchesForEvent(d, ctx.user.access, ctx.group.id, pitchEvent(event)),
+    listPitches(d),
   ]);
+  // The training's pitches first, then the team's other fixed ones.
+  const pitches = all.filter((p) => forEvent.ids.includes(p.id) || teamOwn.some((x) => x.id === p.id));
   if (fromId && (!base || base.eventId !== event.id)) notFound();
   const budget = budgetCheck(spend, settings);
   const budgetText = budget.ok
@@ -53,7 +56,7 @@ export default async function KiPage(props: PageProps<"/g/[groupId]/[sub]/arrang
         minutes={team.session_minutes}
         coaches={responseCounts(event, ctx.group).coachesComing}
         pitches={pitches.map((x) => ({ id: x.id, name: x.name, facts: pitchFacts(x) }))}
-        pitchIds={forEvent.ids.filter((id) => pitches.some((x) => x.id === id))}
+        pitchIds={forEvent.ids}
         pitchNote={team.pitch}
         standardHref={ctx.path("/trening/laget")}
         models={Object.entries(AI_MODELS).map(([id, m]) => ({ id, label: m.label, choice: m.choice }))}

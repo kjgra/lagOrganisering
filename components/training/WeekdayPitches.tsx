@@ -5,6 +5,8 @@ import { useState } from "react";
 import { deleteWeekdayPitchesAction, saveWeekdayPitchesAction } from "@/app/actions/pitches";
 import { Field, SaveButton, useSave } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
+import { PitchTree } from "@/components/training/PitchTree";
+import type { PitchGroup } from "@/lib/plans/plan";
 
 const DAYS = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
 
@@ -36,7 +38,7 @@ export function WeekdayPitches({
   groupId,
   sub,
   inherited,
-  pool,
+  groups,
   rows,
   today,
   ending,
@@ -45,8 +47,8 @@ export function WeekdayPitches({
   sub: string;
   /** A subgroup showing the main group's: saving gives it its own. */
   inherited: boolean;
-  /** The team's pitches («Baner» above). */
-  pool: { id: number; name: string }[];
+  /** All the pitches at the facility, by main pitch. */
+  groups: PitchGroup[];
   rows: WeekdayRow[];
   today: string;
   /** «Faste baner for mandager slutter 31. mar.», when within the reminder time. */
@@ -65,16 +67,11 @@ export function WeekdayPitches({
     setDraft((d) => {
       if (!d) return d;
       const days = { ...d.days };
-      if (on) days[wd] = days[wd] ?? (pool.length === 1 ? [pool[0].id] : []);
+      if (on) days[wd] = days[wd] ?? [];
       else delete days[wd];
       return { ...d, days };
     });
-  const togglePitch = (wd: number, id: number, on: boolean) =>
-    setDraft((d) => (d ? { ...d, days: { ...d.days, [wd]: on ? [...(d.days[wd] ?? []), id] : (d.days[wd] ?? []).filter((x) => x !== id) } } : d));
-
-  if (!pool.length) {
-    return <p className="nm-hint">Velg lagets baner over og lagre, så kan dere sette faste baner for treningsdagene.</p>;
-  }
+  const setPitches = (wd: number, ids: number[]) => setDraft((d) => (d ? { ...d, days: { ...d.days, [wd]: ids } } : d));
 
   return (
     <div className="nm-stack" style={{ gap: "var(--space-3)" }}>
@@ -200,13 +197,8 @@ export function WeekdayPitches({
                     <span style={{ fontWeight: 700 }}>{name}</span>
                   </label>
                   {on ? (
-                    <div role="group" aria-label={`Baner ${name.toLowerCase()}`} style={{ paddingLeft: "var(--space-5)" }}>
-                      {pool.map((p) => (
-                        <label key={p.id} className="nm-check">
-                          <input type="checkbox" checked={draft.days[wd].includes(p.id)} onChange={(e) => togglePitch(wd, p.id, e.target.checked)} />
-                          <span>{p.name}</span>
-                        </label>
-                      ))}
+                    <div style={{ paddingLeft: "var(--space-3)" }}>
+                      <PitchTree groups={groups} label={`Baner ${name.toLowerCase()}`} value={draft.days[wd]} onChange={(ids) => setPitches(wd, ids)} />
                     </div>
                   ) : null}
                 </div>

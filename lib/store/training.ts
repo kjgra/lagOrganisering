@@ -21,7 +21,7 @@ import {
   type TeamSettings,
 } from "@/lib/plans/plan";
 import { compactDrawing, validateDrawing } from "@/lib/plans/drawing";
-import { osloParts } from "@/lib/format";
+import { osloDate, osloParts } from "@/lib/format";
 import { teamBand } from "@/lib/nff/bands";
 import type { BandKey } from "@/lib/nff/fagplan";
 import { exerciseChanges, type ExerciseChanges } from "@/lib/plans/exercise-edits";
@@ -31,6 +31,7 @@ import { assertAdmin, assertGroup, UserError, type Access, type Rights } from ".
 import { BANK } from "./bank";
 import { hasEdits, logEdit } from "./edits";
 import { recordVersion } from "./versions";
+import { fixedPitchIds } from "./pitch-schedule";
 
 /** A new exercise that is too much like one in the bank (see tooSimilar). */
 export class TooSimilarError extends UserError {
@@ -171,6 +172,8 @@ export async function getTeamSettings(d: Db, access: Access, groupId: string, su
 export async function saveTeamSettings(d: Db, access: Access, groupId: string, sub: string, input: Record<string, unknown>): Promise<void> {
   assertGroup(access, groupId);
   const s = wrap(() => validateTeamSettings(input));
+  // The old pitch list (team_pitches) is only changed when given; the form now sets pitches per weekday.
+  const keepPitches = input.pitch_ids === undefined;
   const known = await d.query<{ id: number }>("SELECT id FROM pitches WHERE id = ANY($1::int[])", [s.pitch_ids]);
   if (known.length !== s.pitch_ids.length) throw new UserError("Ukjent bane.");
   await d.tx(async (t) => {
@@ -182,6 +185,7 @@ export async function saveTeamSettings(d: Db, access: Access, groupId: string, s
              equipment = EXCLUDED.equipment, updated_by = EXCLUDED.updated_by, updated_at = now()`,
       [groupId, sub, s.age_group, s.birth_year, s.gender, s.session_minutes, s.pitch, s.equipment, access.profileId],
     );
+    if (keepPitches) return;
     await t.query("DELETE FROM team_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = $2 AND NOT (pitch_id = ANY($3::int[]))", [groupId, sub, s.pitch_ids]);
     await t.query(
       "INSERT INTO team_pitches (spond_group_id, spond_subgroup_id, pitch_id) SELECT $1, $2, unnest($3::int[]) ON CONFLICT DO NOTHING",
@@ -246,10 +250,15 @@ export async function listPitches(d: Db): Promise<Pitch[]> {
   return d.query<Pitch>(`SELECT ${PITCH_COLUMNS} FROM pitches ORDER BY facility, sort, id`);
 }
 
-/** The team's pitches, in list order. */
-/** The scope's pitches; a subgroup without its own team settings has the main group's. */
-export async function teamPitches(d: Db, access: Access, groupId: string, sub: string): Promise<Pitch[]> {
+/**
+ * The team's pitches, in list order: those fixed for its weekdays now or
+ * later. A team without fixed pitches has its old pitch list (team_pitches);
+ * a subgroup without its own uses the main group's.
+ */
+export async function teamPitches(d: Db, access: Access, groupId: string, sub: string, today = osloDate(new Date())): Promise<Pitch[]> {
   assertGroup(access, groupId);
+  const fixed = await fixedPitchIds(d, access, groupId, sub, today);
+  if (fixed.length) return d.query<Pitch>(`SELECT ${PITCH_COLUMNS} FROM pitches WHERE id = ANY($1::int[]) ORDER BY facility, sort, id`, [fixed]);
   return d.query<Pitch>(
     `SELECT ${PITCH_COLUMNS.split(", ").map((c) => `p.${c}`).join(", ")}
        FROM team_pitches tp JOIN pitches p ON p.id = tp.pitch_id

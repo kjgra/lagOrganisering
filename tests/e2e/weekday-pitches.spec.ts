@@ -16,9 +16,11 @@ test("Faste baner: set per weekday, shown on the training, changed for one train
   }).toPass();
   const form = page.getByRole("form", { name: "Faste baner fra dato" });
   await form.getByRole("checkbox", { name: "Tirsdag" }).check();
+  // All the pitches at Nymark, folded per main pitch.
   const tuesday = form.getByRole("group", { name: "Baner tirsdag" });
-  await tuesday.getByRole("checkbox").first().check();
-  await tuesday.getByRole("checkbox").nth(1).check();
+  await tuesday.locator("summary", { hasText: /^Nymark Kunstgress 04/ }).click();
+  await tuesday.getByRole("checkbox", { name: /^Nymark Kunstgress 04 9er A/ }).check();
+  await tuesday.getByRole("checkbox", { name: /^Nymark Kunstgress 04 9er B/ }).check();
   await form.getByRole("button", { name: "Lagre faste baner" }).click();
   await expect(page.locator(".nm-toast")).toContainText("Faste baner for tirsdager er lagret.");
   await expect(page.getByText("Til neste endring", { exact: false }).first()).toBeVisible();
@@ -36,7 +38,7 @@ test("Faste baner: set per weekday, shown on the training, changed for one train
     await expect(page.getByRole("form", { name: "Baner for denne treningen" })).toBeVisible({ timeout: 1000 });
   }).toPass();
   const one = page.getByRole("form", { name: "Baner for denne treningen" });
-  await one.getByRole("checkbox").first().uncheck();
+  await one.getByRole("checkbox", { name: /^Nymark Kunstgress 04 9er A/ }).uncheck();
   await one.getByRole("button", { name: "Lagre baner" }).click();
   await expect(page.locator(".nm-toast")).toContainText("Banene for treningen er lagret.");
   await expect(page.getByText("endret for denne treningen")).toBeVisible();

@@ -1,5 +1,6 @@
 import type { Db } from "@/lib/db";
 import {
+  currentRows,
   eventPitches,
   samePitches,
   validateWeekdayPitches,
@@ -41,20 +42,20 @@ export async function listWeekdayPitches(d: Db, access: Access, groupId: string,
   return { rows: await rowsOf(d, groupId, ""), inherited: false };
 }
 
-/** The scope's pitch pool (team_pitches), which fixed and per-training pitches are chosen from. */
-async function poolIds(d: Db, groupId: string, sub: string): Promise<Set<number>> {
-  const rows = await d.query<{ pitch_id: number }>(
-    `SELECT pitch_id FROM team_pitches
-      WHERE spond_group_id = $1
-        AND spond_subgroup_id = CASE WHEN EXISTS (SELECT 1 FROM team_settings WHERE spond_group_id = $1 AND spond_subgroup_id = $2) THEN $2 ELSE '' END`,
-    [groupId, sub],
-  );
-  return new Set(rows.map((r) => Number(r.pitch_id)));
+/** The pitches must be at the facility (all of them can be chosen). */
+async function checkPitches(d: Db, pitchIds: number[]) {
+  if (!pitchIds.length) return;
+  const known = await d.query<{ id: number }>("SELECT id FROM pitches WHERE id = ANY($1::int[])", [pitchIds]);
+  if (known.length !== new Set(pitchIds).size) throw new UserError("Ukjent bane.");
 }
 
-async function checkPool(d: Db, groupId: string, sub: string, pitchIds: number[]) {
-  const pool = await poolIds(d, groupId, sub);
-  if (!pitchIds.every((id) => pool.has(id))) throw new UserError("Banene må være blant lagets baner.");
+/** Pitches the scope uses now or later: the fixed ones in force or coming, for all weekdays. */
+export async function fixedPitchIds(d: Db, access: Access, groupId: string, sub: string, today: string): Promise<number[]> {
+  const { rows } = await listWeekdayPitches(d, access, groupId, sub);
+  const ids = currentRows(rows, today)
+    .filter((r) => !r.valid_to || r.valid_to >= today)
+    .flatMap((r) => r.pitch_ids);
+  return [...new Set(ids)];
 }
 
 /**
@@ -66,7 +67,7 @@ export async function saveWeekdayPitches(d: Db, access: Access, groupId: string,
   assertGroup(access, groupId);
   const problem = validateWeekdayPitches(input);
   if (problem) throw new UserError(problem);
-  await checkPool(d, groupId, sub, [...new Set(input.days.flatMap((x) => x.pitch_ids))]);
+  await checkPitches(d, [...new Set(input.days.flatMap((x) => x.pitch_ids))]);
   await d.tx(async (t) => {
     if (sub) {
       const own = await t.query<{ n: number }>("SELECT count(*)::int AS n FROM weekday_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
@@ -139,7 +140,7 @@ export async function setEventPitches(d: Db, access: Access, groupId: string, e:
   assertGroup(access, groupId);
   const list = [...new Set(pitchIds)];
   if (list.length > 12) throw new UserError("Velg maks 12 baner.");
-  if (list.length) await checkPool(d, groupId, e.sub, list);
+  await checkPitches(d, list);
   const now = await pitchesForEvent(d, access, groupId, e);
   if (!list.length || (now.fixed && samePitches(list, now.fixed.pitch_ids))) {
     await d.query("DELETE FROM event_pitches WHERE spond_group_id = $1 AND spond_event_id = $2", [groupId, e.id]);

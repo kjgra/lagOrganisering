@@ -14,7 +14,7 @@ import { UserError } from "@/lib/store/access";
 import { getBoardSettings } from "@/lib/store/board-settings";
 import { listProposals, saveProposal, teamsOfEvents } from "@/lib/store/proposals";
 import { listPlayerTags } from "@/lib/store/tags";
-import { getTeamSettings, lastPlanPitches, planVersions, teamPitches } from "@/lib/store/training";
+import { getTeamSettings, lastPlanPitches, listPitches, planVersions, teamPitches } from "@/lib/store/training";
 
 /**
  * «Hurtigopprett»: one tap before a training makes a team proposal with the
@@ -90,7 +90,7 @@ interface Basis {
 }
 
 async function basis(d: Db, user: CurrentUser, group: Group, sub: string | null, event: SpondEvent): Promise<Basis> {
-  const [info, settings, team, pitches, season, lastPitches, forEvent] = await Promise.all([
+  const [info, settings, team, pitches, season, lastPitches, forEvent, all] = await Promise.all([
     listPlayerTags(d, user.access, user.rights, group.id),
     getBoardSettings(d, user.access, user.rights, group.id, sub ?? ""),
     getTeamSettings(d, user.access, group.id, eventSub(event)),
@@ -98,6 +98,7 @@ async function basis(d: Db, user: CurrentUser, group: Group, sub: string | null,
     themeForEvent(d, user, group, event),
     lastPlanPitches(d, user.access, group.id),
     pitchesForEvent(d, user.access, group.id, pitchEvent(event)),
+    listPitches(d),
   ]);
   // «Forrige treninger» works on tags, so (as on the board) only with the tags right.
   const earlier = settings ? await trainingsBefore(user, group.id, sub, event).catch(() => []) : [];
@@ -114,7 +115,7 @@ async function basis(d: Db, user: CurrentUser, group: Group, sub: string | null,
   const coaches = responseCounts(event, group).coachesComing;
   const teams = quickTeamCount(members.length, coaches, previous[0]?.length ?? null);
   const known = new Set(pitches.map((p) => p.id));
-  const fromEvent = forEvent.ids.filter((id) => known.has(id));
+  const fromEvent = forEvent.ids;
   const fromLast = lastPitches.filter((id) => known.has(id));
   return {
     defaults: {
@@ -126,7 +127,7 @@ async function basis(d: Db, user: CurrentUser, group: Group, sub: string | null,
       theme: season?.theme ?? "",
       minutes: quickMinutes(team.session_minutes, event.start, event.end),
       coaches,
-      pitches: pitches.map((p) => ({ id: p.id, name: p.name })),
+      pitches: all.filter((p) => forEvent.ids.includes(p.id) || known.has(p.id)).map((p) => ({ id: p.id, name: p.name })),
       pitchIds: fromEvent.length ? fromEvent : fromLast.length ? fromLast : pitches.length === 1 ? [pitches[0].id] : [],
     },
     members,

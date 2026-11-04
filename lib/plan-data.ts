@@ -14,7 +14,7 @@ import type { Group, SpondEvent } from "@/lib/spond/types";
 import { approvedForEvent } from "@/lib/store/proposals";
 import { getAiSettings } from "@/lib/store/ai";
 import type { PitchEvent } from "@/lib/store/pitch-schedule";
-import { getTeamSettings, latestPrinciples, listPlanComments, seasonTheme, teamPitches } from "@/lib/store/training";
+import { getTeamSettings, latestPrinciples, listPitches, listPlanComments, seasonTheme, teamPitches } from "@/lib/store/training";
 
 /**
  * The groups of the approved team proposal for an event, with names. Used
@@ -101,8 +101,9 @@ export async function orderContext(
     listPlanComments(d, user.access, group.id, event.id),
     urls.length ? fetchLinks(urls, settings.link_domains) : Promise.resolve([]),
   ]);
-  const chosenPitches = pitches.filter((p) => input.pitchIds.includes(p.id));
-  if (chosenPitches.length !== new Set(input.pitchIds).size) throw new AiError("Banene må være blant lagets baner.");
+  // Any pitch at the facility (the training's own can be outside the team's fixed ones).
+  const chosenPitches = (await listPitches(d)).filter((p) => input.pitchIds.includes(p.id));
+  if (chosenPitches.length !== new Set(input.pitchIds).size) throw new AiError("Ukjent bane.");
   if (pitches.length && !chosenPitches.length) throw new AiError("Velg minst én bane for økta.");
   const chosen = comments.filter((c) => input.commentIds.includes(c.id) && c.used_in_plan_id === null);
   const theme = input.theme.trim() || season?.theme || "";

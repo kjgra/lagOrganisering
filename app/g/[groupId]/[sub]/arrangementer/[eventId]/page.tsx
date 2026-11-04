@@ -154,19 +154,19 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
               </span>
             ) : null}
           </div>
-          {pitches && (pitches.pool.length || pitches.resolved.ids.length) ? (
+          {pitches && pitches.groups.length ? (
             <EventPitches
               key={pitches.resolved.ids.join(",")}
               groupId={ctx.group.id}
               eventId={event.id}
-              pool={pitches.pool.map((p) => ({ id: p.id, name: p.name }))}
+              groups={pitches.groups}
               chosen={pitches.resolved.ids}
               chosenNames={pitches.chosenNames}
               source={pitches.resolved.source}
               sourceText={pitches.sourceText}
               warning={past || event.cancelled ? null : pitches.warning}
               fixedNames={pitches.fixedNames}
-              canEdit={!past && !event.cancelled && pitches.pool.length > 0}
+              canEdit={!past && !event.cancelled}
             />
           ) : null}
           {coaches.length ? (

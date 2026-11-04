@@ -24,7 +24,7 @@ import {
   saveWeekdayPitches,
   setEventPitches,
 } from "@/lib/store/pitch-schedule";
-import { followMainGroup, saveTeamSettings } from "@/lib/store/training";
+import { followMainGroup, saveTeamSettings, teamPitches } from "@/lib/store/training";
 import { testDb } from "../helpers/db";
 
 let n = 0;
@@ -126,9 +126,15 @@ describe("store", () => {
     ]);
   });
 
-  it("only takes the team's pitches and other groups are closed", async () => {
-    await expect(saveWeekdayPitches(d, access, "G1", "", { from: MON, to: null, days: [{ weekday: 3, pitch_ids: [999999] }] })).rejects.toThrow(/lagets baner/);
+  it("takes any pitch at the facility, and other groups are closed", async () => {
+    await expect(saveWeekdayPitches(d, access, "G1", "", { from: MON, to: null, days: [{ weekday: 3, pitch_ids: [999999] }] })).rejects.toThrow(/Ukjent bane/);
     await expect(listWeekdayPitches(d, access, "G2", "")).rejects.toThrow(/tilgang/);
+  });
+
+  it("the team's pitches are the fixed ones in force or coming, else the old list", async () => {
+    expect((await teamPitches(d, access, "G1", "", MON)).map((p) => p.id).sort()).toEqual([ids[0], ids[1]].sort());
+    expect((await teamPitches(d, access, "G1", "", "2027-04-05")).map((p) => p.id).sort()).toEqual([ids[1]]);
+    expect((await teamPitches(d, access, "G9X", "", MON).catch(() => null))).toBeNull();
   });
 
   it("lets a training have its own pitches, and the fixed ones remove them", async () => {
