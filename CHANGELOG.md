@@ -8,6 +8,12 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.29.1] – 2026-11-05
+
+### Fikset
+
+- «Beregn pris» viser nå anslått pris for opplegget rett under knappen. Før sto bare lagets forbruk denne måneden der, så det så ut som om prisen var hele månedsforbruket. Forbruket står fortsatt, nå merket «Månedsbudsjett».
+
 ## [1.29.0] – 2026-11-05
 
 Sjekk årshjulet mot NFF.
