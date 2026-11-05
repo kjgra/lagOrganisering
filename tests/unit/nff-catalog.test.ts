@@ -3,7 +3,7 @@ import type { Db } from "@/lib/db";
 import { DELFERDIGHETER, HOVEDTEMA, LEARNING_POINTS, delfTag, temaTag } from "@/lib/nff/fagplan";
 import { NO_RIGHTS, type Access, type Rights } from "@/lib/store/access";
 import { addLearningPoint, addTopic, listCatalog, listSeasonFocus, saveSeasonFocus, setHidden } from "@/lib/store/nff-catalog";
-import { followMainGroup, listSeason, saveSeason, saveSeasonSetup, seasonTheme, type MonthFocusInput } from "@/lib/store/training";
+import { followMainGroup, listSeason, listThemeWords, saveSeason, saveSeasonSetup, saveThemeWord, seasonTheme, type MonthFocusInput } from "@/lib/store/training";
 import { testDb } from "../helpers/db";
 
 let d: Db;
@@ -161,5 +161,27 @@ describe("NFF catalog in the database", () => {
     expect(own.rows).toHaveLength(2);
     await followMainGroup(d, me, "G1", "S2", "season", 2029);
     expect(await listSeason(d, me, "G1", "S2", 2029)).toMatchObject({ inherited: true, setup: { mode: "nff", primary_level: "hovedtema" } });
+  });
+
+  it("links the team's own word to NFF's terms for every month and year that uses it", async () => {
+    const empty = Array(12).fill("");
+    await saveSeason(d, me, "G1", "", 2030, ["Spilleforståelse", ...empty.slice(1)], empty);
+    expect((await seasonTheme(d, me, "G1", "", 2030, 1))?.link).toBeNull();
+    await saveThemeWord(d, me, "G1", "Spilleforståelse!", { hovedtemaIds: ["tema.spille-framover"], delferdighetIds: ["delf.mottak"], learningPointIds: ["lm.10-12.mottak.1"] });
+    expect(await listThemeWords(d, me, "G1")).toEqual([
+      { term: "spilleforståelse", hovedtema_ids: ["tema.spille-framover"], delferdighet_ids: ["delf.mottak"], learning_point_ids: ["lm.10-12.mottak.1"] },
+    ]);
+    const link = (await seasonTheme(d, me, "G1", "S3", 2030, 1))?.link;
+    expect(link).toMatchObject({ hovedtema: ["tema.spille-framover"], delferdigheter: ["delf.mottak"], learningPoints: ["lm.10-12.mottak.1"] });
+    expect(link?.picked?.names["tema.spille-framover"]).toBe("Spille oss framover i banen");
+
+    await expect(saveThemeWord(d, me, "G1", "Spilleforståelse", { hovedtemaIds: ["delf.pasning"], delferdighetIds: [], learningPointIds: [] })).rejects.toThrow(/hovedtemaet/);
+    await expect(saveThemeWord(d, other, "G1", "Spilleforståelse", { hovedtemaIds: [], delferdighetIds: [], learningPointIds: [] })).rejects.toThrow();
+    await expect(saveThemeWord(d, me, "G1", "!!", { hovedtemaIds: ["tema.spille-framover"], delferdighetIds: [], learningPointIds: [] })).rejects.toThrow(/temaet/);
+
+    // Nothing chosen: the word is removed and the app's link is used again.
+    await saveThemeWord(d, me, "G1", "spilleforståelse", { hovedtemaIds: [], delferdighetIds: [], learningPointIds: [] });
+    expect(await listThemeWords(d, me, "G1")).toEqual([]);
+    expect((await seasonTheme(d, me, "G1", "", 2030, 1))?.link).toBeNull();
   });
 });

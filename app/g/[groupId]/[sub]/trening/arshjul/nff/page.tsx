@@ -96,7 +96,7 @@ export default async function SeasonCheckPage(props: PageProps<"/g/[groupId]/[su
                       <Icon icon={AlertTriangle} />
                       Ikke koblet
                     </span>{" "}
-                    <strong>{MONTH_NAMES[m.month - 1]}</strong>: «{m.theme}» kan ikke kobles til NFF. Bruk et mer konkret tema, for eksempel et hovedtema eller en delferdighet.
+                    <strong>{MONTH_NAMES[m.month - 1]}</strong>: «{m.theme}» kan ikke kobles til NFF. Velg koblingen selv under måneden i årshjulet, eller bruk et mer konkret tema.
                   </li>
                 ))}
               </ul>

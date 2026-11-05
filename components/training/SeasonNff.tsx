@@ -1,12 +1,14 @@
 "use client";
 
-import { Settings2 } from "lucide-react";
+import { AlertTriangle, Check, Lightbulb, Minus, Pencil, Settings2, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { saveSeasonAction, saveSeasonSetupAction } from "@/app/actions/training";
+import { saveSeasonAction, saveSeasonSetupAction, saveThemeWordAction } from "@/app/actions/training";
 import { Field, SaveButton, useSave } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
+import type { BandKey } from "@/lib/nff/fagplan";
+import { normTheme, notContent, themeLink } from "@/lib/nff/theme-link";
 
 // Årshjul with a setup per year: NFF's terms (picked from lists) or the team's own words.
 
@@ -367,5 +369,177 @@ export function SeasonSetupLine({ mode, level, href }: { mode: SeasonMode; level
         Endre oppsett
       </Link>
     </p>
+  );
+}
+
+/** A word in the team's word list, as the page passes it. */
+export interface NffWord {
+  hovedtema_ids: string[];
+  delferdighet_ids: string[];
+  learning_point_ids: string[];
+}
+
+/** What the egne-begreper form needs to show and change each month's NFF link. */
+export interface NffLinkData {
+  band: BandKey;
+  topics: NffTopic[];
+  points: NffPoint[];
+  /** The team's word list, by normalised word. */
+  words: Record<string, NffWord>;
+}
+
+const LINK_STATUS: Record<"bekreftet" | "forslag" | "telles-ikke" | "ikke-koblet", { word: string; badge: string; icon: LucideIcon }> = {
+  bekreftet: { word: "Bekreftet", badge: "nm-badge--kommer", icon: Check },
+  forslag: { word: "Forslag", badge: "nm-badge--neutral", icon: Lightbulb },
+  "telles-ikke": { word: "Telles ikke", badge: "nm-badge--kommer-ikke", icon: Minus },
+  "ikke-koblet": { word: "Ikke koblet", badge: "nm-badge--ikke-svart", icon: AlertTriangle },
+};
+
+/** «Koblet til NFF» under a month with the team's own words: the link, confirm it, or choose it yourselves. */
+export function MonthLink({ groupId, sub, theme, data }: { groupId: string; sub: string; theme: string; data: NffLinkData }) {
+  const term = normTheme(theme);
+  const own = term ? data.words[term] : undefined;
+  return <MonthLinkInner key={`${term}|${JSON.stringify(own ?? null)}`} groupId={groupId} sub={sub} theme={theme} data={data} own={own} />;
+}
+
+function MonthLinkInner({ groupId, sub, theme, data, own }: { groupId: string; sub: string; theme: string; data: NffLinkData; own: NffWord | undefined }) {
+  const auto = themeLink(theme, data.band);
+  const current = own
+    ? { h: own.hovedtema_ids, df: own.delferdighet_ids, lp: own.learning_point_ids }
+    : auto
+      ? { h: auto.hovedtema, df: auto.delferdigheter, lp: auto.learningPoints.slice(0, 2) }
+      : { h: [], df: [], lp: [] };
+  const [editing, setEditing] = useState(false);
+  const [h, setH] = useState<string[]>(current.h);
+  const [df, setDf] = useState<string[]>(current.df);
+  const [lp, setLp] = useState<string[]>(current.lp);
+  const { pending, run, errorBox } = useSave();
+  if (!normTheme(theme)) return null;
+  const label = new Map(data.topics.map((t) => [t.id, t.label]));
+  const status = own ? "bekreftet" : auto ? "forslag" : notContent(theme) ? "telles-ikke" : "ikke-koblet";
+  const st = LINK_STATUS[status];
+  const nPoints = own ? own.learning_point_ids.length : (auto?.learningPoints.length ?? 0);
+  const tags = [
+    ...current.h.map((id) => `Hovedtema ${label.get(id) ?? id}`),
+    ...current.df.map((id) => `Delf. ${label.get(id) ?? id}`),
+    ...(nPoints ? [`${nPoints} ${nPoints === 1 ? "læringsmoment" : "læringsmomenter"}`] : []),
+  ];
+  const save = (v: { h: string[]; df: string[]; lp: string[] }) =>
+    run(
+      () => saveThemeWordAction(groupId, sub, theme, { hovedtemaIds: v.h, delferdighetIds: v.df, learningPointIds: v.lp }),
+      () => setEditing(false),
+    );
+  const toggle = (set: (f: (x: string[]) => string[]) => void, id: string) => set((x) => (x.includes(id) ? x.filter((y) => y !== id) : [...x, id]));
+  const sources = data.topics.filter((t) => h.includes(t.id) || df.includes(t.id));
+  const allowed = new Set(sources.map((t) => t.id));
+  const pts = lp.filter((p) => allowed.has(data.points.find((x) => x.id === p)?.topic_id ?? ""));
+  const pointSelect = (slot: 0 | 1) => (
+    <Field label={slot === 0 ? "Læringsmoment (valgfritt)" : "Læringsmoment 2 (valgfritt)"}>
+      <select
+        className="nm-input"
+        value={pts[slot] ?? ""}
+        disabled={!sources.length || (slot === 1 && !pts[0])}
+        onChange={(e) =>
+          setLp(() => {
+            const next = [...pts];
+            if (e.target.value) next[slot] = e.target.value;
+            else next.splice(slot, slot === 0 ? 2 : 1);
+            return next.filter(Boolean);
+          })
+        }
+      >
+        <option value="">Ingen</option>
+        {sources.flatMap((t) => {
+          const list = data.points.filter((p) => p.topic_id === t.id && (slot === 0 || p.id !== pts[0]));
+          return [...new Set(list.map((p) => p.role))].map((role) => (
+            <optgroup key={`${t.id}-${role}`} label={`${t.kind === "hovedtema" ? "" : "Delf. "}${t.label}${role ? ` · ${role}` : ""}`}>
+              {list
+                .filter((p) => p.role === role)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.text}
+                  </option>
+                ))}
+            </optgroup>
+          ));
+        })}
+      </select>
+    </Field>
+  );
+  const box = { border: 0, padding: 0, margin: 0 } as const;
+  return (
+    <div className="nm-month-link" role="group" aria-label={`Koblet til NFF for ${theme.trim()}`}>
+      <div className="nm-month-link__head">
+        <strong>Koblet til NFF</strong>
+        <span className={`nm-badge ${st.badge}`}>
+          <Icon icon={st.icon} />
+          {st.word}
+        </span>
+      </div>
+      {tags.length ? <p style={{ margin: 0 }}>{tags.join(" · ")}</p> : null}
+      {status === "ikke-koblet" ? <p className="nm-hint" style={{ margin: 0 }}>Appen kjenner ikke ordet. Velg koblingen selv, så får KI og «Sjekk mot NFF» den.</p> : null}
+      {editing ? (
+        <>
+          <fieldset style={box}>
+            <legend className="nm-field__label">Hovedtema</legend>
+            {data.topics
+              .filter((t) => t.kind === "hovedtema")
+              .map((t) => (
+                <label key={t.id} className="nm-check">
+                  <input type="checkbox" checked={h.includes(t.id)} onChange={() => toggle(setH, t.id)} />
+                  <span>{t.label}</span>
+                </label>
+              ))}
+          </fieldset>
+          <fieldset style={box}>
+            <legend className="nm-field__label">Delferdigheter</legend>
+            {data.topics
+              .filter((t) => t.kind === "delferdighet")
+              .map((t) => (
+                <label key={t.id} className="nm-check">
+                  <input type="checkbox" checked={df.includes(t.id)} onChange={() => toggle(setDf, t.id)} />
+                  <span>{t.label}</span>
+                </label>
+              ))}
+          </fieldset>
+          {pointSelect(0)}
+          {pts[0] ? pointSelect(1) : null}
+          <p className="nm-hint" style={{ margin: 0 }}>
+            Koblingen gjelder ordet «{theme.trim()}» for hele laget, også neste år.
+          </p>
+          {errorBox}
+          <div className="nm-month-link__actions">
+            <button type="button" className="nm-btn nm-btn--primary" disabled={pending || (!h.length && !df.length && !pts.length)} onClick={() => save({ h, df, lp: pts })}>
+              <Icon icon={Check} />
+              Lagre koblingen
+            </button>
+            <button type="button" className="nm-btn nm-btn--secondary" disabled={pending} onClick={() => setEditing(false)}>
+              Avbryt
+            </button>
+            {own ? (
+              <button type="button" className="nm-btn nm-btn--ghost" disabled={pending} onClick={() => save({ h: [], df: [], lp: [] })}>
+                Bruk appens forslag
+              </button>
+            ) : null}
+          </div>
+        </>
+      ) : status === "telles-ikke" ? null : (
+        <>
+          {errorBox}
+          <div className="nm-month-link__actions">
+            {status === "forslag" ? (
+              <button type="button" className="nm-btn nm-btn--secondary" disabled={pending} onClick={() => save(current)}>
+                <Icon icon={Check} />
+                Bekreft
+              </button>
+            ) : null}
+            <button type="button" className="nm-btn nm-btn--ghost" onClick={() => setEditing(true)}>
+              <Icon icon={Pencil} />
+              {status === "ikke-koblet" ? "Velg kobling" : "Endre kobling"}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   );
 }

@@ -210,6 +210,22 @@ test("a year of the season plan set up with NFF's terms", async ({ page }) => {
   await expect(page.getByRole("row", { name: /^Jan/ })).toContainText("Spille oss framover i banen");
 });
 
+test("the trainers link their own word to NFF's terms", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/g/G-FOTBALL/alle/trening/arshjul");
+  // This month comes first; the demo's theme for it is not in the app's word list.
+  const month = page.locator(".nm-month").first();
+  const box = month.getByRole("group", { name: /^Koblet til NFF for / });
+  await box.getByRole("button", { name: /^(Velg|Endre) kobling$/ }).click();
+  const tema = box.getByRole("checkbox", { name: "Spille oss framover i banen" });
+  if (!(await tema.isChecked())) await tema.check();
+  await box.getByRole("button", { name: "Lagre koblingen" }).click();
+  await expect(page.locator(".nm-toast")).toContainText("er koblet til NFF");
+  await expect(box.getByText("Bekreftet")).toBeVisible();
+  await expect(box).toContainText("Hovedtema Spille oss framover i banen");
+});
+
 test("admin: save the team, and the training's pitches are chosen in the KI form", async ({ page }) => {
   await loginToEvents(page);
   await openNextTraining(page);

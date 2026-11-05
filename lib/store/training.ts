@@ -27,7 +27,7 @@ import { compactDrawing, validateDrawing } from "@/lib/plans/drawing";
 import { osloDate, osloParts } from "@/lib/format";
 import { teamBand } from "@/lib/nff/bands";
 import type { BandKey } from "@/lib/nff/fagplan";
-import { pickedLink, type MonthFocus, type ThemeLink } from "@/lib/nff/theme-link";
+import { chosenLink, normTheme, pickedLink, type MonthFocus, type ThemeLink } from "@/lib/nff/theme-link";
 import { exerciseChanges, type ExerciseChanges } from "@/lib/plans/exercise-edits";
 import { exerciseValues, type ExerciseValues } from "@/lib/plans/exercise-values";
 import type { VersionSource } from "@/lib/plans/versions";
@@ -145,7 +145,18 @@ export async function listSeason(
   const own = rows.filter((r) => r.spond_subgroup_id === scope);
   const s = setups.find((r) => r.spond_subgroup_id === scope);
   const setup: SeasonSetup | null = s ? { mode: s.mode, primary_level: s.primary_level } : null;
-  const ids = setup?.mode === "nff" ? own.flatMap((r) => [r.hovedtema_id, r.delferdighet_id, ...r.learning_point_ids]).filter((x): x is string => !!x) : [];
+  const nff = setup?.mode === "nff";
+  // With the team's own words, a word the trainers linked themselves (the word list) wins over the app's.
+  const words = nff ? new Map<string, ThemeWord>() : new Map((await listThemeWords(d, access, groupId)).map((w) => [w.term, w]));
+  const word = (theme: string) => words.get(normTheme(theme));
+  const ids = (
+    nff
+      ? own.flatMap((r) => [r.hovedtema_id, r.delferdighet_id, ...r.learning_point_ids])
+      : own.flatMap((r) => {
+          const w = word(r.theme);
+          return w ? [...w.hovedtema_ids, ...w.delferdighet_ids, ...w.learning_point_ids] : [];
+        })
+  ).filter((x): x is string => !!x);
   const names = ids.length
     ? Object.fromEntries(
         (
@@ -166,7 +177,7 @@ export async function listSeason(
       hovedtema_id: r.hovedtema_id,
       delferdighet_id: r.delferdighet_id,
       learning_point_ids: r.learning_point_ids,
-      link: setup?.mode === "nff" ? pickedLink(r, names) : null,
+      link: nff ? pickedLink(r, names) : wordLink(word(r.theme), names),
     })),
     inherited,
     setup,
@@ -182,22 +193,80 @@ const focusSchema = z
   .nullable();
 export type MonthFocusInput = z.input<typeof focusSchema>;
 
-/** Checks that the picked NFF terms are in the team's catalog (NFF's or the team's own). */
-async function checkFocus(d: Db, groupId: string, focus: NonNullable<MonthFocusInput>[]): Promise<void> {
-  const topics = [...new Set(focus.flatMap((f) => [f.hovedtemaId, f.delferdighetId]).filter((x): x is string => !!x))];
-  const points = [...new Set(focus.flatMap((f) => f.learningPointIds))];
+/** A word the trainers linked to NFF's terms themselves, as a link; null when there is none. */
+function wordLink(w: ThemeWord | undefined, names: Record<string, string> = {}): ThemeLink | null {
+  return w ? chosenLink({ hovedtema: w.hovedtema_ids, delferdigheter: w.delferdighet_ids, learningPoints: w.learning_point_ids }, names) : null;
+}
+
+/** A word in the team's word list: the NFF terms the trainers linked it to. */
+export interface ThemeWord {
+  /** The word, normalised (normTheme). */
+  term: string;
+  hovedtema_ids: string[];
+  delferdighet_ids: string[];
+  learning_point_ids: string[];
+}
+
+/** The team's word list (the main group's, for all its subgroups and years). */
+export async function listThemeWords(d: Db, access: Access, groupId: string): Promise<ThemeWord[]> {
+  assertGroup(access, groupId);
+  return d.query<ThemeWord>("SELECT term, hovedtema_ids, delferdighet_ids, learning_point_ids FROM theme_links WHERE spond_group_id = $1 ORDER BY term", [groupId]);
+}
+
+const wordSchema = z.object({
+  hovedtemaIds: z.array(z.string().max(80)).max(4),
+  delferdighetIds: z.array(z.string().max(80)).max(6),
+  learningPointIds: z.array(z.string().max(100)).max(2),
+});
+
+/**
+ * Links a word from the årshjul («Spille oss frem») to NFF's terms for the team.
+ * It is stored normalised, so «spille oss frem» and «Spille oss frem!» are the
+ * same word. Nothing chosen removes the word, and the app's own link is used again.
+ */
+export async function saveThemeWord(d: Db, access: Access, groupId: string, theme: string, input: z.input<typeof wordSchema>): Promise<void> {
+  assertGroup(access, groupId);
+  const term = normTheme(theme);
+  if (!term || term.length > 80) throw new UserError("Skriv temaet først.");
+  if (isSensitive(theme)) throw new UserError("Årshjulet skal ikke inneholde helseopplysninger eller andre sensitive opplysninger.");
+  const r = wordSchema.safeParse(input);
+  if (!r.success) throw new UserError("Ugyldig kobling til NFF.");
+  const v = { h: [...new Set(r.data.hovedtemaIds)], df: [...new Set(r.data.delferdighetIds)], lp: [...new Set(r.data.learningPointIds)] };
+  if (!v.h.length && !v.df.length && !v.lp.length) {
+    await d.query("DELETE FROM theme_links WHERE spond_group_id = $1 AND term = $2", [groupId, term]);
+    return;
+  }
+  await checkTerms(d, groupId, v.h, v.df, v.lp);
+  await d.query(
+    `INSERT INTO theme_links (spond_group_id, term, hovedtema_ids, delferdighet_ids, learning_point_ids, updated_by)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (spond_group_id, term) DO UPDATE
+       SET hovedtema_ids = EXCLUDED.hovedtema_ids, delferdighet_ids = EXCLUDED.delferdighet_ids,
+           learning_point_ids = EXCLUDED.learning_point_ids, updated_by = EXCLUDED.updated_by, updated_at = now()`,
+    [groupId, term, v.h, v.df, v.lp, access.profileId],
+  );
+}
+
+/** Checks that hovedtema, delferdigheter and learning points are in the team's catalog (NFF's or the team's own). */
+async function checkTerms(d: Db, groupId: string, hovedtema: string[], delferdigheter: string[], points: string[]): Promise<void> {
+  const topics = [...new Set([...hovedtema, ...delferdigheter])];
   if (topics.length) {
     const found = await d.query<{ id: string; kind: string }>("SELECT id, kind FROM nff_topics WHERE id = ANY($1::text[]) AND (spond_group_id IS NULL OR spond_group_id = $2)", [topics, groupId]);
     const kind = new Map(found.map((r) => [r.id, r.kind]));
-    for (const f of focus) {
-      if (f.hovedtemaId && kind.get(f.hovedtemaId) !== "hovedtema") throw new UserError("Fant ikke hovedtemaet.");
-      if (f.delferdighetId && kind.get(f.delferdighetId) !== "delferdighet") throw new UserError("Fant ikke delferdigheten.");
-    }
+    if (hovedtema.some((id) => kind.get(id) !== "hovedtema")) throw new UserError("Fant ikke hovedtemaet.");
+    if (delferdigheter.some((id) => kind.get(id) !== "delferdighet")) throw new UserError("Fant ikke delferdigheten.");
   }
-  if (points.length) {
-    const found = await d.query("SELECT id FROM nff_learning_points WHERE id = ANY($1::text[]) AND (spond_group_id IS NULL OR spond_group_id = $2)", [points, groupId]);
-    if (found.length !== points.length) throw new UserError("Fant ikke læringsmomentet.");
+  const lp = [...new Set(points)];
+  if (lp.length) {
+    const found = await d.query("SELECT id FROM nff_learning_points WHERE id = ANY($1::text[]) AND (spond_group_id IS NULL OR spond_group_id = $2)", [lp, groupId]);
+    if (found.length !== lp.length) throw new UserError("Fant ikke læringsmomentet.");
   }
+}
+
+/** Checks that the picked NFF terms are in the team's catalog (NFF's or the team's own). */
+async function checkFocus(d: Db, groupId: string, focus: NonNullable<MonthFocusInput>[]): Promise<void> {
+  const ids = (k: "hovedtemaId" | "delferdighetId") => focus.map((f) => f[k]).filter((x): x is string => !!x);
+  await checkTerms(d, groupId, ids("hovedtemaId"), ids("delferdighetId"), focus.flatMap((f) => f.learningPointIds));
 }
 
 /**

@@ -1,7 +1,7 @@
 import type { BankExercise } from "@/lib/plans/plan";
 import { CELL_GOAL, isGood } from "./coverage";
 import { DELFERDIGHETER, HOVEDTEMA, delfTag, temaTag, type BandKey, type Side } from "./fagplan";
-import { linkTags, normTheme, themeLink, type ThemeLink } from "./theme-link";
+import { linkTags, notContent, themeLink, type ThemeLink } from "./theme-link";
 
 /**
  * «Sjekk mot NFF» for et år i årshjulet: hvilke av NFFs hovedtema og delferdigheter
@@ -9,8 +9,6 @@ import { linkTags, normTheme, themeLink, type ThemeLink } from "./theme-link";
  * øvelsesbanken har nok gode øvelser for hver måned.
  */
 
-/** Months that are not training content (holiday, summing up), so they are not gaps. */
-const NOT_CONTENT = /^(ferie|fri|pause|sommerferie|juleferie|vinterferie|h(o|ø)stferie|p(a|å)skeferie)$|oppsummering|sesongavslutning|juleavslutning|sommeravslutning/;
 
 export type MonthStatus = "koblet" | "ikke-koblet" | "telles-ikke";
 
@@ -49,7 +47,7 @@ export function seasonCheck(rows: { month: number; theme: string; link?: ThemeLi
     .map((r): MonthCheck => {
       const link = r.link ?? themeLink(r.theme, band);
       const tags = new Set(linkTags(link));
-      const status: MonthStatus = link ? "koblet" : NOT_CONTENT.test(normTheme(r.theme)) ? "telles-ikke" : "ikke-koblet";
+      const status: MonthStatus = link ? "koblet" : notContent(r.theme) ? "telles-ikke" : "ikke-koblet";
       return { month: r.month, theme: r.theme, status, link, good: link ? good.filter((b) => b.nff_tags.some((t) => tags.has(t))).length : 0 };
     });
   const monthsWith = (tag: string) => months.filter((m) => linkTags(m.link).includes(tag)).map((m) => m.month);

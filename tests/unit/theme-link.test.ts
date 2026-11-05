@@ -49,6 +49,12 @@ describe("trainers' own themes linked to NFF", () => {
   });
 });
 
+describe("word variants", () => {
+  it("links «spille oss frem» like «Spille oss framover i banen»", () => {
+    for (const t of ["Spille oss frem", "spille fremover", "Spille oss framover"]) expect(link(t)?.tema).toEqual(["tema.spille-framover"]);
+  });
+});
+
 describe("pickedLink", () => {
   it("is the trainers' picks with names, or null when nothing is picked", () => {
     expect(pickedLink({ hovedtema_id: null, delferdighet_id: null, learning_point_ids: [] })).toBeNull();
