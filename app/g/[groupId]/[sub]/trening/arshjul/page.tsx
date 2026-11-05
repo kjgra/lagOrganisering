@@ -12,7 +12,7 @@ import { teamBand } from "@/lib/nff/bands";
 import { ROLES } from "@/lib/nff/fagplan";
 import { themeLink } from "@/lib/nff/theme-link";
 import { listCatalog } from "@/lib/store/nff-catalog";
-import { getTeamSettings, listSeason } from "@/lib/store/training";
+import { getTeamSettings, listSeason, listThemeWords } from "@/lib/store/training";
 
 /** The season plan: a theme per month, for every trainer. A new year is set up first: NFF's terms or the team's own. */
 export default async function SeasonPage(props: PageProps<"/g/[groupId]/[sub]/trening/arshjul">) {
@@ -31,7 +31,10 @@ export default async function SeasonPage(props: PageProps<"/g/[groupId]/[sub]/tr
   const here = ctx.path(`/trening/arshjul?ar=${year}`);
   const showSetup = sp.oppsett === "1" || (!setup && !rows.length);
   const nff = !showSetup && setup?.mode === "nff" && band ? setup : null;
-  const catalog = nff ? await listCatalog(d, ctx.user.access, ctx.group.id, { band: band! }) : null;
+  // The NFF catalog for the dropdowns (NFF's terms) or for choosing a word's link (the team's own words).
+  const catalog = !showSetup && band ? await listCatalog(d, ctx.user.access, ctx.group.id, { band }) : null;
+  const toTopics = (c: NonNullable<typeof catalog>) => c.topics.map((t) => ({ id: t.id, kind: t.kind, label: t.label }));
+  const toPoints = (c: NonNullable<typeof catalog>) => c.learningPoints.map((p) => ({ id: p.id, topic_id: p.topic_id, text: p.text, role: p.role ? (ROLES[p.role] ?? "") : "" }));
 
   let body;
   if (showSetup) {
@@ -71,8 +74,8 @@ export default async function SeasonPage(props: PageProps<"/g/[groupId]/[sub]/tr
         year={year}
         months={MONTH_NAMES}
         level={level}
-        topics={catalog.topics.map((t) => ({ id: t.id, kind: t.kind, label: t.label }))}
-        points={catalog.learningPoints.map((p) => ({ id: p.id, topic_id: p.topic_id, text: p.text, role: p.role ? (ROLES[p.role] ?? "") : "" }))}
+        topics={toTopics(catalog)}
+        points={toPoints(catalog)}
         initial={initial}
         current={year === now.year ? now.month : undefined}
       />
@@ -80,6 +83,16 @@ export default async function SeasonPage(props: PageProps<"/g/[groupId]/[sub]/tr
   } else {
     const themes = Array.from({ length: 12 }, (_, i) => rows.find((r) => r.month === i + 1)?.theme ?? "");
     const descriptions = Array.from({ length: 12 }, (_, i) => rows.find((r) => r.month === i + 1)?.description ?? "");
+    const words = catalog ? await listThemeWords(d, ctx.user.access, ctx.group.id) : [];
+    const linkData =
+      catalog && band
+        ? {
+            band,
+            topics: toTopics(catalog),
+            points: toPoints(catalog),
+            words: Object.fromEntries(words.map((w) => [w.term, { hovedtema_ids: w.hovedtema_ids, delferdighet_ids: w.delferdighet_ids, learning_point_ids: w.learning_point_ids }])),
+          }
+        : undefined;
     body = (
       <>
         {setup?.mode === "nff" && !band ? (
@@ -87,7 +100,7 @@ export default async function SeasonPage(props: PageProps<"/g/[groupId]/[sub]/tr
             Året bruker NFFs begreper, men laget mangler fødselsår. Sett det under <Link href={ctx.path("/trening/laget")}>Laget</Link>, så kommer nedtrekkene tilbake.
           </div>
         ) : null}
-        <SeasonForm key={`${year}-${inherited}`} groupId={ctx.group.id} sub={sub} year={year} months={MONTH_NAMES} themes={themes} descriptions={descriptions} current={year === now.year ? now.month : undefined} />
+        <SeasonForm key={`${year}-${inherited}`} groupId={ctx.group.id} sub={sub} year={year} months={MONTH_NAMES} themes={themes} descriptions={descriptions} current={year === now.year ? now.month : undefined} nff={linkData} />
       </>
     );
   }

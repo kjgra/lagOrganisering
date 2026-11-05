@@ -6,6 +6,7 @@ import { useState } from "react";
 import { followMainGroupAction, learningKiAction, savePrinciplesAction, saveLearningAction, saveSeasonAction, saveTeamSettingsAction } from "@/app/actions/training";
 import { Field, SaveButton, useSave } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
+import { MonthLink, type NffLinkData } from "@/components/training/SeasonNff";
 import { GENDERS, teamAgeText, type Gender } from "@/lib/nff/bands";
 import { EQUIPMENT, isVest, type EquipmentKind } from "@/lib/plans/plan";
 
@@ -19,6 +20,7 @@ export function SeasonForm({
   themes,
   descriptions,
   current,
+  nff,
 }: {
   groupId: string;
   sub: string;
@@ -28,6 +30,8 @@ export function SeasonForm({
   descriptions: string[];
   /** This month (1–12) when the year shown is this year: it comes first, and the months before it are folded away. */
   current?: number;
+  /** The team's band, NFF's terms and the team's word list: each month shows its NFF link. Left out without a band. */
+  nff?: NffLinkData;
 }) {
   const [t, setT] = useState(themes);
   const [dsc, setD] = useState(descriptions);
@@ -44,6 +48,7 @@ export function SeasonForm({
       <Field label="Beskrivelse">
         <textarea className="nm-input" rows={2} value={dsc[i]} maxLength={500} onChange={(e) => setD((x) => x.map((y, j) => (j === i ? e.target.value : y)))} />
       </Field>
+      {nff && t[i].trim() ? <MonthLink groupId={groupId} sub={sub} theme={t[i]} data={nff} /> : null}
     </fieldset>
   );
   const first = current ? current - 1 : 0;

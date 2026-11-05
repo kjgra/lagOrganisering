@@ -8,6 +8,18 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.31.0] – 2026-11-05
+
+Velg koblingen til NFF selv.
+
+### Lagt til
+
+- Med egne begreper i årshjulet viser hver måned hvilke NFF-begreper temaet er koblet til, merket «Forslag» eller «Bekreftet». Trykk «Bekreft», eller velg hovedtema, delferdigheter og læringsmomenter selv med «Endre kobling». Kjenner ikke appen ordet, trykker dere «Velg kobling». Koblingen gjelder ordet for hele laget, også neste år, og brukes av KI og «Sjekk mot NFF».
+
+### Endret
+
+- Flere varianter av ord kobles automatisk, for eksempel «Spille oss frem» til «Spille oss framover i banen».
+
 ## [1.30.0] – 2026-11-05
 
 Årshjul med NFFs begreper eller egne.

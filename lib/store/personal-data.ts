@@ -65,6 +65,7 @@ export const TRAINER_REFS = [
   { table: "team_learnings", column: "created_by", on: "anonymise" },
   { table: "team_principles", column: "created_by", on: "anonymise" },
   { table: "team_settings", column: "updated_by", on: "anonymise" },
+  { table: "theme_links", column: "updated_by", on: "anonymise" },
   { table: "training_plan_comments", column: "author", on: "anonymise" },
   { table: "training_plans", column: "approved_by", on: "anonymise" },
   { table: "training_plans", column: "created_by", on: "anonymise" },

@@ -15,7 +15,7 @@ import { decideProposal, getProposal } from "@/lib/store/improvements";
 import { exerciseVersions } from "@/lib/store/versions";
 import { importExercises, previewExerciseImport } from "@/lib/store/exercise-import";
 import type { ImportRow } from "@/lib/plans/exercise-import";
-import { deleteExercise, getExercise, saveExercise, saveLearning, savePrinciples, saveSeason, saveSeasonSetup, saveTeamSettings, followMainGroup, type Part } from "@/lib/store/training";
+import { deleteExercise, getExercise, saveExercise, saveLearning, savePrinciples, saveSeason, saveSeasonSetup, saveTeamSettings, saveThemeWord, followMainGroup, type Part } from "@/lib/store/training";
 
 /** «Trening»: season plan, the team, principles, learnings and the exercise bank, for every trainer on the team. */
 
@@ -60,6 +60,30 @@ export async function saveSeasonAction(
     await saveSeason(d, user.access, v.groupId, v.sub, v.year, v.themes, v.descriptions, v.focus);
     refresh();
     return { data: undefined, message: `Årshjulet for ${v.year} er lagret.` };
+  });
+}
+
+/** Links a word from the årshjul to NFF's terms for the team (the word list). Nothing chosen removes the word. */
+export async function saveThemeWordAction(
+  groupId: string,
+  sub: string,
+  theme: string,
+  input: { hovedtemaIds: string[]; delferdighetIds: string[]; learningPointIds: string[] },
+): Promise<ActionResult> {
+  return runAction("Kobling til NFF", async () => {
+    const v = z
+      .object({
+        groupId: sid,
+        sub: subId,
+        theme: z.string().max(200),
+        input: z.object({ hovedtemaIds: z.array(z.string().max(80)).max(4), delferdighetIds: z.array(z.string().max(80)).max(6), learningPointIds: z.array(z.string().max(100)).max(2) }),
+      })
+      .parse({ groupId, sub, theme, input });
+    const { user, d } = await trainer(v.groupId, v.sub);
+    await saveThemeWord(d, user.access, v.groupId, v.theme, v.input);
+    refresh();
+    const none = !v.input.hovedtemaIds.length && !v.input.delferdighetIds.length && !v.input.learningPointIds.length;
+    return { data: undefined, message: none ? `«${v.theme.trim()}» bruker appens kobling igjen.` : `«${v.theme.trim()}» er koblet til NFF.` };
   });
 }
 

@@ -32,14 +32,19 @@ export interface MonthFocus {
 
 /** The link for a month where the trainers picked the NFF terms themselves, or null when nothing is picked. */
 export function pickedLink(f: MonthFocus, names: Record<string, string> = {}): ThemeLink | null {
-  if (!f.hovedtema_id && !f.delferdighet_id && !f.learning_point_ids.length) return null;
+  return chosenLink({ hovedtema: f.hovedtema_id ? [f.hovedtema_id] : [], delferdigheter: f.delferdighet_id ? [f.delferdighet_id] : [], learningPoints: f.learning_point_ids }, names);
+}
+
+/** NFF terms the trainers chose (in a month or in the team's word list), with names; null when none. */
+export function chosenLink(c: { hovedtema: string[]; delferdigheter: string[]; learningPoints: string[] }, names: Record<string, string> = {}): ThemeLink | null {
+  if (!c.hovedtema.length && !c.delferdigheter.length && !c.learningPoints.length) return null;
   const name = (id: string) => names[id] ?? tagLabel(id) ?? id;
-  const ids = [f.hovedtema_id, f.delferdighet_id, ...f.learning_point_ids].filter((x): x is string => !!x);
+  const ids = [...c.hovedtema, ...c.delferdigheter, ...c.learningPoints];
   return {
-    hovedtema: f.hovedtema_id ? [f.hovedtema_id] : [],
-    delferdigheter: f.delferdighet_id ? [f.delferdighet_id] : [],
-    learningPoints: [...f.learning_point_ids],
-    picked: { names: Object.fromEntries(ids.map((id) => [id, name(id)])), points: f.learning_point_ids.map((id) => ({ id, text: name(id) })) },
+    hovedtema: [...c.hovedtema],
+    delferdigheter: [...c.delferdigheter],
+    learningPoints: [...c.learningPoints],
+    picked: { names: Object.fromEntries(ids.map((id) => [id, name(id)])), points: c.learningPoints.map((id) => ({ id, text: name(id) })) },
   };
 }
 
@@ -75,7 +80,7 @@ const RULES: Rule[] = [
   { re: /skudd|skyt|(^|[^e] )avslutning|scor/, sides: ["avslutning"], delf: ["skudd"] },
   { re: /heading|header|hodespill/, delf: ["heading"] },
   { re: /angrep/, sides: ["angrep", "avslutning"] },
-  { re: /spille (oss )?framover|oppbygging|orientering|bevegelse uten ball|spillbar/, sides: ["angrep"] },
+  { re: /spille (oss )?fr(a|e)m|oppbygging|orientering|bevegelse uten ball|spillbar/, sides: ["angrep"] },
   { re: /orientering|bevegelse uten ball|spillbar/, delf: ["mottak"] },
   { re: /forsvar/, sides: ["forsvar", "hindre"], delf: ["press", "kampen-om-ballen", "klarering"] },
   { re: /press|takling|vinne ball|ballvinning/, sides: ["forsvar"], delf: ["press"] },
@@ -117,6 +122,14 @@ export function themeLink(theme: string, band: BandKey | null): ThemeLink | null
     learningPoints,
   };
   return link.hovedtema.length || link.delferdigheter.length || link.learningPoints.length ? link : null;
+}
+
+/** Months that are not training content (holiday, summing up), so they are not gaps. */
+const NOT_CONTENT = /^(ferie|fri|pause|sommerferie|juleferie|vinterferie|h(o|ø)stferie|p(a|å)skeferie)$|oppsummering|sesongavslutning|juleavslutning|sommeravslutning/;
+
+/** A theme that is not training content («Ferie», «Oppsummering»): it needs no NFF link. */
+export function notContent(theme: string): boolean {
+  return NOT_CONTENT.test(normTheme(theme));
 }
 
 /** Every tag in a link, to match against an exercise's NFF tags. */
