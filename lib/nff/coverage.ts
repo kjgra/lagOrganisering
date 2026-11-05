@@ -64,7 +64,7 @@ export interface Coverage {
   untagged: number;
 }
 
-const isGood = (b: BankExercise) => b.status === "active" && !shouldAvoid(b);
+export const isGood = (b: BankExercise) => b.status === "active" && !shouldAvoid(b);
 
 export function coverage(bank: BankExercise[]): Coverage {
   const used = bank.filter((b) => b.status !== "archived");

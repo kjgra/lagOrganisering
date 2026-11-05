@@ -1,4 +1,6 @@
+import { ListChecks } from "lucide-react";
 import Link from "next/link";
+import { Icon } from "@/components/ui/icon";
 import { AppShell } from "@/components/shell/AppShell";
 import { ScopeNote, SeasonForm } from "@/components/training/forms";
 import { TrainingTabs } from "@/components/training/TrainingTabs";
@@ -28,6 +30,12 @@ export default async function SeasonPage(props: PageProps<"/g/[groupId]/[sub]/tr
           </Link>
         ))}
       </div>
+      <p>
+        <Link href={ctx.path(`/trening/arshjul/nff?ar=${year}`)} className="nm-btn nm-btn--secondary">
+          <Icon icon={ListChecks} />
+          Sjekk mot NFF
+        </Link>
+      </p>
       <ScopeNote groupId={ctx.group.id} sub={sub} subName={ctx.label} mainName={ctx.group.name} inherited={inherited} part="season" year={year} />
       <SeasonForm key={`${year}-${inherited}`} groupId={ctx.group.id} sub={sub} year={year} months={MONTH_NAMES} themes={themes} descriptions={descriptions} current={year === now.year ? now.month : undefined} />
     </AppShell>

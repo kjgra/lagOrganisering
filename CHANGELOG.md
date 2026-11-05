@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.29.0] – 2026-11-05
+
+Sjekk årshjulet mot NFF.
+
+### Lagt til
+
+- Ny knapp «Sjekk mot NFF» i årshjulet. Den viser hvor mange av NFFs hovedtema og delferdigheter for lagets aldersbånd årshjulet dekker, hvor mange måneder som er angrep og forsvar, hva som mangler, og hvilke måneder appen ikke kan koble til NFF. For hver måned står det hvor mange gode øvelser banken har. Hullene kan lastes ned som bestilling på nye øvelser.
+
 ## [1.28.0] – 2026-11-05
 
 Egne temaer koblet til NFF.
