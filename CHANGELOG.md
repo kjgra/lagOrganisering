@@ -8,6 +8,12 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.27.1] – 2026-11-05
+
+### Endret
+
+- KI lar gruppene rullere mellom stasjonene når utstyret ikke rekker til alle samtidig, også om noen grupper da begynner med spill og slutter med Sjef over ballen. Først når utstyret ikke rekker selv med rullering, velger KI en variant som trenger mindre (f.eks. kjeglemål i stedet for dukkemål). Før var det motsatt.
+
 ## [1.27.0] – 2026-11-05
 
 Bruksanvisningen i appen.
