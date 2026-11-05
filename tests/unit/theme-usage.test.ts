@@ -20,12 +20,24 @@ describe("exercises used with a theme word", () => {
       row("G3", ["rondo"], { theme: "Pasning" }),
     ];
     expect(themeUsage(rows, "Spille oss FREM", "10-12")).toEqual([
-      { code: "kaos", sessions: 3, groups: 2, ratings: 0, mean: null },
-      { code: "rondo", sessions: 3, groups: 2, ratings: 0, mean: null },
+      { code: "kaos", sessions: 3, similar: 0, groups: 2, ratings: 0, mean: null },
+      { code: "rondo", sessions: 3, similar: 0, groups: 2, ratings: 0, mean: null },
     ]);
     // One team alone is never enough.
     expect(themeUsage(rows.filter((r) => r.group === "G1"), "Spille oss frem", "10-12", { sessions: 1, groups: 2 })).toEqual([]);
     expect(themeUsage(rows, "Spille oss frem", null)).toEqual([]);
+  });
+
+  it("joins other spellings, and counts themes with the same NFF terms as similar", () => {
+    const rows = [
+      row("G1", ["rondo"], { theme: "Spille oss fremover" }),
+      row("G2", ["rondo"], { theme: "spille framover i banen" }),
+      row("G3", ["kant"], { theme: "Innlegg" }),
+      row("G4", ["kant"], { theme: "Sentringer" }),
+      row("G5", ["kant"], { theme: "Sentring" }),
+    ];
+    expect(themeUsage(rows, "spille frem", "10-12", { sessions: 2, groups: 2 }).map((u) => [u.code, u.sessions, u.similar])).toEqual([["rondo", 2, 0]]);
+    expect(themeUsage(rows, "Sentring", "10-12", { sessions: 3, groups: 3 }).map((u) => [u.code, u.sessions, u.similar])).toEqual([["kant", 3, 1]]);
   });
 
   it("leaves out exercises rated poorly with the theme, and names the rest for KI", () => {

@@ -72,24 +72,27 @@ interface Rule {
 /** The word list. Every rule that matches adds its NFF terms. */
 const RULES: Rule[] = [
   { re: /ballkontroll|ballbehandling|ballf(o|ø)lelse|teknikk/, sides: ["angrep"], delf: ["foring", "mottak", "vending"] },
-  { re: /pasning|samspill/, sides: ["angrep"], delf: ["pasning"] },
+  { re: /pasning|samspill|veggspill|kombinasjonsspill/, sides: ["angrep"], delf: ["pasning"] },
+  { re: /sentring|innlegg|crosse|cross/, sides: ["angrep", "avslutning"], delf: ["pasning"] },
   { re: /mottak|medtak|f(o|ø)rstetouch/, sides: ["angrep"], delf: ["mottak"] },
   { re: /f(o|ø)ring/, sides: ["angrep"], delf: ["foring"] },
   { re: /vending/, sides: ["angrep"], delf: ["vending"] },
   { re: /dribl|finte|1 ?(mot|v) ?1|en mot en/, sides: ["angrep"], delf: ["dribling", "foring"] },
-  { re: /skudd|skyt|(^|[^e] )avslutning|scor/, sides: ["avslutning"], delf: ["skudd"] },
+  { re: /skudd|skyt|(^|[^e] )avslutning|avslutte|scor|m(a|å)lscor/, sides: ["avslutning"], delf: ["skudd"] },
   { re: /heading|header|hodespill/, delf: ["heading"] },
   { re: /angrep/, sides: ["angrep", "avslutning"] },
   { re: /spille (oss )?fr(a|e)m|oppbygging|orientering|bevegelse uten ball|spillbar/, sides: ["angrep"] },
   { re: /orientering|bevegelse uten ball|spillbar/, delf: ["mottak"] },
   { re: /forsvar/, sides: ["forsvar", "hindre"], delf: ["press", "kampen-om-ballen", "klarering"] },
-  { re: /press|takling|vinne ball|ballvinning/, sides: ["forsvar"], delf: ["press"] },
+  { re: /press|takling|vinne ball|ballvinning|tackl|1f|f(o|ø)rsteforsvar/, sides: ["forsvar"], delf: ["press"] },
   { re: /hindre (avslutning|m(a|å)l)/, sides: ["hindre"] },
   { re: /klarering|klarere/, sides: ["hindre"], delf: ["klarering"] },
   { re: /kampen om ballen|duell|n(æ|ae)rkamp/, sides: ["forsvar"], delf: ["kampen-om-ballen"] },
 ];
 
 const OMSTILLING = /omstill|stille om|balltap/i;
+/** Words that mean omstilling: switching between attack and defence. */
+const OMSTILLING_WORD = /omstill|kontring|kontre|gjenvinn|stille om/;
 
 /** Lower case, «fremover» as «framover», only letters, digits and single spaces. */
 export function normTheme(theme: string): string {
@@ -99,6 +102,30 @@ export function normTheme(theme: string): string {
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** Small words that do not change what a theme is about. «mot» is kept («1 mot 1»). */
+const STOP = new Set(["oss", "og", "i", "banen", "på", "pa", "med", "til", "en", "et", "ei", "vi", "å", "av", "for", "som", "den", "det"]);
+
+/** Spellings of the same word. */
+const VARIANTS: [RegExp, string][] = [
+  [/^(fremover|framover|fremmover|frem|fram)$/, "fram"],
+  [/^(medtak|medtaket|medtakene)$/, "mottak"],
+  [/^(1v1|1mot1|enmoten)$/, "1 mot 1"],
+];
+
+/**
+ * A theme as a key that is the same for the same idea written differently:
+ * «Spille oss frem», «spille fremover» and «Spille oss framover i banen» give
+ * the same key. Small words are dropped, spellings joined, simple endings cut
+ * («pasninger» as «pasning») and the words sorted.
+ */
+export function themeKey(theme: string): string {
+  const words = normTheme(theme)
+    .split(" ")
+    .filter((w) => w && !STOP.has(w))
+    .map((w) => VARIANTS.find(([re]) => re.test(w))?.[1] ?? (w.length > 4 ? w.replace(/(ene|ane|er|en|et|e|a)$/, "") : w));
+  return [...new Set(words)].sort().join(" ");
 }
 
 /** The NFF terms a theme stands for in the band, or null when it has none. */
@@ -115,7 +142,7 @@ export function themeLink(theme: string, band: BandKey | null): ThemeLink | null
     for (const s of r.sides ?? []) tema.add(SIDE_TEMA[s][band]);
     for (const k of r.delf ?? []) delf.add(k);
   }
-  const learningPoints = /omstill/.test(t) ? LEARNING_POINTS.filter((p) => p.band === band && OMSTILLING.test(p.text)).map((p) => p.id) : [];
+  const learningPoints = OMSTILLING_WORD.test(t) ? LEARNING_POINTS.filter((p) => p.band === band && OMSTILLING.test(p.text)).map((p) => p.id) : [];
   const link: ThemeLink = {
     hovedtema: HOVEDTEMA.filter((h) => tema.has(h.key) && h.bands.includes(band)).map((h) => temaTag(h.key)),
     delferdigheter: DELFERDIGHETER.filter((d) => delf.has(d.key) && d.bands.includes(band)).map((d) => delfTag(d.key)),
