@@ -130,6 +130,13 @@ describe("KI answer", () => {
     expect(c).toContain("framover | Framover");
     expect(c).not.toContain("a-2");
   });
+  it("puts exercises tagged with what the trainers' own theme stands for at NFF first", () => {
+    const plain = Array.from({ length: 3 }, (_, i) => bankRow(`a-${i}`, { name: `A ${i}`, themes: [] }));
+    const tagged = bankRow("mottak", { name: "Mottak", themes: [], nff_tags: ["delf.mottak"] });
+    const c = catalogue([...plain, tagged], "Pasning og mottak", 2, { band: "10-12" });
+    expect(c).toContain("mottak | Mottak");
+    expect(c).not.toContain("a-2");
+  });
   it("puts the team's band first and a neighbouring band before the rest", () => {
     expect(bandFit(["10-12"], "10-12")).toBe(2);
     expect(bandFit(["8-9"], "10-12")).toBe(1);

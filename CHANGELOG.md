@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.28.0] – 2026-11-05
+
+Egne temaer koblet til NFF.
+
+### Endret
+
+- Temaer med egne ord i årshjulet, som «Pasning og mottak», «Forsvarsspill» eller «Omstilling», kobles nå til NFFs hovedtema og delferdigheter for lagets aldersbånd. KI får koblingen og læringsmomentene som hører til (før fikk KI dem bare når temaet het det samme som et NFF-hovedtema), og øvelser tagget med de samme NFF-begrepene kommer først i katalogen KI velger fra. Ord som ikke kan kobles, som «Spilleforståelse», brukes som før.
+
 ## [1.27.1] – 2026-11-05
 
 ### Endret

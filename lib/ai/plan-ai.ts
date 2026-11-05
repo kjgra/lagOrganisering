@@ -27,10 +27,13 @@ import {
   aktivitetLabel,
   delfTag,
   isKnownTag,
+  learningPoint,
   matchHovedtema,
+  tagLabel,
   temaTag,
   type BandKey,
 } from "@/lib/nff/fagplan";
+import { linkTags, themeLink } from "@/lib/nff/theme-link";
 import { bandScore } from "./lessons";
 import { EXERCISE_REVISION_TASK, EXERCISE_TASK, PLAN_INSTRUCTIONS } from "./prompts";
 
@@ -318,13 +321,43 @@ export function fagplanText(band: BandKey | null, theme: string): string {
     `Aktivitetskategorier i denne rekkefølgen: ${AKTIVITETER.map((a) => `${a.label} (${a.key}, ${a.share})`).join("; ")}.`,
     `Delferdigheter: ${delf.map((t) => `${t.label} (${delfTag(t.key)})`).join("; ")}.`,
   ];
-  const hit = matchHovedtema(theme, band);
-  if (hit) {
-    out.push("", `## Læringsmomenter for «${hit.label}»`);
-    const points = LEARNING_POINTS.filter((p) => p.band === band && p.topic === hit.key);
+  const link = themeLink(theme, band);
+  if (!link) return out.join("\n");
+  const label = (tag: string) => tagLabel(tag) ?? tag;
+  const exact = link.hovedtema.length === 1 && !link.delferdigheter.length && matchHovedtema(theme, band);
+  if (!exact) {
+    const named = [
+      link.hovedtema.length ? `hovedtema ${link.hovedtema.map(label).join(" og ")}` : "",
+      link.delferdigheter.length ? `delferdigheter ${link.delferdigheter.map(label).join(", ")}` : "",
+    ].filter(Boolean);
+    out.push(
+      "",
+      `## Temaet koblet til NFF`,
+      "",
+      `«${theme.trim()}» er trenernes eget ord.${named.length ? ` Hos NFF svarer det til ${named.join("; ")}.` : ""} Velg 1–2 læringsmomenter under og bruk dem gjennom hele økta. Tagg nye øvelser med disse NFF-begrepene.`,
+    );
+  }
+  for (const tag of link.hovedtema) {
+    const key = tag.slice("tema.".length);
+    const points = LEARNING_POINTS.filter((p) => p.band === band && p.topic === key);
+    out.push("", `## Læringsmomenter for «${label(tag)}»`);
     for (const role of [...new Set(points.map((p) => p.role))]) {
       out.push("", `### ${ROLES[role ?? ""] ?? "Laget"}`);
       for (const p of points.filter((x) => x.role === role)) out.push(`- ${p.group}: ${p.text}`);
+    }
+  }
+  for (const tag of link.delferdigheter) {
+    const key = tag.slice("delf.".length);
+    const points = LEARNING_POINTS.filter((p) => p.band === band && p.topic === key);
+    if (!points.length) continue;
+    out.push("", `## Læringsmomenter for delferdigheten «${label(tag)}»`, "");
+    for (const p of points) out.push(`- ${p.group}: ${p.text}`);
+  }
+  if (link.learningPoints.length) {
+    out.push("", `## Læringsmomenter fra NFF som passer «${theme.trim()}»`, "");
+    for (const id of link.learningPoints) {
+      const p = learningPoint(id);
+      if (p) out.push(`- ${p.group}: ${p.text}`);
     }
   }
   return out.join("\n");
@@ -355,9 +388,9 @@ export function catalogue(bank: BankExercise[], theme = "", max = 30, fit: Catal
   const usable = bank.filter((b) => b.status !== "archived" && !shouldAvoid(b));
   if (!usable.length) return "# Øvelsesbanken\n\nBanken er tom.";
   const cats = Object.keys(CATEGORIES);
-  const hoved = band && theme ? matchHovedtema(theme, band) : undefined;
-  const hit = (b: BankExercise) =>
-    (!!theme && b.themes.some((t) => t.toLowerCase() === theme.toLowerCase())) || (!!hoved && b.nff_tags.includes(temaTag(hoved.key)));
+  // The month's own word first, then exercises tagged with what it stands for at NFF.
+  const tags = new Set(theme ? linkTags(themeLink(theme, band)) : []);
+  const hit = (b: BankExercise) => (!!theme && b.themes.some((t) => t.toLowerCase() === theme.toLowerCase())) || b.nff_tags.some((t) => tags.has(t));
   const tagged = (b: BankExercise) => bandFit(b.bands, band);
   const fits = (b: BankExercise) => !fit.players || ((b.min_players ?? 0) <= fit.players && fit.players <= (b.max_players ?? 99));
   const sorted = [...usable].sort(
