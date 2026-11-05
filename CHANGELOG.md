@@ -8,6 +8,18 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.33.0] – 2026-11-05
+
+Appen kobler flere av lagets egne ord i årshjulet til NFF av seg selv.
+
+### Lagt til
+
+- Kjenner ikke appen et ord i årshjulet, for eksempel «Spilleforståelse», spør den KI hvilke av NFFs begreper ordet hører til. Koblingen vises som «Forslag» under måneden, med «KI foreslo koblingen». Bekreft den, eller endre den. KI spørres bare én gang per ord og aldersgruppe, og svaret brukes av alle lag. Ord med navn eller sensitive opplysninger sendes ikke. Det krever at du har tilgang til KI.
+
+### Endret
+
+- Små skrivefeil i årshjulet ødelegger ikke lenger koblingen: «Pasnig» og «Sentrnig» forstås som «Pasning» og «Sentring».
+
 ## [1.32.0] – 2026-11-05
 
 KI lærer av øvelsene lagene bruker med egne temaer.

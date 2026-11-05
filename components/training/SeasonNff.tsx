@@ -8,7 +8,7 @@ import { saveSeasonAction, saveSeasonSetupAction, saveThemeWordAction } from "@/
 import { Field, SaveButton, useSave } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
 import type { BandKey } from "@/lib/nff/fagplan";
-import { normTheme, notContent, themeKey, themeLink } from "@/lib/nff/theme-link";
+import { autoLink, normTheme, notContent, themeKey, type KiLinks } from "@/lib/nff/theme-link";
 
 // Årshjul with a setup per year: NFF's terms (picked from lists) or the team's own words.
 
@@ -386,6 +386,8 @@ export interface NffLinkData {
   points: NffPoint[];
   /** The team's word list, by normalised word. */
   words: Record<string, NffWord>;
+  /** KI's links of words the app's word list does not know (kiKey). */
+  ki?: KiLinks;
 }
 
 const LINK_STATUS: Record<"bekreftet" | "forslag" | "telles-ikke" | "ikke-koblet", { word: string; badge: string; icon: LucideIcon }> = {
@@ -403,7 +405,7 @@ export function MonthLink({ groupId, sub, theme, data }: { groupId: string; sub:
 }
 
 function MonthLinkInner({ groupId, sub, theme, data, own }: { groupId: string; sub: string; theme: string; data: NffLinkData; own: NffWord | undefined }) {
-  const auto = themeLink(theme, data.band);
+  const auto = autoLink(theme, data.band, data.ki);
   const current = own
     ? { h: own.hovedtema_ids, df: own.delferdighet_ids, lp: own.learning_point_ids }
     : auto
@@ -477,6 +479,7 @@ function MonthLinkInner({ groupId, sub, theme, data, own }: { groupId: string; s
         </span>
       </div>
       {tags.length ? <p style={{ margin: 0 }}>{tags.join(" · ")}</p> : null}
+      {status === "forslag" && auto?.ki ? <p className="nm-hint" style={{ margin: 0 }}>KI foreslo koblingen. Bekreft den, eller endre den.</p> : null}
       {status === "ikke-koblet" ? <p className="nm-hint" style={{ margin: 0 }}>Appen kjenner ikke ordet. Velg koblingen selv, så får KI og «Sjekk mot NFF» den.</p> : null}
       {editing ? (
         <>

@@ -1,5 +1,7 @@
 import { ListChecks } from "lucide-react";
 import Link from "next/link";
+import { after } from "next/server";
+import { linkThemesWithKi } from "@/lib/ai/service";
 import { Icon } from "@/components/ui/icon";
 import { AppShell } from "@/components/shell/AppShell";
 import { ScopeNote, SeasonForm } from "@/components/training/forms";
@@ -12,7 +14,7 @@ import { teamBand } from "@/lib/nff/bands";
 import { ROLES } from "@/lib/nff/fagplan";
 import { themeLink } from "@/lib/nff/theme-link";
 import { listCatalog } from "@/lib/store/nff-catalog";
-import { getTeamSettings, listSeason, listThemeWords } from "@/lib/store/training";
+import { getTeamSettings, listKiLinks, listSeason, listThemeWords } from "@/lib/store/training";
 
 /** The season plan: a theme per month, for every trainer. A new year is set up first: NFF's terms or the team's own. */
 export default async function SeasonPage(props: PageProps<"/g/[groupId]/[sub]/trening/arshjul">) {
@@ -83,7 +85,10 @@ export default async function SeasonPage(props: PageProps<"/g/[groupId]/[sub]/tr
   } else {
     const themes = Array.from({ length: 12 }, (_, i) => rows.find((r) => r.month === i + 1)?.theme ?? "");
     const descriptions = Array.from({ length: 12 }, (_, i) => rows.find((r) => r.month === i + 1)?.description ?? "");
-    const words = catalog ? await listThemeWords(d, ctx.user.access, ctx.group.id) : [];
+    const [words, ki] = await Promise.all([catalog ? listThemeWords(d, ctx.user.access, ctx.group.id) : [], band ? listKiLinks(d, band) : {}]);
+    // Words from before KI linked them: KI links them after the page is sent, for the next visit.
+    const unknown = band ? rows.filter((r) => !r.link).map((r) => r.theme) : [];
+    if (band && unknown.length && ctx.user.rights.ai) after(() => linkThemesWithKi(d, ctx.user, ctx.user.rights, ctx.group, band, unknown).then(() => undefined));
     const linkData =
       catalog && band
         ? {
@@ -91,6 +96,7 @@ export default async function SeasonPage(props: PageProps<"/g/[groupId]/[sub]/tr
             topics: toTopics(catalog),
             points: toPoints(catalog),
             words: Object.fromEntries(words.map((w) => [w.term, { hovedtema_ids: w.hovedtema_ids, delferdighet_ids: w.delferdighet_ids, learning_point_ids: w.learning_point_ids }])),
+            ki,
           }
         : undefined;
     body = (
