@@ -1,4 +1,4 @@
-import { ChevronRight, MessageSquarePlus, Sparkles } from "lucide-react";
+import { BookOpen, ChevronRight, MessageSquarePlus, Sparkles } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { SettingsShell } from "@/components/settings/SettingsShell";
@@ -42,6 +42,17 @@ export default async function SettingsPage(props: PageProps<"/innstillinger">) {
       <section className="nm-section">
         <h2 className="nm-h2">Om appen</h2>
         <ul className="nm-list nm-navlist" style={{ marginBottom: "var(--space-3)" }}>
+          <li>
+            {/* Static page in public/, so a plain link (no client-side routing). */}
+            <a href="/bruksanvisning/index.html">
+              <Icon icon={BookOpen} />
+              <span className="nm-list__name" style={{ flex: 1 }}>
+                Bruksanvisning
+              </span>
+              <span className="nm-muted">Les eller last ned</span>
+              <Icon icon={ChevronRight} />
+            </a>
+          </li>
           <li>
             <Link href={`/innstillinger/nytt?fra=${encodeURIComponent(back)}`}>
               <Icon icon={Sparkles} />

@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bruksanvisning for trenere – Nymark</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<!--
+  Bruksanvisningen for trenere. Appen viser denne siden på /bruksanvisning, og
+  GitHub Actions lager PDF-en av den. Hver PR som endrer noe trenerne ser,
+  oppdaterer teksten her og versjonen i id="VERSJON". Se docs/bruksanvisning.md.
+-->
+<style>
+  @font-face { font-family: Barlow; font-weight: 400; src: url(fonter/barlow-latin-400-normal.woff2); }
+  @font-face { font-family: Barlow; font-weight: 500; src: url(fonter/barlow-latin-500-normal.woff2); }
+  @font-face { font-family: Barlow; font-weight: 600; src: url(fonter/barlow-latin-600-normal.woff2); }
+  @font-face { font-family: Barlow; font-weight: 700; src: url(fonter/barlow-latin-700-normal.woff2); }
+  @font-face { font-family: "Barlow Condensed"; font-weight: 700; src: url(fonter/barlow-condensed-latin-700-normal.woff2); }
+  @font-face { font-family: "Barlow Condensed"; font-weight: 800; src: url(fonter/barlow-condensed-latin-800-normal.woff2); }
+
+  :root {
+    --surface: #f3f2ee; --raised: #ffffff; --muted: #e7e5de;
+    --ink: #121212; --ink-muted: #4a4945; --line: #d4d2ca;
+    --primary: #ffc629; --accent: #ec3469;
+    --success: #0a6b3a; --success-bg: #dcf2e4; --warning-bg: #fdebd0;
+  }
+  @page { size: A4; margin: 16mm 16mm 18mm; }
+  @page :first { margin: 0; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; font: 400 10.5pt/1.45 Barlow, sans-serif; color: var(--ink); background: #fff; }
+  h1, h2, h3 { font-family: "Barlow Condensed", Barlow, sans-serif; line-height: 1.1; margin: 0; }
+  h2 { font-size: 21pt; font-weight: 800; margin: 0 0 3mm; padding-top: 1mm; display: flex; align-items: center; gap: 3mm; }
+  h2 .num { display: inline-grid; place-items: center; width: 9mm; height: 9mm; border-radius: 50%; background: var(--primary); border: 2px solid var(--ink); font-size: 14pt; }
+  h3 { font-size: 13.5pt; font-weight: 700; margin: 4mm 0 1.5mm; }
+  p { margin: 0 0 2.2mm; }
+  ul, ol { margin: 0 0 2.5mm; padding-left: 5mm; }
+  li { margin-bottom: 1mm; }
+  b, strong { font-weight: 700; }
+  .ui { font-weight: 600; white-space: nowrap; }
+  section { break-before: page; }
+  section.flow { break-before: auto; margin-top: 7mm; }
+  .clear { clear: both; }
+
+  /* Forside */
+  .cover { height: 297mm; display: flex; flex-direction: column; background: var(--ink); color: #fff; padding: 30mm 20mm 22mm; break-after: page; }
+  .cover .kicker { font: 700 13pt "Barlow Condensed"; letter-spacing: .14em; text-transform: uppercase; color: var(--primary); }
+  .cover h1 { font-size: 46pt; font-weight: 800; margin: 4mm 0 6mm; }
+  .cover .lead { font-size: 14pt; max-width: 125mm; color: #e9e9e9; }
+  .cover .shots { display: flex; gap: 6mm; margin-top: auto; }
+  .cover .shots img { width: 54mm; border-radius: 4mm; border: 2px solid #3a3a3a; }
+  .cover .meta { margin-top: 8mm; font-size: 10pt; color: #c4c4c4; }
+  .cover .meta b { color: #fff; }
+
+  /* Skjermbilder */
+  figure { margin: 0 0 4mm 6mm; float: right; width: 46mm; break-inside: avoid; }
+  figure.left { float: left; margin: 0 6mm 4mm 0; }
+  figure img { width: 100%; display: block; border: 2px solid var(--ink); border-radius: 3.5mm; }
+  figcaption { font-size: 8.5pt; color: var(--ink-muted); margin-top: 1.2mm; line-height: 1.3; }
+  .pair { display: flex; gap: 5mm; float: right; margin: 0 0 4mm 6mm; }
+  .pair figure { float: none; margin: 0; width: 42mm; }
+
+  /* Bokser */
+  .box { border: 2px solid var(--ink); border-radius: 3mm; padding: 3mm 4mm; margin: 3mm 0; break-inside: avoid; background: var(--raised); }
+  .box h3 { margin-top: 0; }
+  .box.tip { background: var(--surface); border-color: var(--line); }
+  .box.key { background: var(--primary); }
+  .box.warn { background: var(--warning-bg); border-color: #8a4b00; }
+  .box p:last-child, .box ul:last-child, .box ol:last-child { margin-bottom: 0; }
+  .steps { counter-reset: s; list-style: none; padding: 0; }
+  .steps > li { counter-increment: s; position: relative; padding-left: 8mm; }
+  .steps > li::before { content: counter(s); position: absolute; left: 0; top: .2mm; width: 5.5mm; height: 5.5mm; border-radius: 50%; background: var(--ink); color: #fff; font: 700 9pt/5.5mm Barlow; text-align: center; }
+
+  /* Banken-siden */
+  .loop { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin: 4mm 0 5mm; }
+  .loop div { border: 2px solid var(--ink); border-radius: 3mm; padding: 3mm; background: var(--raised); font-size: 9.5pt; line-height: 1.3; position: relative; }
+  .loop div b { display: block; font: 700 12pt "Barlow Condensed"; margin-bottom: 1mm; }
+  .loop div:not(:last-child)::after { content: "→"; position: absolute; right: -3.4mm; top: 40%; font: 700 12pt Barlow; background: #fff; }
+  table { border-collapse: collapse; width: 100%; font-size: 9.5pt; margin: 2mm 0 4mm; break-inside: avoid; }
+  th, td { text-align: left; vertical-align: top; padding: 1.8mm 2.5mm; border-bottom: 1px solid var(--line); }
+  th { font-weight: 700; background: var(--muted); }
+  .dodont { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; break-inside: avoid; }
+  .dodont .box { margin: 0; }
+  .good { border-color: var(--success) !important; background: var(--success-bg) !important; }
+  .muted { color: var(--ink-muted); }
+  .small { font-size: 9pt; }
+  figure.wide { float: none; width: 100%; margin: 3mm 0 4mm; }
+  .tag { display: inline-block; border: 1.5px solid var(--ink); border-radius: 99px; padding: 0 2mm; font-size: 8.5pt; font-weight: 600; margin: 0 .5mm .8mm 0; }
+
+  /* Skjerm: siden i appen. Utskrift og PDF bruker A4-oppsettet over. */
+  .topbar { display: none; }
+  @media screen {
+    body { font-size: 16px; background: var(--surface); }
+    main { max-width: 820px; margin: 0 auto; padding: 0 16px 48px; background: #fff; }
+    .topbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; max-width: 820px; margin: 0 auto; padding: 10px 16px; background: var(--ink); position: sticky; top: 0; z-index: 2; }
+    .topbar a, .topbar button { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 99px; border: 2px solid var(--primary); font: 600 15px Barlow, sans-serif; text-decoration: none; cursor: pointer; }
+    .topbar .back { color: #fff; border-color: transparent; padding-left: 4px; margin-right: auto; }
+    .topbar .pdf { background: var(--primary); color: var(--ink); }
+    .topbar button { background: transparent; color: #fff; }
+    .cover { height: auto; margin: 0 -16px; padding: 40px 24px 32px; }
+    .cover h1 { font-size: 40px; }
+    .cover .lead { font-size: 18px; }
+    .cover .shots { margin-top: 28px; }
+    .cover .shots img { width: 30%; max-width: 54mm; }
+    section, section.flow { margin-top: 48px; scroll-margin-top: 72px; }
+    h2 { font-size: 28px; }
+    h3 { font-size: 20px; }
+  }
+  @media screen and (max-width: 600px) {
+    figure, figure.left { float: none; width: min(260px, 85%); margin: 12px auto 16px; }
+    figure.wide { width: 100%; }
+    .pair { float: none; justify-content: center; margin: 12px 0 16px; }
+    .pair figure { width: 48%; margin: 0; }
+    .loop { grid-template-columns: 1fr 1fr; }
+    .loop div:not(:last-child)::after { display: none; }
+    .dodont { grid-template-columns: 1fr; }
+    table { font-size: 14px; }
+  }
+  @media print { .topbar { display: none; } }
+</style>
+</head>
+<body>
+<nav class="topbar" aria-label="Bruksanvisning">
+  <a class="back" href="/innstillinger">← Til appen</a>
+  <a class="pdf" href="https://github.com/kjgra/lagOrganisering/releases/download/bruksanvisning/bruksanvisning.pdf">Last ned PDF</a>
+  <button type="button" onclick="print()">Skriv ut</button>
+</nav>
+<main>
+
+<!-- ============ FORSIDE ============ -->
+<div class="cover">
+  <div class="kicker">Nymark – Gruppeorganisering</div>
+  <h1>Bruksanvisning for trenere</h1>
+  <p class="lead">Påmeldte, lag, treningsopplegg, øvelsesbank og KI – og hvorfor evalueringen etter hver økt er det viktigste du gjør i appen.</p>
+  <div class="shots">
+    <img src="bilder/01-arrangementer.png" alt="Forsiden med arrangementer">
+    <img src="bilder/03-lag.png" alt="Lagtavla">
+    <img src="bilder/08-evaluering.png" alt="Evaluering av en øvelse">
+  </div>
+  <p class="meta"><b>lagorganisering.vercel.app</b> · Gjelder appversjon <b id="VERSJON">1.27.0</b><br>
+  Appen er under utvikling, og bruksanvisningen oppdateres sammen med den. Den nyeste ligger alltid i appen under Innstillinger → Bruksanvisning. Skjermbildene er fra demoversjonen, med oppdiktede navn.</p>
+</div>
+
+<!-- ============ 1 KOM I GANG ============ -->
+<section style="break-before: auto">
+  <h2><span class="num">1</span>Kom i gang</h2>
+  <figure><img src="bilder/01-arrangementer.png" alt="Arrangementer"><figcaption>Forsiden: arrangementene for laget. Øverst minner appen deg på økter du ikke har evaluert og treninger som mangler bane.</figcaption></figure>
+
+  <h3>Logg inn</h3>
+  <p>Gå til <b>lagorganisering.vercel.app</b> og logg inn med <b>Spond-brukeren din</b> (e-post eller mobilnummer og passord). Passordet brukes bare til å logge inn hos Spond og lagres aldri. Appen leser fra Spond, men skriver aldri dit, så du kan ikke ødelegge noe i Spond.</p>
+  <p>Får du ikke tilgang, eller mangler KI-knappene, si fra til Kjetil. Tilgang til appen og til KI gis per trener.</p>
+
+  <h3>Velg gruppe</h3>
+  <p>Første gang velger du gruppa du trener. Du bytter med <span class="ui">Bytt</span> øverst på siden.</p>
+
+  <h3>Legg appen på hjemskjermen</h3>
+  <p>Da åpner den seg i fullskjerm som en vanlig app, og du slipper å lete fram nettadressen på banen.</p>
+  <ul>
+    <li><b>iPhone:</b> Åpne siden i <b>Safari</b>, trykk <span class="ui">Del</span> (firkant med pil opp) og velg <span class="ui">Legg til på Hjem-skjerm</span>. Varsler på iPhone virker bare når appen er åpnet fra hjemskjermen.</li>
+    <li><b>Android:</b> Åpne siden i Chrome, trykk menyen (⋮) og velg <span class="ui">Legg til på startskjermen</span>.</li>
+  </ul>
+
+  <h3>Slik er appen bygd opp</h3>
+  <table style="width: auto">
+    <tr><th>Meny</th><th>Hva du finner der</th></tr>
+    <tr><td><b>Arrangementer</b></td><td>Treninger og kamper fra Spond, med påmeldte, lag og opplegg</td></tr>
+    <tr><td><b>Lagforslag</b></td><td>Lagrede lag, og lag som venter på godkjenning</td></tr>
+    <tr><td><b>Trening</b></td><td>Øvelsesbanken, årshjul, «Slik trener vi» og «Laget» (standard, utstyr og faste baner)</td></tr>
+    <tr><td><b>Medlemmer</b></td><td>Trenere og spillere, med nivå og tagger</td></tr>
+    <tr><td><b>Snakkeboble</b></td><td>Gi tilbakemelding om feil eller forslag (se kapittel 8)</td></tr>
+    <tr><td><b>Tannhjul</b></td><td>Innstillinger: lyst/mørkt tema, bruksanvisningen, «Hva er nytt», personvern, logg ut</td></tr>
+  </table>
+  <p class="small muted">På PC ligger menyen til venstre, på mobil nederst. Lyst tema er lettest å lese i sollys.</p>
+  <div class="clear"></div>
+</section>
+
+<!-- ============ 2 FØR TRENINGEN ============ -->
+<section>
+  <h2><span class="num">2</span>Før treningen: påmeldte og lag</h2>
+  <figure><img src="bilder/02-arrangement.png" alt="Et arrangement"><figcaption>Et arrangement: bane, påmeldte, lag og treningsopplegg samlet på én side.</figcaption></figure>
+
+  <h3>Påmeldte</h3>
+  <p>Trykk på en trening under <span class="ui">Arrangementer</span>. Du ser hvem som <b>kommer</b>, <b>ikke har svart</b> og <b>ikke kommer</b>, og hvilke trenere som kommer. Svarene hentes fra Spond. Trykk <span class="ui">Oppdater</span> på forsiden for å hente de nyeste svarene.</p>
+
+  <h3>Bane</h3>
+  <p>Treningen viser hvilken bane dere har, hentet fra lagets <b>faste baner</b> for ukedagen (se kapittel 7). Har dere en annen bane akkurat denne gangen, trykk <span class="ui">Endre for denne treningen</span>. Mangler treningen bane, sier appen fra både her og i arrangementslista.</p>
+
+  <h3>Nivå, tagger og «spiller godt med»</h3>
+  <p>Trykk på en spiller (på arrangementet eller under <span class="ui">Medlemmer</span>) for å sette nivå, tagger som <span class="tag">Keeper</span> <span class="tag">Kaptein</span> <span class="tag">Forsvar</span>, og hvem spilleren spiller godt sammen med. Dette brukes når appen fordeler lag, og gjelder hele hovedgruppa. Opplysningene slettes av seg selv 90 dager etter at en spiller har sluttet i Spond-gruppa.</p>
+
+  <h3>Hurtigopprett – når du har dårlig tid</h3>
+  <p>På en trening uten lag og opplegg kan <span class="ui">Hurtigopprett</span> lage <b>både lag og treningsopplegg i ett trykk</b> med lagets vanlige valg: samme antall lag som sist, månedens tema, lagets øktlengde, treningens baner og trenerne som har svart ja. Du ser hva som blir laget før du trykker <span class="ui">Lag alt</span>. Alt lagres som utkast som du ser over og godkjenner.</p>
+  <div class="clear"></div>
+
+  <h3>Lag lag</h3>
+  <div class="pair">
+    <figure><img src="bilder/03-lag.png" alt="Lagtavla"><figcaption>Lagtavla. Trykk en spiller, så et lag.</figcaption></figure>
+    <figure><img src="bilder/04-fordeling.png" alt="Fordeling"><figcaption>«Fordeling» styrer hvordan lagene settes.</figcaption></figure>
+  </div>
+  <ol class="steps">
+    <li>Trykk <span class="ui">Lag lag av … spillere</span> nederst på arrangementet.</li>
+    <li>Velg <b>antall lag</b> med + og −.</li>
+    <li>Trykk <span class="ui">Fordeling</span> og velg:
+      <ul>
+        <li><b>Jevne lag</b> eller <b>Nivådelt</b> (lagnummeret sier ikke noe om nivået).</li>
+        <li><b>Spre roller</b>: for eksempel én keeper på hvert lag.</li>
+        <li><b>Spiller godt sammen</b>: holder par på samme lag.</li>
+        <li><b>Forrige treninger</b>: <i>Som sist</i> eller <i>Rullér</i> (nye lagkamerater).</li>
+      </ul></li>
+    <li>Flytt spillere: <b>trykk på spilleren, så på laget</b>. Du kan også dra.</li>
+    <li><span class="ui">Fordel på nytt</span> gir en ny fordeling. <span class="ui">Lagre forslag</span> lagrer. Kryss av for <span class="ui">Send til godkjenning</span> hvis en annen trener skal se over.</li>
+  </ol>
+  <p>Under <span class="ui">Lagforslag</span> finner du lagrede lag per arrangement, forslag <b>til godkjenning</b> (tallet på menyen viser hvor mange som venter), og <b>gruppeutkast</b> som ikke hører til ett arrangement.</p>
+  <div class="clear"></div>
+</section>
+
+<!-- ============ 3 TRENINGSOPPLEGG ============ -->
+<section>
+  <h2><span class="num">3</span>Treningsopplegget</h2>
+  <figure><img src="bilder/05-opplegg.png" alt="Treningsopplegg"><figcaption>Et godkjent opplegg med tidsplan og øvelser.</figcaption></figure>
+  <p>Under <b>Treningsopplegg</b> på arrangementet har du tre valg:</p>
+  <ul>
+    <li><span class="ui">Lag opplegg</span>: sett sammen selv fra øvelsesbanken.</li>
+    <li><span class="ui">Bruk opplegget fra …</span>: kopier opplegget fra forrige trening.</li>
+    <li><span class="ui">Lag med KI</span>: KI foreslår et helt opplegg (under).</li>
+  </ul>
+  <h3>Felles oppvarming</h3>
+  <p>Øverst i opplegget velger du <span class="ui">Felles oppvarming</span>: en øvelse fra banken (kategorien Oppvarming) som alle gjør sammen før stasjonene. Nye opplegg starter med den best vurderte oppvarmingsøvelsen, og KI velger også en. Den vises først i opplegget, i Dagens økt og i PDF-en.</p>
+
+  <h3>Lag opplegg med KI</h3>
+  <p>KI bygger økta ut fra <b>månedens tema</b> i årshjulet, lagets standard, baner og <b>utstyr</b>, <b>øvelsesbanken og evalueringene</b>. Øvelser som er tagget med temaet, og som passer aldersgruppa, velges først. KI passer også på at øvelsene som pågår samtidig, ikke trenger mer utstyr enn laget har. Du kan justere:</p>
+  <ul>
+    <li><b>Baner</b> (de faste banene er valgt på forhånd) og <b>lengde</b> på økta.</li>
+    <li><b>Trenere på økta</b> – fylles ut fra Spond. KI lager ikke flere stasjoner som trenger en voksen enn det kommer trenere.</li>
+    <li><b>Ønsker</b>, for eksempel «mindre kø» eller «lite utstyr». Ikke skriv navn eller helseopplysninger.</li>
+    <li><b>Lenker</b> til øvelser på tiim.no eller fotball.no (maks 3).</li>
+    <li><b>Modell</b>: Standard eller Billigere. <span class="ui">Beregn pris</span> viser hva det koster. Hvert lag har et månedlig KI-budsjett.</li>
+  </ul>
+  <p>Opplegget lagres som et <b>utkast</b>. Se over, endre det du vil, og trykk <span class="ui">Godkjenn versjon …</span>. Har opplegget nye øvelser, spør appen om de skal inn i banken som <b>kandidater</b>.</p>
+  <div class="clear"></div>
+
+  <h3>På banen: Dagens økt</h3>
+  <figure class="left"><img src="bilder/07-dagens-okt.png" alt="Dagens økt"><figcaption>«Dagens økt»: tidsplanen med runder, og «Nå» og «Neste» under økta.</figcaption></figure>
+  <p><span class="ui">Dagens økt</span> er laget for mobilen på banen: lagene, en enkel tidsplan («Stasjoner, runde 1 av 3» osv., med <b>Nå</b> og <b>Neste</b>), og hele beskrivelsen av hver øvelse med læringsmomenter og spørsmål til spillerne. Hele rulleringsplanen, med hvilken gruppe som er på hvilken stasjon, står i opplegget og i PDF-en.</p>
+  <p>Trykk <span class="ui">Hold skjermen på</span>, så slukker ikke telefonen midt i økta.</p>
+  <p>Vil du heller ha papir, gir <span class="ui">Last ned PDF</span> opplegget til utskrift.</p>
+  <p>Trenerne kan skrive <b>kommentarer</b> på opplegget. Skriv uten navn: kommentarene kan sendes til KI.</p>
+  <div class="clear"></div>
+</section>
+
+<!-- ============ 4 EVALUERING ============ -->
+<section>
+  <h2><span class="num">4</span>Etter treningen: evaluer økta</h2>
+  <div class="box key">
+    <h3>Det viktigste i hele appen</h3>
+    <p>Øvelsesbanken og KI lærer <b>bare</b> av evalueringene deres. Uten evalueringer vet ikke appen hvilke øvelser som fungerer for vår aldersgruppe, og KI fortsetter å foreslå de samme øvelsene – også de som ikke fungerte. Det tar to–tre minutter, og det er de minuttene som gjør neste opplegg bedre.</p>
+  </div>
+
+  <figure><img src="bilder/08-evaluering.png" alt="Evaluering av en øvelse"><figcaption>Evaluering av én øvelse: tommel, stikkord, faktisk tid og «Bruke igjen?».</figcaption></figure>
+  <h3>Slik evaluerer du</h3>
+  <p>Trykk <span class="ui">Evaluer</span> i påminnelsen øverst på forsiden, eller <span class="ui">Evaluer økta</span> på arrangementet. For <b>hver øvelse</b>:</p>
+  <ol class="steps">
+    <li><b>👍 Bra, 👌 OK eller 👎 Dårlig.</b></li>
+    <li><b>Stikkord</b> – trykk alle som passer: <span class="tag">for lett</span> <span class="tag">mye venting/kø</span> <span class="tag">uklar forklaring</span> <span class="tag">banen for liten</span> <span class="tag">gøy</span> <span class="tag">fikk fram temaet</span> …</li>
+    <li><b>Faktisk tid</b> i minutter, hvis den var annerledes enn planen.</li>
+    <li><b>Bruke igjen?</b> Ja, Med endringer eller Nei.</li>
+    <li><b>Kommentar</b>: hva bør endres? Konkret og uten navn.</li>
+  </ol>
+  <p>Til slutt <b>Hele økta</b>: tommel, stikkord som <span class="tag">god progresjon</span> <span class="tag">mye tid til organisering</span> <span class="tag">for få trenere</span>, og <b>hvor mange spillere som kom</b>. Trykk <span class="ui">Lagre evalueringen</span>.</p>
+  <div class="clear"></div>
+
+  <div class="box tip">
+    <h3>Raskere: «Fortell om økta»</h3>
+    <p>Trykk <span class="ui">Snakk</span> (eller skriv) og fortell med egne ord hvordan det gikk, på vei hjem fra banen. Trykk <span class="ui">Fyll ut med KI</span>, så fyller KI ut skjemaet. Du ser over og retter før noe lagres. Navn på spillere fjernes før teksten sendes til KI.</p>
+  </div>
+
+  <h3>Alle trenerne bør evaluere</h3>
+  <p>Hver trener på økta evaluerer for seg. Dere så ulike stasjoner og ulike spillere, og appen trenger flere stemmer: et mønster regnes først med når det står <b>minst tre økter og minst to trenere</b> bak det. Én trener alene flytter lite.</p>
+
+  <h3>Evaluer også øvelser dere har brukt før</h3>
+  <p>Du kan evaluere en øvelse rett fra øvelsesbanken (skjema-ikonet ved øvelsen), uten at den har vært brukt på en trening i appen. Bruk det for øvelser dere kjenner godt. Det går raskt å få banken i gang.</p>
+  <div class="clear"></div>
+</section>
+
+<!-- ============ 5 HVORFOR ============ -->
+<section>
+  <h2><span class="num">5</span>Slik blir banken bedre</h2>
+  <p>Øvelsesbanken er <b>felles for alle lagene</b> i appen. Hver evaluering, fra hvert lag, går inn i samme kretsløp:</p>
+  <div class="loop">
+    <div><b>1 · Dere evaluerer</b>Tommel, stikkord, tid, «Bruke igjen?» og kommentar, per øvelse og for hele økta.</div>
+    <div><b>2 · Appen teller</b>Om natta telles evalueringene <i>per aldersgruppe</i>: hva fungerer, hvilke problemer går igjen, hva byttes ut.</div>
+    <div><b>3 · Banken endres</b>Kandidater blir aktive, svake øvelser får forbedringsforslag, gode varianter og nye øvelser foreslås.</div>
+    <div><b>4 · KI velger bedre</b>Neste opplegg bygges med øvelsene som har fungert for akkurat denne alderen.</div>
+  </div>
+
+  <table>
+    <tr><th style="width: 38%">Det dere gjør</th><th>Det skjer i banken</th></tr>
+    <tr><td>👍 + «Bruke igjen: Ja» på en ny øvelse</td><td>Øvelsen går fra <b>kandidat</b> til <b>aktiv</b>. Uten det blir den liggende som kandidat.</td></tr>
+    <tr><td>Samme stikkord fra flere trenere (f.eks. «mye venting/kø»)</td><td>KI lager et <b>forslag til en bedre versjon</b> av øvelsen, som venter i Forbedringer.</td></tr>
+    <tr><td>👎 og «Bruke igjen: Nei» over tid</td><td>KI slutter å foreslå øvelsen for denne aldersgruppa, og den kan bli foreslått arkivert.</td></tr>
+    <tr><td>En øvelse er bra for én alder og dårlig for en annen</td><td>Appen foreslår en <b>variant</b> tilpasset aldersgruppa.</td></tr>
+    <tr><td>Evaluering av «Hele økta»</td><td>KI lærer hvilke øvelser som fungerer <b>sammen</b>, rekkefølge, og hvor mange stasjoner som passer.</td></tr>
+    <tr><td>Ønsker til KI og kommentarer</td><td>Behov som går igjen («færre spillere per gruppe») blir faste hensyn for aldersgruppa. Bare behovet lagres, ikke teksten.</td></tr>
+    <tr><td>Faktisk tid og antall spillere</td><td>KI treffer bedre på tid og gruppestørrelse neste gang.</td></tr>
+  </table>
+
+  <div class="dodont">
+    <div class="box good">
+      <h3>Slik gir dere banken mest</h3>
+      <ul>
+        <li>Evaluer <b>samme dag</b>, mens dere husker økta.</li>
+        <li>Vær <b>ærlig</b>: 👎 er like nyttig som 👍.</li>
+        <li>Bruk <b>stikkordene</b>, de er det appen teller best.</li>
+        <li>Skriv <b>konkret</b>: «for lang kø ved avslutning, del i to» er bedre enn «ok».</li>
+        <li>Fyll inn <b>faktisk tid</b> og <b>antall som kom</b>.</li>
+        <li>Evaluer <b>hele økta</b>, ikke bare øvelsene.</li>
+      </ul>
+    </div>
+    <div class="box warn">
+      <h3>Dette gjør banken dårligere</h3>
+      <ul>
+        <li>Å hoppe over evalueringen: da lærer appen ingenting.</li>
+        <li>👍 på alt av vane: da ser dårlige øvelser gode ut.</li>
+        <li>Bare tommel, uten stikkord: appen vet ikke <i>hva</i> som var galt.</li>
+        <li>Navn på spillere i kommentarer: de blir stoppet eller fjernet, og skal ikke stå der.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6 ØVELSESBANKEN ============ -->
+<section>
+  <h2><span class="num">6</span>Øvelsesbanken og KI</h2>
+  <figure><img src="bilder/10-ovelsesbank.png" alt="Øvelsesbanken på mobil"><figcaption>Trening → Øvelser. Skjema-ikonet evaluerer, stjernene er «Juster med KI».</figcaption></figure>
+  <p>Under <span class="ui">Trening → Øvelser</span> ligger alle øvelsene, sortert etter kategori. Hver øvelse har en status:</p>
+  <ul>
+    <li><b>Aktiv</b> – brukes av KI og i opplegg.</li>
+    <li><b>Kandidat</b> – ny øvelse som venter på en 👍 og «Bruke igjen: Ja».</li>
+    <li><b>Arkivert</b> – brukes ikke lenger.</li>
+  </ul>
+  <h3>Se, evaluere og justere</h3>
+  <ul>
+    <li><b>Trykk på navnet</b> for å <b>se øvelsen</b>: tegning, organisering, gjennomføring, læringsmomenter og variasjoner. Der kan ingenting endres ved et uhell.</li>
+    <li><b>Skjema-ikonet</b> åpner <b>evalueringen</b> av øvelsen.</li>
+    <li><b>Stjernene</b> åpner <span class="ui">Juster med KI</span>: skriv hva som skal endres («færre spillere per stasjon», «passe for 8 år»). KI lager et forslag, og du ser over før noe lagres. Herfra kan du også velge <span class="ui">Endre manuelt</span>.</li>
+  </ul>
+  <div class="clear"></div>
+
+  <figure class="left"><img src="bilder/16-vis-ovelse.png" alt="En øvelse"><figcaption>Trykk på navnet for å se øvelsen.</figcaption></figure>
+  <h3>Ny øvelse med KI</h3>
+  <p><span class="ui">Ny øvelse med KI</span> lager én øvelse ut fra tema, kategori, antall spillere, tid, baner og ønsker. Den legges i banken som <b>kandidat</b>, merket «Ny». Ligner den for mye på en øvelse som finnes, blir den stoppet. Vil du skrive selv, bruk <span class="ui">Lag øvelse uten KI</span> nederst.</p>
+  <h3>Øvelsene er åpne data</h3>
+  <p>Øvelsene deles under lisensen <b>CC BY-SA 4.0</b>: alle kan bruke og endre dem, men endrede utgaver må deles videre på samme måte. Når du lagrer en ny eller endret øvelse, deles den under samme lisens.</p>
+  <div class="clear"></div>
+
+  <h3>På PC: rutenett og filtre</h3>
+  <p>På en bred skjerm vises banken som kort med et lite bilde. Over kortene kan du søke i navn og filtrere på aldersbånd, hovedtema, aktivitet, delferdighet, kategori og vurdering.</p>
+  <figure class="wide"><img src="bilder/18-bank-pc.png" alt="Øvelsesbanken på PC"><figcaption>Øvelsesbanken på PC, med søk og filtre.</figcaption></figure>
+
+  <figure><img src="bilder/17-dekning.png" alt="Dekning av fagplanen"><figcaption>Dekning av fagplanen: hvor mange gode øvelser banken har per aldersbånd, hovedtema og aktivitet.</figcaption></figure>
+  <h3>Dekning av fagplanen</h3>
+  <p><span class="ui">Dekning av fagplanen</span> viser hvor godt banken dekker NFFs fagplan: et rutenett med aldersbånd, hovedtema og aktivitet, med antall gode øvelser og kandidater i hver rute. Trykk på en rute for å se øvelsene. <span class="ui">Last ned hullene</span> gir en liste over det som mangler.</p>
+  <div class="clear"></div>
+
+  <figure><img src="bilder/12-forbedringer.png" alt="Forbedringer"><figcaption>Forbedringer: forslag fra trenernes evalueringer venter på en trener.</figcaption></figure>
+  <h3>Forbedringer og Innsikt</h3>
+  <p>Når flere trenere peker på det samme problemet, lager KI et forslag til en bedre øvelse. Appen ser også etter hull i banken (aldersgrupper som mangler gode øvelser for et tema), nesten like øvelser og øvelser som mangler informasjon. Forslagene venter under <span class="ui">Se forbedringer</span>. Velg <span class="ui">Bruk</span>, <span class="ui">Endre først</span> eller <span class="ui">Avvis</span>. Ingenting endres i banken før en trener har sagt ja.</p>
+  <p>Fanen <span class="ui">Innsikt</span> viser om KI blir bedre: hvor mange hurtigopplegg som ble godkjent uendret, hvor mange KI-øvelser trenerne beholdt, og snittet for øktene med og uten KI. Tallene gjelder alle lagene sammen, uten navn.</p>
+
+  <h3>Det KI ellers bruker</h3>
+  <p>Fanene ved siden av <b>Øvelser</b> gir KI bakgrunnen for laget. Fyll dem ut, så treffer KI bedre:</p>
+  <ul>
+    <li><b>Årshjul</b> – månedens tema. KI og Hurtigopprett bruker det.</li>
+    <li><b>Slik trener vi</b> – lagets prinsipper (KI endrer dem aldri) og <b>lærdommer</b> fra evalueringene. <span class="ui">Oppdater med KI</span> skriver lærdommene om ut fra nye evalueringer.</li>
+    <li><b>Laget</b> – fødselsår, øktlengde, utstyr og faste baner (kapittel 7).</li>
+  </ul>
+  <div class="clear"></div>
+</section>
+
+<!-- ============ 7 LAGET ============ -->
+<section>
+  <h2><span class="num">7</span>Laget: utstyr og faste baner</h2>
+  <p>Under <span class="ui">Trening → Laget</span> står det som gjelder for laget hver gang: fødselsår, øktlengde, utstyr og baner. Har en undergruppe ikke egne innstillinger, bruker den hovedgruppas. Lagrer du, får undergruppa sine egne.</p>
+  <figure><img src="bilder/14-utstyr.png" alt="Utstyr"><figcaption>Utstyret laget har med på trening.</figcaption></figure>
+  <h3>Utstyr</h3>
+  <p>Fyll inn hvor mye laget har: baller, kjegler og markører, dukkemål, småmål (3er/5er), 7er-mål og vester per farge. Det som ikke har et eget tall, skriver du under <b>Annet utstyr</b>.</p>
+  <p>KI lager opplegg der øvelsene som pågår samtidig, ikke trenger mer enn dette. Mangler det, velger KI en variant som trenger mindre, eller lar gruppene starte på ulike stasjoner.</p>
+  <div class="clear"></div>
+
+  <figure><img src="bilder/15-faste-baner.png" alt="Faste baner"><figcaption>Faste baner per ukedag, med sluttdato.</figcaption></figure>
+  <h3>Faste baner per ukedag</h3>
+  <ol class="steps">
+    <li>Trykk <span class="ui">Nye faste baner</span> når banefordelingen er klar.</li>
+    <li>Huk av dagene dere trener, og velg baner for hver dag fra en dato.</li>
+    <li>Sett <b>sluttdato</b>: når neste banefordeling ventes.</li>
+  </ol>
+  <p>Banene gjelder til neste endring, og dagene dere ikke velger, beholder banene sine. Tre uker før sluttdatoen minner appen dere på å legge inn nye. Etter sluttdatoen sier treningene fra om at de mangler bane. <span class="ui">Endre banefordelingen</span> endrer dager, datoer og baner samlet. En enkelt trening kan få en annen bane på treningen (kapittel 2).</p>
+  <div class="clear"></div>
+</section>
+
+<!-- ============ 7 TILBAKEMELDING ============ -->
+<section>
+  <h2><span class="num">8</span>Gi tilbakemelding</h2>
+  <figure><img src="bilder/13-tilbakemelding.png" alt="Tilbakemelding"><figcaption>Snakkeboblen øverst åpner tilbakemeldingen.</figcaption></figure>
+  <p>Virker noe ikke, eller har du en idé? Trykk på <b>snakkeboblen</b> øverst ved tannhjulet (eller <span class="ui">Innstillinger → Gi tilbakemelding</span>).</p>
+  <ol class="steps">
+    <li>Velg <b>Noe virker ikke</b> eller <b>Forslag</b>.</li>
+    <li>Skriv kort hva som skjedde og hva du gjorde.</li>
+    <li>Trykk <span class="ui">Send tilbakemelding</span>.</li>
+  </ol>
+  <p>Siden du var på, appversjonen og hva slags telefon du bruker følger med, men ikke navnet ditt. Kjetil går gjennom tilbakemeldingene og legger de som skal følges opp, ut som en sak på GitHub, der appen utvikles. Den kan bli offentlig, så <b>ikke skriv navn, kontaktinfo eller helseopplysninger</b>. Du kan sende fem tilbakemeldinger i døgnet.</p>
+  <p>Under <span class="ui">Innstillinger → Hva er nytt</span> ser du hva som er endret i hver versjon, og under <span class="ui">Innstillinger → Bruksanvisning</span> finner du alltid den nyeste utgaven av denne bruksanvisningen.</p>
+  <div class="clear"></div>
+
+  <section class="flow">
+    <h2><span class="num">9</span>Personvern – tre regler</h2>
+    <ol class="steps">
+      <li><b>Ingen navn på spillere</b> i kommentarer, ønsker til KI, evalueringer eller tilbakemeldinger. Appen stopper eller fjerner navn den kjenner igjen, men ikke alle.</li>
+      <li><b>Ingen helseopplysninger</b> (skader, diagnoser og lignende) noe sted i appen.</li>
+      <li><b>Nivå og tagger er til lagfordeling</b>, ikke til vurdering av spillere. Bruk dem nøkternt.</li>
+    </ol>
+    <p>Appen stopper navn på spillere og trenere i tagger, kommentarer, lagnavn, prinsipper og lærdommer. Skriv for eksempel «en av keeperne» i stedet.</p>
+    <p>Foreldre som lurer på hva appen lagrer, kan lese <b>lagorganisering.vercel.app/personvern</b> (åpen uten innlogging, lenket fra Innstillinger). Ber noen om innsyn eller sletting, si fra til Kjetil: han kan laste ned eller slette alt appen har om en spiller eller trener.</p>
+    <p class="small muted">Databasen lagrer bare Spond-ID-er, ikke navn; navnene hentes fra Spond når de vises. Data lagres i EU (Irland). Ingenting med navn sendes til KI.</p>
+  </section>
+
+</section>
+
+</main>
+</body>
+</html>

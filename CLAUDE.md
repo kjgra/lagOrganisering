@@ -23,8 +23,9 @@ Web app for volunteer football coaches (barnefotball, 6–12 years) in Nymark: s
 - `components/` – UI. Names match `design/components/<Name>.md`.
 - `supabase/migrations/` – every schema change as a SQL migration. Never change a database by hand.
 - `tests/unit` (Vitest), `tests/e2e` (Playwright, mobile + desktop).
+- `public/bruksanvisning/` – the coach user guide (served at `/bruksanvisning`, PDF built by the «Bruksanvisning» workflow); `docs/bruksanvisning.md` explains it.
 - `docs/plan.md` – original decisions; `docs/publisering.md` – setup of Vercel, Supabase, workflows and secrets.
-- `.github/workflows/` – `ci` (lint, typecheck, test, build, e2e), `migrate-prod`, `preview-db`, `feilvakt` (error log → GitHub issues), `reminders`, `analyse`.
+- `.github/workflows/` – `ci` (lint, typecheck, test, build, e2e), `migrate-prod`, `preview-db`, `feilvakt` (error log → GitHub issues), `reminders`, `analyse`, `bruksanvisning` (guide PDF).
 
 ## Domain glossary (UI words are Norwegian)
 - **Hovedgruppe / undergruppe** – Spond group and subgroup; the app's unit is a team (`[groupId]/[sub]`). Only configured Spond roles get in (`lib/spond/data.ts`); coaches are not distributed into teams.
@@ -60,6 +61,7 @@ Read `design/README.md` before building or changing UI. Tokens in `design/tokens
 - Work on a feature branch and open a PR to `main`. **Never merge**: Kjetil merges after checking the preview.
 - **Only one open PR at a time.** Check right before opening that no other PR is open; if one is, wait.
 - Locally run only the fast checks: `pnpm lint`, `pnpm typecheck`, `pnpm test`. CI runs build and e2e; follow CI and fix failures. The e2e job is pinned to `ubuntu-24.04` (newer runners break Playwright Chromium).
+- **Every PR that changes something coaches see updates the user guide** (`public/bruksanvisning/index.html`: text, version on the cover, screenshots when they no longer match) in the same PR. See `docs/bruksanvisning.md`.
 - **Every PR bumps the version (SemVer)**: patch for fixes and docs, minor for features, major for breaking changes. Bump from `main`'s current version, set `version` in `package.json`, and add a `## [x.y.z] – YYYY-MM-DD` section to `CHANGELOG.md` (Norwegian, Keep a Changelog: Lagt til / Endret / Fikset / Sikkerhet). The changelog is shown to coaches in the app («Hva er nytt»), so write for coaches. A unit test checks that `package.json` and the changelog agree.
 - Migrations run automatically against prod (GitHub Action «Migreringer til prod») after merge. Don't ask Kjetil to run them. A change to `lib/nff/fagplan.ts` needs a migration too.
 - Security upgrades: start the PR right away.

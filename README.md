@@ -9,6 +9,8 @@
 
 Webapp for trenere i Nymark: logg inn med Spond, se påmeldte, fordel spillere på lag, lag treningsopplegg (selv eller med KI) og evaluer øktene. Erstatter den gamle Shiny-appen (SpondNymark).
 
+**Bruksanvisning for trenere:** [les den](public/bruksanvisning/index.html) eller [last ned PDF](https://github.com/kjgra/lagOrganisering/releases/download/bruksanvisning/bruksanvisning.pdf). Den oppdateres i hver PR som endrer noe trenerne ser ([docs/bruksanvisning.md](docs/bruksanvisning.md)).
+
 ## Kom i gang lokalt
 
 ```sh

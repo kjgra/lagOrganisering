@@ -1,0 +1,82 @@
+name: Bruksanvisning
+
+# Lager PDF-en av bruksanvisningen (public/bruksanvisning/index.html).
+# - PR: varsler hvis appen er endret uten at bruksanvisningen er det, og lager
+#   PDF-en som et vedlegg til kjøringen når bruksanvisningen er endret.
+# - main: lager PDF-en og legger den på GitHub-utgivelsen «bruksanvisning», som
+#   appen lenker til (fast adresse, se docs/bruksanvisning.md).
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - "public/bruksanvisning/**"
+      - "scripts/bruksanvisning/**"
+      - ".github/workflows/bruksanvisning.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: bruksanvisning-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pdf:
+    name: Bruksanvisning (PDF)
+    # Playwright 1.56 støtter ikke ubuntu-latest (26.04) ennå.
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Er bruksanvisningen endret?
+        id: endret
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then echo "guide=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          files=$(git diff --name-only "$BASE"...HEAD)
+          if echo "$files" | grep -qE '^(public/bruksanvisning|scripts/bruksanvisning)/|^\.github/workflows/bruksanvisning\.yml$'; then
+            echo "guide=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "guide=false" >> "$GITHUB_OUTPUT"
+            if echo "$files" | grep -qE '^(app|components)/'; then
+              echo "::warning title=Bruksanvisningen::PR-en endrer appen, men ikke bruksanvisningen. Endrer den noe trenerne ser, oppdater public/bruksanvisning/index.html (se docs/bruksanvisning.md)."
+            fi
+          fi
+      - uses: pnpm/action-setup@v4
+        if: steps.endret.outputs.guide == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.endret.outputs.guide == 'true'
+        with:
+          node-version: 20
+          cache: pnpm
+      - if: steps.endret.outputs.guide == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.endret.outputs.guide == 'true'
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Lag PDF
+        if: steps.endret.outputs.guide == 'true'
+        run: node scripts/bruksanvisning/lag-pdf.mjs bruksanvisning.pdf
+      - uses: actions/upload-artifact@v4
+        if: steps.endret.outputs.guide == 'true'
+        with:
+          name: bruksanvisning
+          path: bruksanvisning.pdf
+          retention-days: 30
+      - name: Publiser PDF-en på utgivelsen «bruksanvisning»
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view bruksanvisning >/dev/null 2>&1; then
+            gh release create bruksanvisning --target main --latest=false \
+              --title "Bruksanvisning for trenere" \
+              --notes "Den nyeste PDF-en av bruksanvisningen. Oppdateres automatisk når bruksanvisningen endres på main. Appen lenker hit."
+          fi
+          gh release upload bruksanvisning bruksanvisning.pdf --clobber

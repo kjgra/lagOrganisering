@@ -307,3 +307,17 @@ test("settings show the version and «Hva er nytt»", async ({ page }) => {
   // PR numbers are for developers, not for the trainers.
   await expect(page.locator("main")).not.toContainText("(#");
 });
+
+test("settings link to the user guide, which also opens without login", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  await page.goto("/innstillinger");
+  await page.locator("main").getByRole("link", { name: /Bruksanvisning/ }).click();
+  await expect(page).toHaveURL(/\/bruksanvisning\/index\.html$/);
+  await expect(page.getByRole("heading", { name: "Bruksanvisning for trenere" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Last ned PDF" })).toBeVisible();
+  await page.context().clearCookies();
+  const res = await page.goto("/bruksanvisning");
+  expect(res?.ok()).toBe(true);
+  await expect(page).toHaveURL(/\/bruksanvisning\/index\.html$/);
+});

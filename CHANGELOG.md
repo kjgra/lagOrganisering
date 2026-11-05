@@ -8,6 +8,18 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.27.0] – 2026-11-05
+
+Bruksanvisningen i appen.
+
+### Lagt til
+
+- Bruksanvisningen for trenere ligger nå i appen under Innstillinger → Bruksanvisning, og som lenke på innloggingen. Den kan leses på mobilen, lastes ned som PDF eller skrives ut, og oppdateres sammen med appen, så den alltid stemmer med versjonen du bruker.
+
+### Endret
+
+- Bruksanvisningen er oppdatert med alt som er nytt siden versjon 1.8: faste baner og utstyr under Laget, bane på treningen, felles oppvarming, ny visning og evaluering i øvelsesbanken, rutenett og filtre på PC, dekning av fagplanen, Innsikt og personvernsiden. Nye skjermbilder.
+
 ## [1.26.1] – 2026-11-04
 
 Bedre oversikt for de som utvikler appen.
