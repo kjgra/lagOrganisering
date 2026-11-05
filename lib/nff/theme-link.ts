@@ -1,4 +1,4 @@
-import { DELFERDIGHETER, HOVEDTEMA, LEARNING_POINTS, delfTag, matchHovedtema, temaTag, type BandKey } from "./fagplan";
+import { DELFERDIGHETER, HOVEDTEMA, LEARNING_POINTS, delfTag, matchHovedtema, tagLabel, temaTag, type BandKey } from "./fagplan";
 
 /**
  * Kobler et tema med egne ord («Pasning og mottak») til NFFs begreper for laget:
@@ -16,6 +16,36 @@ export interface ThemeLink {
   delferdigheter: string[];
   /** Learning point ids, for a theme NFF has no topic for (e.g. omstilling). */
   learningPoints: string[];
+  /**
+   * Set when the trainers picked the NFF terms in the årshjul («NFFs begreper»):
+   * the names of the picked terms (the team's own too) and the picked learning points.
+   */
+  picked?: { names: Record<string, string>; points: { id: string; text: string }[] };
+}
+
+/** A month's picks in the årshjul with NFFs begreper. */
+export interface MonthFocus {
+  hovedtema_id: string | null;
+  delferdighet_id: string | null;
+  learning_point_ids: string[];
+}
+
+/** The link for a month where the trainers picked the NFF terms themselves, or null when nothing is picked. */
+export function pickedLink(f: MonthFocus, names: Record<string, string> = {}): ThemeLink | null {
+  if (!f.hovedtema_id && !f.delferdighet_id && !f.learning_point_ids.length) return null;
+  const name = (id: string) => names[id] ?? tagLabel(id) ?? id;
+  const ids = [f.hovedtema_id, f.delferdighet_id, ...f.learning_point_ids].filter((x): x is string => !!x);
+  return {
+    hovedtema: f.hovedtema_id ? [f.hovedtema_id] : [],
+    delferdigheter: f.delferdighet_id ? [f.delferdighet_id] : [],
+    learningPoints: [...f.learning_point_ids],
+    picked: { names: Object.fromEntries(ids.map((id) => [id, name(id)])), points: f.learning_point_ids.map((id) => ({ id, text: name(id) })) },
+  };
+}
+
+/** A term's name in a link: the picked name (the team's own terms too), else NFF's. */
+export function linkName(link: ThemeLink | null, tag: string): string {
+  return link?.picked?.names[tag] ?? tagLabel(tag) ?? tag;
 }
 
 type Side = "angrep" | "avslutning" | "forsvar" | "hindre";

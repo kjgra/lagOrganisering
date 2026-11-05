@@ -41,12 +41,13 @@ export interface SeasonCheck {
   goal: number;
 }
 
-export function seasonCheck(rows: { month: number; theme: string }[], band: BandKey, bank: BankExercise[]): SeasonCheck {
+/** `link` on a row: the NFF terms the trainers picked (NFFs begreper); else the theme's words are linked. */
+export function seasonCheck(rows: { month: number; theme: string; link?: ThemeLink | null }[], band: BandKey, bank: BankExercise[]): SeasonCheck {
   const good = bank.filter((b) => b.status !== "archived" && b.bands.includes(band) && isGood(b));
   const months = [...rows]
     .sort((a, b) => a.month - b.month)
     .map((r): MonthCheck => {
-      const link = themeLink(r.theme, band);
+      const link = r.link ?? themeLink(r.theme, band);
       const tags = new Set(linkTags(link));
       const status: MonthStatus = link ? "koblet" : NOT_CONTENT.test(normTheme(r.theme)) ? "telles-ikke" : "ikke-koblet";
       return { month: r.month, theme: r.theme, status, link, good: link ? good.filter((b) => b.nff_tags.some((t) => tags.has(t))).length : 0 };

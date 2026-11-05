@@ -92,7 +92,7 @@ async function kiBasis(
   wanted: string | undefined,
   now: Date,
   theme: string,
-  fit: { band: BandKey | null; players: number | null } = { band: null, players: null },
+  fit: { band: BandKey | null; players: number | null; tags?: string[] } = { band: null, players: null },
 ) {
   if (!rights.ai) throw new AiError("Du har ikke tilgang til KI. Spør en administrator.");
   const settings = await getAiSettings(d);
@@ -115,7 +115,7 @@ async function kiBasis(
     needs: needsFor(needs, group.id, fit.band, { minSessions: settings.pattern_min_sessions, minTrainers: settings.pattern_min_trainers }),
     insights: insightsFor(sessions.shared, sessions.own, fit.band),
   });
-  let cat = catalogue(bank, theme, 30, { band: fit.band, players: fit.players, patterns });
+  let cat = catalogue(bank, theme, 30, { band: fit.band, players: fit.players, patterns, tags: fit.tags });
   if (experience) cat = `${cat}\n\n${experience}`;
   if (lessons) cat = `${cat}\n\n${lessons}`;
   return { settings, model, budget, bank, system: [systemText(), cat] };
@@ -136,6 +136,7 @@ export async function prepareKi(
   const { settings, model, budget, bank, system } = await kiBasis(d, user, rights, group, order.sub ?? "", opts.model, opts.now ?? new Date(), order.theme, {
     band: order.band ?? null,
     players: playersPerGroup(order.nPlayers, order.groupSizes),
+    tags: order.nffTags,
   });
   const ctx: OrderContext = { ...order, maxNew: settings.max_new_exercises };
   const base = opts.base ?? null;
@@ -217,6 +218,7 @@ export async function prepareExerciseKi(
   const { settings, model, budget, bank, system } = await kiBasis(d, user, rights, group, order.sub ?? "", opts.model, opts.now ?? new Date(), order.theme, {
     band: order.band ?? null,
     players: order.players,
+    tags: order.nffTags,
   });
   const base = opts.baseId === undefined ? null : (bank.find((b) => b.id === opts.baseId) ?? null);
   if (opts.baseId !== undefined && !base) throw new UserError("Fant ikke øvelsen.");

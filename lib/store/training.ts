@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { Db } from "@/lib/db";
 import { isSensitive, commentProblem } from "@/lib/sensitive";
 import {
@@ -26,6 +27,7 @@ import { compactDrawing, validateDrawing } from "@/lib/plans/drawing";
 import { osloDate, osloParts } from "@/lib/format";
 import { teamBand } from "@/lib/nff/bands";
 import type { BandKey } from "@/lib/nff/fagplan";
+import { pickedLink, type MonthFocus, type ThemeLink } from "@/lib/nff/theme-link";
 import { exerciseChanges, type ExerciseChanges } from "@/lib/plans/exercise-edits";
 import { exerciseValues, type ExerciseValues } from "@/lib/plans/exercise-values";
 import type { VersionSource } from "@/lib/plans/versions";
@@ -76,7 +78,10 @@ export async function followMainGroup(d: Db, access: Access, groupId: string, su
   assertGroup(access, groupId);
   if (!sub) throw new UserError("Hovedgruppa har ikke noe å arve fra.");
   await d.tx(async (t) => {
-    if (part === "season") await t.query("DELETE FROM season_themes WHERE spond_group_id = $1 AND spond_subgroup_id = $2 AND year = $3", [groupId, sub, year ?? 0]);
+    if (part === "season") {
+      await t.query("DELETE FROM season_themes WHERE spond_group_id = $1 AND spond_subgroup_id = $2 AND year = $3", [groupId, sub, year ?? 0]);
+      await t.query("DELETE FROM season_setup WHERE spond_group_id = $1 AND spond_subgroup_id = $2 AND year = $3", [groupId, sub, year ?? 0]);
+    }
     if (part === "team") {
       await t.query("DELETE FROM team_settings WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
       await t.query("DELETE FROM team_pitches WHERE spond_group_id = $1 AND spond_subgroup_id = $2", [groupId, sub]);
@@ -90,55 +95,215 @@ export async function followMainGroup(d: Db, access: Access, groupId: string, su
 
 // Season plan (årshjul) -----------------------------------------------------------------
 
-export interface SeasonRow {
+/** How a year of the season plan is described: NFF's terms (picked from lists) or the team's own words. */
+export type SeasonMode = "nff" | "egne";
+/** What the trainers pick first each month with NFF's terms. */
+export type SeasonLevel = "hovedtema" | "delferdighet" | "laeringsmoment";
+
+export interface SeasonSetup {
+  mode: SeasonMode;
+  primary_level: SeasonLevel;
+}
+
+export interface SeasonRow extends MonthFocus {
   month: number;
   theme: string;
   description: string;
   updated_by: string;
   updated_at: Date;
+  /** The NFF terms the trainers picked, when the year uses NFF's terms; else null (the theme is linked by its words). */
+  link: ThemeLink | null;
 }
 
-/** A year of the season plan: the subgroup's own if it has one that year, else the main group's. */
-export async function listSeason(d: Db, access: Access, groupId: string, sub: string, year: number): Promise<{ rows: SeasonRow[]; inherited: boolean }> {
+/**
+ * A year of the season plan: the subgroup's own if it has one that year (themes
+ * or a setup), else the main group's. `setup` is null for a year that was never
+ * set up: it uses the team's own words, as before.
+ */
+export async function listSeason(
+  d: Db,
+  access: Access,
+  groupId: string,
+  sub: string,
+  year: number,
+): Promise<{ rows: SeasonRow[]; inherited: boolean; setup: SeasonSetup | null }> {
   assertGroup(access, groupId);
-  const rows = await d.query<SeasonRow & { spond_subgroup_id: string }>(
-    `SELECT spond_subgroup_id, month, theme, coalesce(description, '') AS description, updated_by, updated_at
-       FROM season_themes WHERE spond_group_id = $1 AND spond_subgroup_id IN ($2, '') AND year = $3 ORDER BY month`,
-    [groupId, sub, year],
-  );
-  const inherited = !!sub && !rows.some((r) => r.spond_subgroup_id === sub);
+  const [rows, setups] = await Promise.all([
+    d.query<Omit<SeasonRow, "link"> & { spond_subgroup_id: string }>(
+      `SELECT spond_subgroup_id, month, theme, coalesce(description, '') AS description, updated_by, updated_at,
+              hovedtema_id, delferdighet_id, learning_point_ids
+         FROM season_themes WHERE spond_group_id = $1 AND spond_subgroup_id IN ($2, '') AND year = $3 ORDER BY month`,
+      [groupId, sub, year],
+    ),
+    d.query<SeasonSetup & { spond_subgroup_id: string }>(
+      "SELECT spond_subgroup_id, mode, primary_level FROM season_setup WHERE spond_group_id = $1 AND spond_subgroup_id IN ($2, '') AND year = $3",
+      [groupId, sub, year],
+    ),
+  ]);
+  const inherited = !!sub && !rows.some((r) => r.spond_subgroup_id === sub) && !setups.some((r) => r.spond_subgroup_id === sub);
   const scope = inherited ? "" : sub;
   const own = rows.filter((r) => r.spond_subgroup_id === scope);
-  return { rows: own.map((r) => ({ month: r.month, theme: r.theme, description: r.description, updated_by: r.updated_by, updated_at: r.updated_at })), inherited };
+  const s = setups.find((r) => r.spond_subgroup_id === scope);
+  const setup: SeasonSetup | null = s ? { mode: s.mode, primary_level: s.primary_level } : null;
+  const ids = setup?.mode === "nff" ? own.flatMap((r) => [r.hovedtema_id, r.delferdighet_id, ...r.learning_point_ids]).filter((x): x is string => !!x) : [];
+  const names = ids.length
+    ? Object.fromEntries(
+        (
+          await d.query<{ id: string; name: string }>(
+            "SELECT id, label AS name FROM nff_topics WHERE id = ANY($1::text[]) UNION ALL SELECT id, text FROM nff_learning_points WHERE id = ANY($1::text[])",
+            [[...new Set(ids)]],
+          )
+        ).map((r) => [r.id, r.name]),
+      )
+    : {};
+  return {
+    rows: own.map((r) => ({
+      month: r.month,
+      theme: r.theme,
+      description: r.description,
+      updated_by: r.updated_by,
+      updated_at: r.updated_at,
+      hovedtema_id: r.hovedtema_id,
+      delferdighet_id: r.delferdighet_id,
+      learning_point_ids: r.learning_point_ids,
+      link: setup?.mode === "nff" ? pickedLink(r, names) : null,
+    })),
+    inherited,
+    setup,
+  };
 }
 
-/** Save a year of the season plan for the scope. A subgroup with no themes left uses the main group's again. */
-export async function saveSeason(d: Db, access: Access, groupId: string, sub: string, year: number, themes: string[], descriptions: string[]): Promise<void> {
+const focusSchema = z
+  .object({
+    hovedtemaId: z.string().max(80).nullable(),
+    delferdighetId: z.string().max(80).nullable(),
+    learningPointIds: z.array(z.string().max(100)).max(2),
+  })
+  .nullable();
+export type MonthFocusInput = z.input<typeof focusSchema>;
+
+/** Checks that the picked NFF terms are in the team's catalog (NFF's or the team's own). */
+async function checkFocus(d: Db, groupId: string, focus: NonNullable<MonthFocusInput>[]): Promise<void> {
+  const topics = [...new Set(focus.flatMap((f) => [f.hovedtemaId, f.delferdighetId]).filter((x): x is string => !!x))];
+  const points = [...new Set(focus.flatMap((f) => f.learningPointIds))];
+  if (topics.length) {
+    const found = await d.query<{ id: string; kind: string }>("SELECT id, kind FROM nff_topics WHERE id = ANY($1::text[]) AND (spond_group_id IS NULL OR spond_group_id = $2)", [topics, groupId]);
+    const kind = new Map(found.map((r) => [r.id, r.kind]));
+    for (const f of focus) {
+      if (f.hovedtemaId && kind.get(f.hovedtemaId) !== "hovedtema") throw new UserError("Fant ikke hovedtemaet.");
+      if (f.delferdighetId && kind.get(f.delferdighetId) !== "delferdighet") throw new UserError("Fant ikke delferdigheten.");
+    }
+  }
+  if (points.length) {
+    const found = await d.query("SELECT id FROM nff_learning_points WHERE id = ANY($1::text[]) AND (spond_group_id IS NULL OR spond_group_id = $2)", [points, groupId]);
+    if (found.length !== points.length) throw new UserError("Fant ikke læringsmomentet.");
+  }
+}
+
+/**
+ * Save a year of the season plan for the scope. A subgroup with no themes left
+ * (and no setup) uses the main group's again. With `focus` (one per month, NFF's
+ * terms), the picked hovedtema, delferdighet and learning points are saved too;
+ * without it they are left as they are, so a year can switch back to NFF's terms.
+ */
+export async function saveSeason(
+  d: Db,
+  access: Access,
+  groupId: string,
+  sub: string,
+  year: number,
+  themes: string[],
+  descriptions: string[],
+  focus?: MonthFocusInput[],
+): Promise<void> {
   assertGroup(access, groupId);
   const rows = wrap(() => validateSeason(year, themes, descriptions));
+  let picks: (NonNullable<MonthFocusInput> | null)[] | null = null;
+  if (focus) {
+    const r = z.array(focusSchema).length(12).safeParse(focus);
+    if (!r.success) throw new UserError("Ugyldig valg fra NFFs fagplan.");
+    picks = r.data.map((f) => (f ? { ...f, learningPointIds: [...new Set(f.learningPointIds)] } : null));
+    await checkFocus(d, groupId, picks.filter((f): f is NonNullable<MonthFocusInput> => !!f));
+  }
   await d.tx(async (t) => {
     await t.query(
       "DELETE FROM season_themes WHERE spond_group_id = $1 AND spond_subgroup_id = $2 AND year = $3 AND NOT (month = ANY($4::int[]))",
       [groupId, sub, year, rows.map((r) => r.month)],
     );
     for (const r of rows) {
+      if (picks) {
+        const f = picks[r.month - 1];
+        await t.query(
+          `INSERT INTO season_themes (spond_group_id, spond_subgroup_id, year, month, theme, description, updated_by, hovedtema_id, delferdighet_id, learning_point_ids)
+           VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), $7, $8, $9, $10)
+           ON CONFLICT (spond_group_id, spond_subgroup_id, year, month) DO UPDATE
+             SET theme = EXCLUDED.theme, description = EXCLUDED.description, updated_by = EXCLUDED.updated_by, updated_at = now(),
+                 hovedtema_id = EXCLUDED.hovedtema_id, delferdighet_id = EXCLUDED.delferdighet_id, learning_point_ids = EXCLUDED.learning_point_ids
+             WHERE (season_themes.theme, season_themes.description, season_themes.hovedtema_id, season_themes.delferdighet_id, season_themes.learning_point_ids)
+                   IS DISTINCT FROM (EXCLUDED.theme, EXCLUDED.description, EXCLUDED.hovedtema_id, EXCLUDED.delferdighet_id, EXCLUDED.learning_point_ids)`,
+          [groupId, sub, year, r.month, r.theme, r.description, access.profileId, f?.hovedtemaId ?? null, f?.delferdighetId ?? null, f?.learningPointIds ?? []],
+        );
+      } else {
+        await t.query(
+          `INSERT INTO season_themes (spond_group_id, spond_subgroup_id, year, month, theme, description, updated_by)
+           VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), $7)
+           ON CONFLICT (spond_group_id, spond_subgroup_id, year, month) DO UPDATE
+             SET theme = EXCLUDED.theme, description = EXCLUDED.description, updated_by = EXCLUDED.updated_by, updated_at = now()
+             WHERE season_themes.theme IS DISTINCT FROM EXCLUDED.theme OR season_themes.description IS DISTINCT FROM EXCLUDED.description`,
+          [groupId, sub, year, r.month, r.theme, r.description, access.profileId],
+        );
+      }
+    }
+  });
+}
+
+const setupSchema = z.object({
+  mode: z.enum(["nff", "egne"]),
+  primaryLevel: z.enum(["hovedtema", "delferdighet", "laeringsmoment"]),
+  /** Copy this year's themes (and NFF picks) when the year has none yet. */
+  copyFrom: z.number().int().min(2020).max(2100).nullable().default(null),
+});
+
+/**
+ * Sets up a year of the season plan for the scope: NFF's terms or the team's own,
+ * and what is picked first each month. Changing it later keeps the months. A new
+ * year can start as a copy of another year (the one the scope sees, own or the main group's),
+ * and a subgroup that used the main group's year gets a copy of it.
+ */
+export async function saveSeasonSetup(d: Db, access: Access, groupId: string, sub: string, year: number, input: z.input<typeof setupSchema>): Promise<void> {
+  assertGroup(access, groupId);
+  const r = setupSchema.safeParse(input);
+  if (!r.success || !Number.isInteger(year) || year < 2020 || year > 2100) throw new UserError("Ugyldig oppsett av årshjulet.");
+  const v = r.data;
+  // A subgroup that used the main group's year keeps those months as its own.
+  const now = await listSeason(d, access, groupId, sub, year);
+  const from = v.copyFrom && v.copyFrom !== year ? await listSeason(d, access, groupId, sub, v.copyFrom) : now.inherited ? now : null;
+  await d.tx(async (t) => {
+    await t.query(
+      `INSERT INTO season_setup (spond_group_id, spond_subgroup_id, year, mode, primary_level, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (spond_group_id, spond_subgroup_id, year) DO UPDATE
+         SET mode = EXCLUDED.mode, primary_level = EXCLUDED.primary_level, updated_by = EXCLUDED.updated_by, updated_at = now()`,
+      [groupId, sub, year, v.mode, v.primaryLevel, access.profileId],
+    );
+    if (!from?.rows.length) return;
+    const [has] = await t.query("SELECT 1 FROM season_themes WHERE spond_group_id = $1 AND spond_subgroup_id = $2 AND year = $3 LIMIT 1", [groupId, sub, year]);
+    if (has) return;
+    for (const m of from.rows) {
       await t.query(
-        `INSERT INTO season_themes (spond_group_id, spond_subgroup_id, year, month, theme, description, updated_by)
-         VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), $7)
-         ON CONFLICT (spond_group_id, spond_subgroup_id, year, month) DO UPDATE
-           SET theme = EXCLUDED.theme, description = EXCLUDED.description, updated_by = EXCLUDED.updated_by, updated_at = now()
-           WHERE season_themes.theme IS DISTINCT FROM EXCLUDED.theme OR season_themes.description IS DISTINCT FROM EXCLUDED.description`,
-        [groupId, sub, year, r.month, r.theme, r.description, access.profileId],
+        `INSERT INTO season_themes (spond_group_id, spond_subgroup_id, year, month, theme, description, updated_by, hovedtema_id, delferdighet_id, learning_point_ids)
+         VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), $7, $8, $9, $10)`,
+        [groupId, sub, year, m.month, m.theme, m.description, access.profileId, m.hovedtema_id, m.delferdighet_id, m.learning_point_ids],
       );
     }
   });
 }
 
-/** The theme for a month (Oslo), or null. */
+/** The theme for a month (Oslo), or null. `link` is set when the year uses NFF's terms and the month has picks. */
 export async function seasonTheme(d: Db, access: Access, groupId: string, sub: string, year: number, month: number) {
   const { rows } = await listSeason(d, access, groupId, sub, year);
   const hit = rows.find((r) => r.month === month);
-  return hit ? { theme: hit.theme, description: hit.description } : null;
+  return hit ? { theme: hit.theme, description: hit.description, link: hit.link } : null;
 }
 
 // Team settings -----------------------------------------------------------------------------

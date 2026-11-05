@@ -15,7 +15,7 @@ import { decideProposal, getProposal } from "@/lib/store/improvements";
 import { exerciseVersions } from "@/lib/store/versions";
 import { importExercises, previewExerciseImport } from "@/lib/store/exercise-import";
 import type { ImportRow } from "@/lib/plans/exercise-import";
-import { deleteExercise, getExercise, saveExercise, saveLearning, savePrinciples, saveSeason, saveTeamSettings, followMainGroup, type Part } from "@/lib/store/training";
+import { deleteExercise, getExercise, saveExercise, saveLearning, savePrinciples, saveSeason, saveSeasonSetup, saveTeamSettings, followMainGroup, type Part } from "@/lib/store/training";
 
 /** «Trening»: season plan, the team, principles, learnings and the exercise bank, for every trainer on the team. */
 
@@ -32,15 +32,61 @@ async function trainer(groupId: string, sub = "") {
 const subId = z.string().max(100);
 const PARTS = { season: "Årshjulet", team: "Laget", principles: "Prinsippene", learnings: "Lærdommene" } as const;
 
-export async function saveSeasonAction(groupId: string, sub: string, year: number, themes: string[], descriptions: string[]): Promise<ActionResult> {
+const focus = z
+  .object({ hovedtemaId: z.string().max(80).nullable(), delferdighetId: z.string().max(80).nullable(), learningPointIds: z.array(z.string().max(100)).max(2) })
+  .nullable();
+
+/** `focus` (one per month) when the year uses NFF's terms: the picked hovedtema, delferdighet and learning points. */
+export async function saveSeasonAction(
+  groupId: string,
+  sub: string,
+  year: number,
+  themes: string[],
+  descriptions: string[],
+  monthFocus?: (z.input<typeof focus> | null)[],
+): Promise<ActionResult> {
   return runAction("Lagring av årshjul", async () => {
     const v = z
-      .object({ groupId: sid, sub: subId, year: z.number().int().min(2020).max(2100), themes: z.array(z.string().max(200)).length(12), descriptions: z.array(z.string().max(1000)).length(12) })
-      .parse({ groupId, sub, year, themes, descriptions });
+      .object({
+        groupId: sid,
+        sub: subId,
+        year: z.number().int().min(2020).max(2100),
+        themes: z.array(z.string().max(200)).length(12),
+        descriptions: z.array(z.string().max(1000)).length(12),
+        focus: z.array(focus).length(12).optional(),
+      })
+      .parse({ groupId, sub, year, themes, descriptions, focus: monthFocus });
     const { user, d } = await trainer(v.groupId, v.sub);
-    await saveSeason(d, user.access, v.groupId, v.sub, v.year, v.themes, v.descriptions);
+    await saveSeason(d, user.access, v.groupId, v.sub, v.year, v.themes, v.descriptions, v.focus);
     refresh();
     return { data: undefined, message: `Årshjulet for ${v.year} er lagret.` };
+  });
+}
+
+/** Sets up a year of the årshjul: NFF's terms or the team's own, and what is picked first. */
+export async function saveSeasonSetupAction(
+  groupId: string,
+  sub: string,
+  year: number,
+  input: { mode: "nff" | "egne"; primaryLevel: "hovedtema" | "delferdighet" | "laeringsmoment"; copyFrom: number | null },
+): Promise<ActionResult> {
+  return runAction("Oppsett av årshjul", async () => {
+    const v = z
+      .object({
+        groupId: sid,
+        sub: subId,
+        year: z.number().int().min(2020).max(2100),
+        input: z.object({
+          mode: z.enum(["nff", "egne"]),
+          primaryLevel: z.enum(["hovedtema", "delferdighet", "laeringsmoment"]),
+          copyFrom: z.number().int().min(2020).max(2100).nullable(),
+        }),
+      })
+      .parse({ groupId, sub, year, input });
+    const { user, d } = await trainer(v.groupId, v.sub);
+    await saveSeasonSetup(d, user.access, v.groupId, v.sub, v.year, v.input);
+    refresh();
+    return { data: undefined, message: `Årshjulet for ${v.year} er satt opp.` };
   });
 }
 
