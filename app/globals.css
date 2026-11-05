@@ -374,6 +374,10 @@ select.nm-input { appearance: auto; }
 .nm-table td.num, .nm-table th.num { text-align: right; white-space: nowrap; }
 .nm-scroll-x { overflow-x: auto; }
 /* Dekning av fagplanen: a grid of counts, each cell a link to its exercises. */
+.nm-season-check__tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin: var(--space-4) 0; }
+.nm-season-check__tile { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3); }
+.nm-season-check__tile strong { font-family: var(--font-display); font-size: 28px; line-height: 1; }
+.nm-season-check__gaps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
 .nm-coverage th, .nm-coverage td { vertical-align: middle; padding: 4px 2px; }
 .nm-coverage tbody th { padding-right: 4px; width: 24%; hyphens: auto; }
 .nm-coverage thead th { font-size: 13px; line-height: 16px; }

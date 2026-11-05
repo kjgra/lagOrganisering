@@ -181,6 +181,11 @@ test("admin: give KI access and save the season plan", async ({ page }) => {
   await january.getByLabel("Tema").fill("Pasning");
   await page.getByRole("button", { name: "Lagre årshjulet" }).click();
   await expect(page.locator(".nm-toast")).toContainText(/Årshjulet for \d{4} er lagret/);
+
+  // «Sjekk mot NFF» links the month's own word to NFF's terms.
+  await page.getByRole("link", { name: "Sjekk mot NFF" }).click();
+  await expect(page.getByRole("heading", { name: "Sjekk mot NFF" })).toBeVisible();
+  await expect(page.getByRole("row", { name: /^Jan/ })).toContainText("Pasning");
 });
 
 test("admin: save the team, and the training's pitches are chosen in the KI form", async ({ page }) => {
