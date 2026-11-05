@@ -188,6 +188,28 @@ test("admin: give KI access and save the season plan", async ({ page }) => {
   await expect(page.getByRole("row", { name: /^Jan/ })).toContainText("Pasning");
 });
 
+test("a year of the season plan set up with NFF's terms", async ({ page }) => {
+  await login(page);
+  await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
+  const year = new Date().getFullYear() + 1;
+  await page.goto(`/g/G-FOTBALL/alle/trening/arshjul?ar=${year}&oppsett=1`);
+  await page.getByRole("radio", { name: /^NFFs begreper/ }).check();
+  await page.getByRole("radio", { name: /^Hovedtema/ }).check();
+  await page.getByRole("button", { name: /^(Lag årshjul for \d{4}|Lagre oppsettet)$/ }).click();
+  await expect(page.getByText("NFFs begreper, hovedtema først.")).toBeVisible();
+
+  const january = page.getByRole("group", { name: "Januar" });
+  await january.getByRole("combobox", { name: "Hovedtema" }).selectOption({ label: "Spille oss framover i banen" });
+  const point = january.getByRole("combobox", { name: "Læringsmoment", exact: true });
+  await point.selectOption({ index: 1 });
+  await expect(january.getByRole("combobox", { name: "Læringsmoment 2 (valgfritt)" })).toBeVisible();
+  await page.getByRole("button", { name: "Lagre årshjulet" }).click();
+  await expect(page.locator(".nm-toast")).toContainText(`Årshjulet for ${year} er lagret`);
+
+  await page.getByRole("link", { name: "Sjekk mot NFF" }).click();
+  await expect(page.getByRole("row", { name: /^Jan/ })).toContainText("Spille oss framover i banen");
+});
+
 test("admin: save the team, and the training's pitches are chosen in the KI form", async ({ page }) => {
   await loginToEvents(page);
   await openNextTraining(page);

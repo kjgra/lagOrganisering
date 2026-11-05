@@ -2,6 +2,7 @@ import "server-only";
 import type { CurrentUser } from "@/lib/auth/current";
 import type { Db } from "@/lib/db";
 import { fetchLinks, parseLinks } from "@/lib/ai/links";
+import { linkTags } from "@/lib/nff/theme-link";
 import { AiError, WISH_MAX, fagplanText, type ExerciseOrderContext, type OrderContext } from "@/lib/ai/plan-ai";
 import { osloDate, osloParts } from "@/lib/format";
 import { teamAgeText, teamBand } from "@/lib/nff/bands";
@@ -111,6 +112,8 @@ export async function orderContext(
   if (theme.length > 80) throw new AiError("Temaet kan ha maks 80 tegn.");
   const year = osloParts(event.start ?? new Date()).year;
   const band = teamBand(team.birth_year, year);
+  // The NFF terms the trainers picked for the month, when the training keeps the month's theme.
+  const picked = season && season.theme.toLowerCase() === theme.toLowerCase() ? season.link : null;
   const nPlayers = eventParticipants(event, group).filter((p) => placeable(p.status, event.notSent) && isPlayerKind(p.kind)).length;
   return {
     commentIds: chosen.map((c) => c.id),
@@ -121,8 +124,9 @@ export async function orderContext(
       theme,
       themeDescription: season && season.theme.toLowerCase() === theme.toLowerCase() ? season.description : "",
       team: { age_group: teamAgeText(team.birth_year, team.gender, year, team.age_group), pitch: pitchText(chosenPitches, ""), equipment: equipmentText(team.equipment_counts, team.equipment), principles },
-      fagplan: fagplanText(band, theme),
+      fagplan: fagplanText(band, theme, picked),
       band,
+      nffTags: linkTags(picked),
       coaches: input.coaches ?? null,
       nPlayers,
       groupSizes: groupSizes ?? groups.map((g) => g.players.length),
@@ -170,13 +174,15 @@ export async function exerciseOrderContext(d: Db, user: Pick<CurrentUser, "acces
   ]);
   const chosen = pitches.filter((p) => input.pitchIds.includes(p.id));
   if (chosen.length !== new Set(input.pitchIds).size) throw new AiError("Banene må være blant lagets baner.");
+  const picked = season && (!theme || season.theme.toLowerCase() === theme.toLowerCase()) ? season.link : null;
   return {
     sub,
     theme,
     themeDescription: season && theme && season.theme.toLowerCase() === theme.toLowerCase() ? season.description : "",
     team: { age_group: teamAgeText(team.birth_year, team.gender, year, team.age_group), pitch: pitchText(chosen, ""), equipment: equipmentText(team.equipment_counts, team.equipment), principles },
-    fagplan: fagplanText(teamBand(team.birth_year, year), theme || season?.theme || ""),
+    fagplan: fagplanText(teamBand(team.birth_year, year), theme || season?.theme || "", picked),
     band: teamBand(team.birth_year, year),
+    nffTags: linkTags(picked),
     players: input.players,
     minutes: input.minutes,
     category: input.category,

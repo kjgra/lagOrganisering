@@ -6,8 +6,8 @@ import { contextFromParams } from "@/lib/context";
 import { db } from "@/lib/db";
 import { MONTH_NAMES, osloParts } from "@/lib/format";
 import { teamBand } from "@/lib/nff/bands";
-import { tagLabel } from "@/lib/nff/fagplan";
 import { seasonCheck, seasonGaps, type MonthStatus } from "@/lib/nff/season-check";
+import { linkName } from "@/lib/nff/theme-link";
 import { getTeamSettings, listExercises, listSeason } from "@/lib/store/training";
 
 const STATUS: Record<MonthStatus, { word: string; badge: string; icon: LucideIcon }> = {
@@ -119,8 +119,8 @@ export default async function SeasonCheckPage(props: PageProps<"/g/[groupId]/[su
                 <tbody>
                   {c.months.map((m) => {
                     const s = STATUS[m.status];
-                    const terms = [...(m.link?.hovedtema ?? []), ...(m.link?.delferdigheter ?? [])].map((t) => tagLabel(t) ?? t);
-                    if (m.link?.learningPoints.length) terms.push(`${m.link.learningPoints.length} læringsmomenter`);
+                    const terms = [...(m.link?.hovedtema ?? []), ...(m.link?.delferdigheter ?? [])].map((t) => linkName(m.link, t));
+                    if (m.link?.learningPoints.length) terms.push(`${m.link.learningPoints.length} ${m.link.learningPoints.length === 1 ? "læringsmoment" : "læringsmomenter"}`);
                     return (
                       <tr key={m.month}>
                         <th scope="row">

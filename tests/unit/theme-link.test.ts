@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fagplanText } from "@/lib/ai/plan-ai";
-import { linkTags, normTheme, themeLink } from "@/lib/nff/theme-link";
+import { learningPoint } from "@/lib/nff/fagplan";
+import { linkName, linkTags, normTheme, pickedLink, themeLink } from "@/lib/nff/theme-link";
 
 const link = (theme: string, band: "6-7" | "8-9" | "10-12" = "10-12") => {
   const l = themeLink(theme, band);
@@ -45,5 +46,24 @@ describe("trainers' own themes linked to NFF", () => {
     expect(o).toContain("Omstill raskt til forsvar om pasningen brytes.");
     // An NFF hovedtema needs no explanation.
     expect(fagplanText("10-12", "Spille oss framover i banen")).not.toContain("Temaet koblet til NFF");
+  });
+});
+
+describe("pickedLink", () => {
+  it("is the trainers' picks with names, or null when nothing is picked", () => {
+    expect(pickedLink({ hovedtema_id: null, delferdighet_id: null, learning_point_ids: [] })).toBeNull();
+    const l = pickedLink({ hovedtema_id: "tema.egen.abc", delferdighet_id: "delf.pasning", learning_point_ids: ["lm.10-12.pasning.1"] }, { "tema.egen.abc": "Omstilling" });
+    expect(l).toMatchObject({ hovedtema: ["tema.egen.abc"], delferdigheter: ["delf.pasning"], learningPoints: ["lm.10-12.pasning.1"] });
+    expect(linkName(l, "tema.egen.abc")).toBe("Omstilling");
+    expect(linkName(l, "delf.pasning")).toBe("Pasning");
+    expect(l?.picked?.points[0]?.text).toBe(learningPoint("lm.10-12.pasning.1")?.text);
+  });
+
+  it("tells KI the picked terms and learning points, not the word list", () => {
+    const l = pickedLink({ hovedtema_id: "tema.spille-framover", delferdighet_id: null, learning_point_ids: ["lm.10-12.pasning.1"] });
+    const text = fagplanText("10-12", "Spille oss framover i banen", l);
+    expect(text).toContain("## Månedens NFF-begreper (valgt av trenerne i årshjulet)");
+    expect(text).toContain(`- ${learningPoint("lm.10-12.pasning.1")?.text}`);
+    expect(text).not.toContain("Temaet koblet til NFF");
   });
 });

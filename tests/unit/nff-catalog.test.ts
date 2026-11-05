@@ -3,7 +3,7 @@ import type { Db } from "@/lib/db";
 import { DELFERDIGHETER, HOVEDTEMA, LEARNING_POINTS, delfTag, temaTag } from "@/lib/nff/fagplan";
 import { NO_RIGHTS, type Access, type Rights } from "@/lib/store/access";
 import { addLearningPoint, addTopic, listCatalog, listSeasonFocus, saveSeasonFocus, setHidden } from "@/lib/store/nff-catalog";
-import { listSeason, saveSeason } from "@/lib/store/training";
+import { followMainGroup, listSeason, saveSeason, saveSeasonSetup, seasonTheme, type MonthFocusInput } from "@/lib/store/training";
 import { testDb } from "../helpers/db";
 
 let d: Db;
@@ -105,5 +105,61 @@ describe("NFF catalog in the database", () => {
     await expect(saveSeasonFocus(d, me, "G1", "", 2027, { ...focus, learningPointIds: ["lm.finnes.ikke"] })).rejects.toThrow(/læringsmomentet/);
     await expect(saveSeasonFocus(d, me, "G1", "", 2027, { ...focus, learningPointIds: ["lm.10-12.mottak.1", "lm.10-12.mottak.2", "lm.10-12.mottak.3"] })).rejects.toThrow(/Ugyldig/);
     await expect(saveSeasonFocus(d, me, "G1", "", 2027, { ...focus, month: 2 })).rejects.toThrow(/ikke noe tema/);
+  });
+
+  it("sets up a year with NFF's terms, saves the picks and gives KI the picked link", async () => {
+    const empty = Array(12).fill("");
+    // A year that was never set up uses the team's own words, as before.
+    expect((await listSeason(d, me, "G1", "", 2028)).setup).toBeNull();
+    await saveSeasonSetup(d, me, "G1", "", 2028, { mode: "nff", primaryLevel: "hovedtema" });
+    expect((await listSeason(d, me, "G1", "", 2028)).setup).toEqual({ mode: "nff", primary_level: "hovedtema" });
+
+    const egen = await addTopic(d, me, admin, "G1", { kind: "hovedtema", label: "Omstilling", side: "omstilling", bands: ["10-12"] });
+    const themes = ["Spille oss framover i banen", "Omstilling", ...empty.slice(2)];
+    const focus: MonthFocusInput[] = [
+      { hovedtemaId: "tema.spille-framover", delferdighetId: "delf.mottak", learningPointIds: ["lm.10-12.spille-framover.ballforer.1", "lm.10-12.mottak.1"] },
+      { hovedtemaId: egen, delferdighetId: null, learningPointIds: [] },
+      ...empty.slice(2).map(() => null),
+    ];
+    await saveSeason(d, me, "G1", "", 2028, themes, empty, focus);
+    const jan = await seasonTheme(d, me, "G1", "", 2028, 1);
+    expect(jan?.link).toMatchObject({ hovedtema: ["tema.spille-framover"], delferdigheter: ["delf.mottak"], learningPoints: focus[0]!.learningPointIds });
+    expect(jan?.link?.picked?.points.map((p) => p.text)).toEqual(focus[0]!.learningPointIds.map((id) => LEARNING_POINTS.find((p) => p.id === id)?.text));
+    // The team's own hovedtema has its own name.
+    expect((await seasonTheme(d, me, "G1", "", 2028, 2))?.link?.picked?.names[egen]).toBe("Omstilling");
+
+    // Wrong kind or unknown ids are refused.
+    const bad = (f: NonNullable<MonthFocusInput>) => saveSeason(d, me, "G1", "", 2028, themes, empty, [f, ...focus.slice(1)]);
+    await expect(bad({ hovedtemaId: "delf.pasning", delferdighetId: null, learningPointIds: [] })).rejects.toThrow(/hovedtemaet/);
+    await expect(bad({ hovedtemaId: null, delferdighetId: "tema.vinne-ball", learningPointIds: [] })).rejects.toThrow(/delferdigheten/);
+    await expect(bad({ hovedtemaId: null, delferdighetId: null, learningPointIds: ["lm.finnes.ikke"] })).rejects.toThrow(/læringsmomentet/);
+    await expect(saveSeason(d, other, "G1", "", 2028, themes, empty, focus)).rejects.toThrow();
+
+    // With the team's own words the picks are kept but not used; switching back brings them back.
+    await saveSeasonSetup(d, me, "G1", "", 2028, { mode: "egne", primaryLevel: "hovedtema" });
+    await saveSeason(d, me, "G1", "", 2028, themes, empty);
+    expect((await seasonTheme(d, me, "G1", "", 2028, 1))?.link).toBeNull();
+    await saveSeasonSetup(d, me, "G1", "", 2028, { mode: "nff", primaryLevel: "hovedtema" });
+    expect((await seasonTheme(d, me, "G1", "", 2028, 1))?.link?.hovedtema).toEqual(["tema.spille-framover"]);
+  });
+
+  it("starts a new year from another, and a subgroup that set up its own year keeps the main group's months", async () => {
+    await saveSeasonSetup(d, me, "G1", "", 2029, { mode: "nff", primaryLevel: "delferdighet", copyFrom: 2028 });
+    const copied = await listSeason(d, me, "G1", "", 2029);
+    expect(copied.rows.map((r) => [r.month, r.theme, r.hovedtema_id])).toEqual([
+      [1, "Spille oss framover i banen", "tema.spille-framover"],
+      [2, "Omstilling", expect.stringMatching(/^tema\.egen\./)],
+    ]);
+    // Copying never overwrites a year that has months.
+    await saveSeasonSetup(d, me, "G1", "", 2029, { mode: "nff", primaryLevel: "hovedtema", copyFrom: 2027 });
+    expect((await listSeason(d, me, "G1", "", 2029)).rows).toHaveLength(2);
+
+    expect((await listSeason(d, me, "G1", "S2", 2029)).inherited).toBe(true);
+    await saveSeasonSetup(d, me, "G1", "S2", 2029, { mode: "egne", primaryLevel: "hovedtema" });
+    const own = await listSeason(d, me, "G1", "S2", 2029);
+    expect(own).toMatchObject({ inherited: false, setup: { mode: "egne" } });
+    expect(own.rows).toHaveLength(2);
+    await followMainGroup(d, me, "G1", "S2", "season", 2029);
+    expect(await listSeason(d, me, "G1", "S2", 2029)).toMatchObject({ inherited: true, setup: { mode: "nff", primary_level: "hovedtema" } });
   });
 });

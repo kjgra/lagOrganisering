@@ -60,6 +60,7 @@ export const TRAINER_REFS = [
   { table: "nff_topics", column: "created_by", on: "anonymise" },
   { table: "proposal_comments", column: "author", on: "anonymise" },
   { table: "proposal_history", column: "actor", on: "anonymise" },
+  { table: "season_setup", column: "updated_by", on: "anonymise" },
   { table: "season_themes", column: "updated_by", on: "anonymise" },
   { table: "team_learnings", column: "created_by", on: "anonymise" },
   { table: "team_principles", column: "created_by", on: "anonymise" },

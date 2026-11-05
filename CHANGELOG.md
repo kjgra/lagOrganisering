@@ -8,6 +8,15 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.30.0] – 2026-11-05
+
+Årshjul med NFFs begreper eller egne.
+
+### Lagt til
+
+- Et nytt år i årshjulet settes opp først. Velg **NFFs begreper** for å velge fra NFFs fagplan i nedtrekk hver måned, eller **egne begreper** for å skrive temaene med egne ord som før. Med NFFs begreper velger dere hva som kommer først (hovedtema, delferdighet eller læringsmoment), og så 1–2 læringsmomenter. KI og «Sjekk mot NFF» bruker nøyaktig det dere har valgt. Et nytt år kan starte som en kopi av fjoråret.
+- «Endre oppsett» i årshjulet bytter mellom NFFs og egne begreper uten at månedene forsvinner. Har dere skrevet temaer med egne ord, foreslår appen NFF-begrepene de kobles til.
+
 ## [1.29.1] – 2026-11-05
 
 ### Fikset
