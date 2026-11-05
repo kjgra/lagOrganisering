@@ -158,9 +158,13 @@ export function QuickCreate(p: QuickCreateProps) {
               <button type="button" className="nm-btn nm-btn--ghost" onClick={estimate} disabled={pending}>
                 Beregn pris
               </button>
+              {price ? (
+                <p className="nm-hint" role="status" style={{ margin: "var(--space-1) 0 0", fontWeight: 600 }}>
+                  Anslått pris for opplegget: ca. {price} ({p.model.label}).
+                </p>
+              ) : null}
               <p className="nm-hint" style={{ margin: "var(--space-1) 0 0" }}>
-                {price ? `Pris for opplegget: ca. ${price} (${p.model.label}). ` : ""}
-                {p.budgetText}
+                Månedsbudsjett: {p.budgetText}
               </p>
             </div>
             {error ? (

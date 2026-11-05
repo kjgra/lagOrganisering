@@ -50,6 +50,7 @@ export function ModelFields(p: {
   pending: boolean;
   budgetText: string;
 }) {
+  const chosen = p.models.find((m) => m.id === p.value);
   return (
     <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
       <legend className="nm-field__label" style={{ marginBottom: "var(--space-1)" }}>
@@ -67,8 +68,13 @@ export function ModelFields(p: {
       <button type="button" className="nm-btn nm-btn--ghost" onClick={p.onEstimate} disabled={p.pending}>
         Beregn pris
       </button>
+      {chosen && p.prices?.[chosen.id] ? (
+        <p className="nm-hint" role="status" style={{ margin: "var(--space-1) 0 0", fontWeight: 600 }}>
+          Anslått pris for denne bestillingen: ca. {p.prices[chosen.id]} ({chosen.label}).
+        </p>
+      ) : null}
       <p className="nm-hint" style={{ margin: "var(--space-1) 0 0" }}>
-        {p.budgetText}
+        Månedsbudsjett: {p.budgetText}
       </p>
     </fieldset>
   );
