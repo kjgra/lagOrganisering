@@ -383,6 +383,8 @@ export interface CatalogueFit {
   patterns?: ExercisePattern[];
   /** The NFF tags the trainers picked for the month; else the theme's words are linked (theme-link.ts). */
   tags?: string[];
+  /** Exercises the teams use with the theme word (theme-usage.ts): they count as fitting the theme. */
+  used?: string[];
 }
 
 /**
@@ -403,7 +405,8 @@ export function catalogue(bank: BankExercise[], theme = "", max = 30, fit: Catal
   const cats = Object.keys(CATEGORIES);
   // The month's own word first, then exercises tagged with what it stands for at NFF.
   const tags = new Set(fit.tags?.length ? fit.tags : theme ? linkTags(themeLink(theme, band)) : []);
-  const hit = (b: BankExercise) => (!!theme && b.themes.some((t) => t.toLowerCase() === theme.toLowerCase())) || b.nff_tags.some((t) => tags.has(t));
+  const used = new Set(fit.used ?? []);
+  const hit = (b: BankExercise) => (!!theme && b.themes.some((t) => t.toLowerCase() === theme.toLowerCase())) || b.nff_tags.some((t) => tags.has(t)) || used.has(b.code);
   const tagged = (b: BankExercise) => bandFit(b.bands, band);
   const fits = (b: BankExercise) => !fit.players || ((b.min_players ?? 0) <= fit.players && fit.players <= (b.max_players ?? 99));
   const sorted = [...usable].sort(

@@ -169,7 +169,7 @@ describe("NFF catalog in the database", () => {
     expect((await seasonTheme(d, me, "G1", "", 2030, 1))?.link).toBeNull();
     await saveThemeWord(d, me, "G1", "Spilleforståelse!", { hovedtemaIds: ["tema.spille-framover"], delferdighetIds: ["delf.mottak"], learningPointIds: ["lm.10-12.mottak.1"] });
     expect(await listThemeWords(d, me, "G1")).toEqual([
-      { term: "spilleforståelse", hovedtema_ids: ["tema.spille-framover"], delferdighet_ids: ["delf.mottak"], learning_point_ids: ["lm.10-12.mottak.1"] },
+      { term: "spilleforståels", hovedtema_ids: ["tema.spille-framover"], delferdighet_ids: ["delf.mottak"], learning_point_ids: ["lm.10-12.mottak.1"] },
     ]);
     const link = (await seasonTheme(d, me, "G1", "S3", 2030, 1))?.link;
     expect(link).toMatchObject({ hovedtema: ["tema.spille-framover"], delferdigheter: ["delf.mottak"], learningPoints: ["lm.10-12.mottak.1"] });

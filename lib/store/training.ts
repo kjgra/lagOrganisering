@@ -27,7 +27,7 @@ import { compactDrawing, validateDrawing } from "@/lib/plans/drawing";
 import { osloDate, osloParts } from "@/lib/format";
 import { teamBand } from "@/lib/nff/bands";
 import type { BandKey } from "@/lib/nff/fagplan";
-import { chosenLink, normTheme, pickedLink, type MonthFocus, type ThemeLink } from "@/lib/nff/theme-link";
+import { chosenLink, normTheme, pickedLink, themeKey, type MonthFocus, type ThemeLink } from "@/lib/nff/theme-link";
 import { exerciseChanges, type ExerciseChanges } from "@/lib/plans/exercise-edits";
 import { exerciseValues, type ExerciseValues } from "@/lib/plans/exercise-values";
 import type { VersionSource } from "@/lib/plans/versions";
@@ -148,7 +148,8 @@ export async function listSeason(
   const nff = setup?.mode === "nff";
   // With the team's own words, a word the trainers linked themselves (the word list) wins over the app's.
   const words = nff ? new Map<string, ThemeWord>() : new Map((await listThemeWords(d, access, groupId)).map((w) => [w.term, w]));
-  const word = (theme: string) => words.get(normTheme(theme));
+  // themeKey: «spille fremover» finds the word saved as «Spille oss frem» (older words are under normTheme).
+  const word = (theme: string) => words.get(themeKey(theme)) ?? words.get(normTheme(theme));
   const ids = (
     nff
       ? own.flatMap((r) => [r.hovedtema_id, r.delferdighet_id, ...r.learning_point_ids])
@@ -200,7 +201,7 @@ function wordLink(w: ThemeWord | undefined, names: Record<string, string> = {}):
 
 /** A word in the team's word list: the NFF terms the trainers linked it to. */
 export interface ThemeWord {
-  /** The word, normalised (normTheme). */
+  /** The word as a key (themeKey), so other spellings of it find it. */
   term: string;
   hovedtema_ids: string[];
   delferdighet_ids: string[];
@@ -226,14 +227,14 @@ const wordSchema = z.object({
  */
 export async function saveThemeWord(d: Db, access: Access, groupId: string, theme: string, input: z.input<typeof wordSchema>): Promise<void> {
   assertGroup(access, groupId);
-  const term = normTheme(theme);
+  const term = themeKey(theme);
   if (!term || term.length > 80) throw new UserError("Skriv temaet først.");
   if (isSensitive(theme)) throw new UserError("Årshjulet skal ikke inneholde helseopplysninger eller andre sensitive opplysninger.");
   const r = wordSchema.safeParse(input);
   if (!r.success) throw new UserError("Ugyldig kobling til NFF.");
   const v = { h: [...new Set(r.data.hovedtemaIds)], df: [...new Set(r.data.delferdighetIds)], lp: [...new Set(r.data.learningPointIds)] };
   if (!v.h.length && !v.df.length && !v.lp.length) {
-    await d.query("DELETE FROM theme_links WHERE spond_group_id = $1 AND term = $2", [groupId, term]);
+    await d.query("DELETE FROM theme_links WHERE spond_group_id = $1 AND term = ANY($2::text[])", [groupId, [term, normTheme(theme)]]);
     return;
   }
   await checkTerms(d, groupId, v.h, v.df, v.lp);

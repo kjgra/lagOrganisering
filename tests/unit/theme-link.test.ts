@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fagplanText } from "@/lib/ai/plan-ai";
 import { learningPoint } from "@/lib/nff/fagplan";
-import { linkName, linkTags, normTheme, pickedLink, themeLink } from "@/lib/nff/theme-link";
+import { linkName, linkTags, normTheme, pickedLink, themeKey, themeLink } from "@/lib/nff/theme-link";
 
 const link = (theme: string, band: "6-7" | "8-9" | "10-12" = "10-12") => {
   const l = themeLink(theme, band);
@@ -50,6 +50,20 @@ describe("trainers' own themes linked to NFF", () => {
 });
 
 describe("word variants", () => {
+  it("gives the same key for the same theme written differently", () => {
+    const key = themeKey("Spille oss frem");
+    for (const t of ["spille fremover", "Spille oss framover i banen", "SPILLE OSS FREMOVER!"]) expect(themeKey(t)).toBe(key);
+    expect(themeKey("Pasninger")).toBe(themeKey("pasning"));
+    expect(themeKey("Medtak")).toBe(themeKey("mottak"));
+    expect(themeKey("Pasning")).not.toBe(themeKey("Mottak"));
+  });
+
+  it("knows synonyms like sentring and kontring", () => {
+    expect(link("Sentring")?.delf).toEqual(["delf.pasning"]);
+    expect(link("Innlegg og avslutning")?.tema).toContain("tema.komme-til-avslutning");
+    expect(link("Kontring")?.lm).toBeGreaterThan(0);
+  });
+
   it("links «spille oss frem» like «Spille oss framover i banen»", () => {
     for (const t of ["Spille oss frem", "spille fremover", "Spille oss framover"]) expect(link(t)?.tema).toEqual(["tema.spille-framover"]);
   });

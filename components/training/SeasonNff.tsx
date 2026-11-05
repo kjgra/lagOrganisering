@@ -8,7 +8,7 @@ import { saveSeasonAction, saveSeasonSetupAction, saveThemeWordAction } from "@/
 import { Field, SaveButton, useSave } from "@/components/ui/form";
 import { Icon } from "@/components/ui/icon";
 import type { BandKey } from "@/lib/nff/fagplan";
-import { normTheme, notContent, themeLink } from "@/lib/nff/theme-link";
+import { normTheme, notContent, themeKey, themeLink } from "@/lib/nff/theme-link";
 
 // Årshjul with a setup per year: NFF's terms (picked from lists) or the team's own words.
 
@@ -397,8 +397,8 @@ const LINK_STATUS: Record<"bekreftet" | "forslag" | "telles-ikke" | "ikke-koblet
 
 /** «Koblet til NFF» under a month with the team's own words: the link, confirm it, or choose it yourselves. */
 export function MonthLink({ groupId, sub, theme, data }: { groupId: string; sub: string; theme: string; data: NffLinkData }) {
-  const term = normTheme(theme);
-  const own = term ? data.words[term] : undefined;
+  const term = themeKey(theme);
+  const own = term ? (data.words[term] ?? data.words[normTheme(theme)]) : undefined;
   return <MonthLinkInner key={`${term}|${JSON.stringify(own ?? null)}`} groupId={groupId} sub={sub} theme={theme} data={data} own={own} />;
 }
 

@@ -8,6 +8,17 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.32.0] – 2026-11-05
+
+KI lærer av øvelsene lagene bruker med egne temaer.
+
+### Lagt til
+
+- Når flere lag på samme alder bruker de samme øvelsene i økter med det samme temaordet, for eksempel «Spille oss frem», kommer øvelsene først i lista KI velger fra, også om de ikke er tagget med temaet. KI får vite hvor mange økter og lag som står bak, og snittet fra evalueringene. Det kreves minst 3 økter fra minst 2 lag, og øvelser som er vurdert dårlig med temaet, tas ikke med. Appen bruker bare tellinger, aldri hvilket lag.
+- Samme tema skrevet på ulike måter regnes som det samme: «Spille oss frem», «spille fremover» og «Spille oss framover i banen» teller sammen, og det gjør også entall og flertall («Pasning», «Pasninger»). Det gjelder også koblingen dere har valgt for ordet.
+- Temaer med samme kobling til NFF regnes som lignende, for eksempel «Sentring» og «Innlegg». Øvelser fra lignende temaer teller med, men mindre enn fra samme tema.
+- Appen kjenner flere ord: «Sentring», «Innlegg», «Veggspill», «Kontring», «Tackling», «Førsteforsvar» og flere kobles nå til NFF av seg selv.
+
 ## [1.31.0] – 2026-11-05
 
 Velg koblingen til NFF selv.
