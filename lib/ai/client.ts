@@ -24,7 +24,7 @@ export interface CallInput {
   /** A JSON schema for structured output, or none for plain text. */
   schema?: Record<string, unknown>;
   maxTokens: number;
-  kind: "draft" | "revision" | "learning" | "exercise" | "feedback" | "observations" | "needs";
+  kind: "draft" | "revision" | "learning" | "exercise" | "feedback" | "observations" | "needs" | "themes";
 }
 
 export interface CallResult {
@@ -176,6 +176,12 @@ async function mockCall(c: CallInput, t0: number): Promise<CallResult> {
     const tekster = [...c.user.matchAll(/^- id (\S+)\n {2}Tekst: (.*)$/gm)].map(([, id, said]) => ({ id, behov: rules.filter(([re]) => re.test(said)).map(([, k]) => k) }));
     text = JSON.stringify({ tekster });
     usage.output_tokens = 20 * tekster.length;
+  } else if (c.kind === "themes") {
+    // Every word gets the band's first hovedtema, so the flow can be tried.
+    const tema = /^- (tema\.[a-z0-9-]+):/m.exec(c.system.join("\n"))?.[1];
+    const n = [...c.user.matchAll(/^\d+\. /gm)].length;
+    text = JSON.stringify({ koblinger: Array.from({ length: n }, (_, i) => ({ nr: i + 1, hovedtema: tema ? [tema] : [], delferdigheter: [], laeringsmomenter: [] })) });
+    usage.output_tokens = 30 * n;
   } else if (c.kind === "learning") {
     text =
       "- Guttene liker konkurranse med poeng; bruk det i avslutningen.\n" +

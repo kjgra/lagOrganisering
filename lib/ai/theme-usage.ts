@@ -1,5 +1,5 @@
 import type { BandKey } from "@/lib/nff/fagplan";
-import { linkTags, themeKey, themeLink } from "@/lib/nff/theme-link";
+import { linkTags, themeKey, autoLink, type KiLinks } from "@/lib/nff/theme-link";
 import type { BankExercise } from "@/lib/plans/plan";
 import { meanText } from "@/lib/plans/feedback";
 
@@ -41,10 +41,11 @@ export interface ThemeUse {
 }
 
 /** Exercises used with the theme in the band, most used first; those rated poorly with it are left out. */
-export function themeUsage(rows: UsageRow[], theme: string, band: BandKey | null, min = USAGE_MIN): ThemeUse[] {
+/** `ki`: KI's links of words the word list does not know, so they can be similar too. */
+export function themeUsage(rows: UsageRow[], theme: string, band: BandKey | null, min = USAGE_MIN, ki: KiLinks = {}): ThemeUse[] {
   const key = themeKey(theme);
   if (!key || !band) return [];
-  const tags = (t: string) => linkTags(themeLink(t, band)).sort().join(" ");
+  const tags = (t: string) => linkTags(autoLink(t, band, ki)).sort().join(" ");
   const own = tags(theme);
   const by = new Map<string, { sessions: number; similar: number; groups: Set<string>; ratings: number[] }>();
   const linked = new Map<string, string>();

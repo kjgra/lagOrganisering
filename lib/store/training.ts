@@ -27,7 +27,7 @@ import { compactDrawing, validateDrawing } from "@/lib/plans/drawing";
 import { osloDate, osloParts } from "@/lib/format";
 import { teamBand } from "@/lib/nff/bands";
 import type { BandKey } from "@/lib/nff/fagplan";
-import { chosenLink, normTheme, pickedLink, themeKey, type MonthFocus, type ThemeLink } from "@/lib/nff/theme-link";
+import { autoLink, chosenLink, normTheme, pickedLink, themeKey, themeLink, type KiLinks, type MonthFocus, type ThemeLink } from "@/lib/nff/theme-link";
 import { exerciseChanges, type ExerciseChanges } from "@/lib/plans/exercise-edits";
 import { exerciseValues, type ExerciseValues } from "@/lib/plans/exercise-values";
 import type { VersionSource } from "@/lib/plans/versions";
@@ -150,6 +150,11 @@ export async function listSeason(
   const words = nff ? new Map<string, ThemeWord>() : new Map((await listThemeWords(d, access, groupId)).map((w) => [w.term, w]));
   // themeKey: «spille fremover» finds the word saved as «Spille oss frem» (older words are under normTheme).
   const word = (theme: string) => words.get(themeKey(theme)) ?? words.get(normTheme(theme));
+  // A word neither the trainers nor the app's word list know: KI's link, when it has made one.
+  const band = nff ? null : await seasonBand(d, groupId, sub, year);
+  const unknown = band ? own.filter((r) => !word(r.theme) && !themeLink(r.theme, band)).map((r) => themeKey(r.theme)).filter(Boolean) : [];
+  const ki: KiLinks = band && unknown.length ? await listKiLinks(d, band, unknown) : {};
+  const kiLink = (theme: string) => (band && !themeLink(theme, band) ? autoLink(theme, band, ki) : null);
   const ids = (
     nff
       ? own.flatMap((r) => [r.hovedtema_id, r.delferdighet_id, ...r.learning_point_ids])
@@ -178,7 +183,7 @@ export async function listSeason(
       hovedtema_id: r.hovedtema_id,
       delferdighet_id: r.delferdighet_id,
       learning_point_ids: r.learning_point_ids,
-      link: nff ? pickedLink(r, names) : wordLink(word(r.theme), names),
+      link: nff ? pickedLink(r, names) : (wordLink(word(r.theme), names) ?? kiLink(r.theme)),
     })),
     inherited,
     setup,
@@ -197,6 +202,27 @@ export type MonthFocusInput = z.input<typeof focusSchema>;
 /** A word the trainers linked to NFF's terms themselves, as a link; null when there is none. */
 function wordLink(w: ThemeWord | undefined, names: Record<string, string> = {}): ThemeLink | null {
   return w ? chosenLink({ hovedtema: w.hovedtema_ids, delferdigheter: w.delferdighet_ids, learningPoints: w.learning_point_ids }, names) : null;
+}
+
+/** KI's links of words in a band (theme_suggestions), by kiKey. NFF's terms only, shared by all teams. */
+export async function listKiLinks(d: Db, band: BandKey, terms?: string[]): Promise<KiLinks> {
+  const rows = await d.query<{ term: string; hovedtema_ids: string[]; delferdighet_ids: string[]; learning_point_ids: string[] }>(
+    `SELECT term, hovedtema_ids, delferdighet_ids, learning_point_ids FROM theme_suggestions
+      WHERE band = $1 AND ($2::text[] IS NULL OR term = ANY($2::text[]))`,
+    [band, terms ?? null],
+  );
+  return Object.fromEntries(rows.map((r) => [`${band}|${r.term}`, { hovedtema_ids: r.hovedtema_ids, delferdighet_ids: r.delferdighet_ids, learning_point_ids: r.learning_point_ids }]));
+}
+
+/** Saves KI's links of words in a band. A word already linked keeps its first link. */
+export async function saveKiLinks(d: Db, band: BandKey, rows: { term: string; hovedtema_ids: string[]; delferdighet_ids: string[]; learning_point_ids: string[] }[], model: string): Promise<void> {
+  for (const r of rows) {
+    await d.query(
+      `INSERT INTO theme_suggestions (term, band, hovedtema_ids, delferdighet_ids, learning_point_ids, model)
+       VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (term, band) DO NOTHING`,
+      [r.term, band, r.hovedtema_ids, r.delferdighet_ids, r.learning_point_ids, model.slice(0, 60)],
+    );
+  }
 }
 
 /** A word in the team's word list: the NFF terms the trainers linked it to. */
@@ -779,6 +805,16 @@ export async function savePlanExercise(
     ],
   );
   return id;
+}
+
+/** The team's NFF band in a year (the subgroup's birth year, else the main group's). */
+async function seasonBand(d: Db, groupId: string, sub: string, year: number): Promise<BandKey | null> {
+  const rows = await d.query<{ spond_subgroup_id: string; birth_year: number | null }>(
+    "SELECT spond_subgroup_id, birth_year FROM team_settings WHERE spond_group_id = $1 AND spond_subgroup_id IN ($2, '')",
+    [groupId, sub],
+  );
+  const row = rows.find((r) => r.spond_subgroup_id === sub) ?? rows.find((r) => r.spond_subgroup_id === "");
+  return teamBand(row?.birth_year ?? null, year);
 }
 
 /** The NFF band the team is in this year, from its birth year (none if unknown or over 12). */

@@ -5,7 +5,8 @@ import { z } from "zod";
 import { runAction, type ActionResult } from "@/lib/actions";
 import { findGroup, requireUser } from "@/lib/auth/current";
 import { AI_MODELS } from "@/lib/ai/plan-ai";
-import { estimateKi, prepareExerciseKi, reviseExerciseKi, runExerciseKi, updateLearningsWithKi } from "@/lib/ai/service";
+import { estimateKi, linkThemesWithKi, prepareExerciseKi, reviseExerciseKi, runExerciseKi, updateLearningsWithKi } from "@/lib/ai/service";
+import { teamBand } from "@/lib/nff/bands";
 import { db } from "@/lib/db";
 import { exerciseOrderContext } from "@/lib/plan-data";
 import { adjustedValues, exerciseInputFrom, type ExerciseValues } from "@/lib/plans/exercise-values";
@@ -15,7 +16,7 @@ import { decideProposal, getProposal } from "@/lib/store/improvements";
 import { exerciseVersions } from "@/lib/store/versions";
 import { importExercises, previewExerciseImport } from "@/lib/store/exercise-import";
 import type { ImportRow } from "@/lib/plans/exercise-import";
-import { deleteExercise, getExercise, saveExercise, saveLearning, savePrinciples, saveSeason, saveSeasonSetup, saveTeamSettings, saveThemeWord, followMainGroup, type Part } from "@/lib/store/training";
+import { deleteExercise, getExercise, getTeamSettings, saveExercise, saveLearning, savePrinciples, saveSeason, saveSeasonSetup, saveTeamSettings, saveThemeWord, followMainGroup, type Part } from "@/lib/store/training";
 
 /** «Trening»: season plan, the team, principles, learnings and the exercise bank, for every trainer on the team. */
 
@@ -56,10 +57,17 @@ export async function saveSeasonAction(
         focus: z.array(focus).length(12).optional(),
       })
       .parse({ groupId, sub, year, themes, descriptions, focus: monthFocus });
-    const { user, d } = await trainer(v.groupId, v.sub);
+    const { user, group, d } = await trainer(v.groupId, v.sub);
     await saveSeason(d, user.access, v.groupId, v.sub, v.year, v.themes, v.descriptions, v.focus);
+    // With the team's own words: KI links the words the app does not know yet (one short call).
+    let linked = 0;
+    if (!v.focus) {
+      const band = teamBand((await getTeamSettings(d, user.access, v.groupId, v.sub)).birth_year, v.year);
+      if (band) linked = await linkThemesWithKi(d, user, user.rights, group, band, v.themes);
+    }
     refresh();
-    return { data: undefined, message: `Årshjulet for ${v.year} er lagret.` };
+    const more = linked ? ` KI foreslo kobling til NFF for ${linked === 1 ? "ett nytt ord" : `${linked} nye ord`}.` : "";
+    return { data: undefined, message: `Årshjulet for ${v.year} er lagret.${more}` };
   });
 }
 

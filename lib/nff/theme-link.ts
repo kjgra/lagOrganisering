@@ -5,8 +5,8 @@ import { DELFERDIGHETER, HOVEDTEMA, LEARNING_POINTS, delfTag, matchHovedtema, ta
  * hovedtema, delferdigheter og eventuelt læringsmomenter. Brukes når KI bestilles
  * og når øvelsesbanken sorteres, så trenerne kan beholde sine egne ord i årshjulet.
  *
- * Koblingen er en fast ordliste. Ord den ikke kjenner («Spilleforståelse», «Ferie»),
- * får ingen kobling.
+ * Koblingen er en fast ordliste, som tåler små skrivefeil («pasnig»). Ord den ikke
+ * kjenner («Spilleforståelse»), kobler KI én gang og lagrer (lib/ai/theme-ai.ts).
  */
 
 export interface ThemeLink {
@@ -21,6 +21,8 @@ export interface ThemeLink {
    * the names of the picked terms (the team's own too) and the picked learning points.
    */
   picked?: { names: Record<string, string>; points: { id: string; text: string }[] };
+  /** Suggested by KI for a word the word list does not know (not confirmed by the trainers). */
+  ki?: boolean;
 }
 
 /** A month's picks in the årshjul with NFFs begreper. */
@@ -104,6 +106,56 @@ export function normTheme(theme: string): string {
     .trim();
 }
 
+/** The words the word list knows, to correct small typos against («pasnig» → «pasning»). */
+const VOCAB = [
+  "ballkontroll", "ballbehandling", "ballfølelse", "teknikk", "pasning", "pasninger", "samspill", "veggspill", "kombinasjonsspill",
+  "sentring", "sentringer", "innlegg", "mottak", "medtak", "førstetouch", "føring", "vending", "vendinger", "dribling", "driblinger",
+  "drible", "skudd", "skyting", "avslutning", "avslutninger", "avslutte", "scoring", "målscoring", "heading", "hodespill",
+  "angrep", "oppbygging", "orientering", "bevegelse", "spillbar", "forsvar", "forsvarsspill", "press", "takling", "taklinger",
+  "ballvinning", "klarering", "klarere", "duell", "dueller", "nærkamp", "omstilling", "omstillinger", "kontring", "kontringer",
+  "gjenvinning", "framover",
+];
+
+/** Edits (insert, delete, change, swap two letters) between a and b, stopping above max. */
+function distance(a: string, b: string, max: number): number {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array<number>(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    let best = max + 1;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+      best = Math.min(best, d[i][j]);
+    }
+    if (best > max) return max + 1;
+  }
+  return d[a.length][b.length];
+}
+
+/**
+ * Corrects small typos in a normalised theme against the words the word list knows:
+ * one letter wrong (two in words of 9 letters or more), never the first letter.
+ * Words it knows, and short words, are left as they are.
+ */
+export function fixTypos(normalised: string): string {
+  return normalised
+    .split(" ")
+    .map((w) => {
+      if (w.length < 5 || /\d/.test(w) || VOCAB.some((v) => w.includes(v))) return w;
+      const max = w.length >= 9 ? 2 : 1;
+      let best: [string, number] | null = null;
+      // Same first letter: «mestring» is not «sentring».
+      for (const v of VOCAB.filter((x) => x[0] === w[0])) {
+        const n = distance(w, v, max);
+        if (n <= max && (!best || n < best[1])) best = [v, n];
+      }
+      return best?.[0] ?? w;
+    })
+    .join(" ");
+}
+
 /** Small words that do not change what a theme is about. «mot» is kept («1 mot 1»). */
 const STOP = new Set(["oss", "og", "i", "banen", "på", "pa", "med", "til", "en", "et", "ei", "vi", "å", "av", "for", "som", "den", "det"]);
 
@@ -121,7 +173,7 @@ const VARIANTS: [RegExp, string][] = [
  * («pasninger» as «pasning») and the words sorted.
  */
 export function themeKey(theme: string): string {
-  const words = normTheme(theme)
+  const words = fixTypos(normTheme(theme))
     .split(" ")
     .filter((w) => w && !STOP.has(w))
     .map((w) => VARIANTS.find(([re]) => re.test(w))?.[1] ?? (w.length > 4 ? w.replace(/(ene|ane|er|en|et|e|a)$/, "") : w));
@@ -133,7 +185,7 @@ export function themeLink(theme: string, band: BandKey | null): ThemeLink | null
   if (!band) return null;
   const exact = matchHovedtema(theme, band);
   if (exact) return { hovedtema: [temaTag(exact.key)], delferdigheter: [], learningPoints: [] };
-  const t = normTheme(theme);
+  const t = fixTypos(normTheme(theme));
   if (!t) return null;
   const tema = new Set<string>();
   const delf = new Set<string>();
@@ -162,4 +214,21 @@ export function notContent(theme: string): boolean {
 /** Every tag in a link, to match against an exercise's NFF tags. */
 export function linkTags(link: ThemeLink | null): string[] {
   return link ? [...link.hovedtema, ...link.delferdigheter, ...link.learningPoints] : [];
+}
+
+/** The key for KI's link of a word in a band (theme_suggestions). */
+export function kiKey(theme: string, band: BandKey): string {
+  return `${band}|${themeKey(theme)}`;
+}
+
+/** KI's links by kiKey: NFF's terms, empty when KI found none. */
+export type KiLinks = Record<string, { hovedtema_ids: string[]; delferdighet_ids: string[]; learning_point_ids: string[] }>;
+
+/** The app's link for a theme: the word list first, then KI's link for a word the list does not know. */
+export function autoLink(theme: string, band: BandKey | null, ki: KiLinks = {}): ThemeLink | null {
+  const rule = themeLink(theme, band);
+  if (rule || !band) return rule;
+  const k = ki[kiKey(theme, band)];
+  if (!k || (!k.hovedtema_ids.length && !k.delferdighet_ids.length && !k.learning_point_ids.length)) return null;
+  return { hovedtema: [...k.hovedtema_ids], delferdigheter: [...k.delferdighet_ids], learningPoints: [...k.learning_point_ids], ki: true };
 }

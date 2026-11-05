@@ -12,10 +12,13 @@ import {
   learningState,
   listExercises,
   latestLearning,
+  listKiLinks,
+  listThemeWords,
   markCommentsUsed,
   saveLearning,
   savePlan,
   savePlanExercise,
+  saveKiLinks,
   teamExperience,
 } from "@/lib/store/training";
 import type { Group } from "@/lib/spond/types";
@@ -24,6 +27,8 @@ import { insightsFor } from "@/lib/plans/insights";
 import { needsFor } from "@/lib/plans/needs";
 import { bandInsights, themeUsageRows } from "@/lib/store/insights";
 import { themeUsage, themeUsageText } from "@/lib/ai/theme-usage";
+import { THEME_AI_INSTRUCTIONS, THEME_AI_SCHEMA, fagplanCatalog, themeAiAnswer, themeAiOrder, wordsToAsk } from "@/lib/ai/theme-ai";
+import { reportError } from "@/lib/errors";
 import { needRows } from "@/lib/store/needs";
 import { allPatterns } from "@/lib/store/observations";
 import { callClaude, countTokens, type CallInput } from "./client";
@@ -104,14 +109,15 @@ async function kiBasis(
   const exp = await teamExperience(d, user.access, group.id, new Date(now.getTime() - 365 * 86_400_000));
   const experience = experienceText(exp, bank, await latestLearning(d, user.access, group.id, sub));
   // What the analysis has learnt for the team's age band, from every team (see lib/ai/lessons.ts).
-  const [patterns, needs, sessions, usage] = await Promise.all([
+  const [patterns, needs, sessions, usage, ki] = await Promise.all([
     allPatterns(d),
     fit.band ? needRows(d) : Promise.resolve([]),
     fit.band ? bandInsights(d, group.id, fit.band) : Promise.resolve({ shared: [], own: [] }),
     fit.band && theme ? themeUsageRows(d, now) : Promise.resolve([]),
+    fit.band && theme ? listKiLinks(d, fit.band) : Promise.resolve({}),
   ]);
   // Exercises the teams of the age band use with the same theme word (lib/ai/theme-usage.ts).
-  const uses = themeUsage(usage, theme, fit.band);
+  const uses = themeUsage(usage, theme, fit.band, undefined, ki);
   const used = themeUsageText(uses, theme, bank);
   const lessons = lessonsText({
     band: fit.band,
@@ -391,4 +397,47 @@ export async function fillFeedbackWithKi(d: Db, user: CurrentUser, rights: Right
   await logAiUsage(d, user.access, group.id, { kind: "feedback", model: LEARNING_MODEL, ...r.usage, cost_usd: cost, duration_ms: r.durationMs, status: rows ? "ok" : "error", error_code: errorCode }, null);
   if (!rows) throw new AiError(message || "Noe gikk galt med KI. Prøv igjen om litt.");
   return { rows, costText: formatNok(cost, settings.usd_nok) };
+}
+
+// Words in the årshjul: KI links the ones the app's word list does not know to NFF's terms.
+
+/** At most this many new words per call. */
+const THEME_AI_MAX = 12;
+
+/**
+ * KI's link for the team's own words in the årshjul that neither the team's word list
+ * nor the app's knows. Each word is asked about once per band and saved for all teams.
+ * Quiet: without KI rights, budget or an answer, the words just stay unlinked.
+ * Words with names or sensitive information are never sent. Returns the words linked.
+ */
+export async function linkThemesWithKi(d: Db, user: CurrentUser, rights: Rights, group: Group, band: BandKey, themes: string[], now = new Date()): Promise<number> {
+  if (!rights.ai) return 0;
+  try {
+    const names = memberNames(group.members);
+    const safe = themes.filter((t) => t.trim() && !isSensitive(t) && !namesProblem(t, names));
+    const [words, ki] = await Promise.all([listThemeWords(d, user.access, group.id), listKiLinks(d, band)]);
+    const known = new Set([...words.map((w) => w.term), ...Object.keys(ki).map((k) => k.slice(band.length + 1))]);
+    const ask = wordsToAsk(safe, band, known).slice(0, THEME_AI_MAX);
+    if (!ask.length) return 0;
+    const settings = await getAiSettings(d);
+    if (!budgetCheck(await aiSpend(d, user.access, group.id, osloMonthStart(now)), settings).ok) return 0;
+    const r = await callClaude({ model: LEARNING_MODEL, system: [THEME_AI_INSTRUCTIONS, fagplanCatalog(band)], user: themeAiOrder(ask), schema: THEME_AI_SCHEMA, maxTokens: 1500, kind: "themes" });
+    let rows: ReturnType<typeof themeAiAnswer> | null = null;
+    let errorCode = r.errorCode;
+    if (r.ok) {
+      try {
+        rows = themeAiAnswer(r.text, ask, band);
+      } catch {
+        errorCode = "ugyldig_svar";
+      }
+    }
+    const cost = aiCost(r.usage, LEARNING_MODEL);
+    await logAiUsage(d, user.access, group.id, { kind: "themes", model: LEARNING_MODEL, ...r.usage, cost_usd: cost, duration_ms: r.durationMs, status: rows ? "ok" : "error", error_code: errorCode }, null);
+    if (!rows) return 0;
+    await saveKiLinks(d, band, rows, LEARNING_MODEL);
+    return rows.filter((x) => x.hovedtema_ids.length || x.delferdighet_ids.length || x.learning_point_ids.length).length;
+  } catch (err) {
+    await reportError("KI-kobling av årshjulsord", err);
+    return 0;
+  }
 }
