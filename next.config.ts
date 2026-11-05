@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   // PGlite (simulated database) and react-pdf ship their own assets; keep them as Node packages.
   serverExternalPackages: ["@electric-sql/pglite", "@react-pdf/renderer"],
   poweredByHeader: false,
+  // The coach guide is a static page in public/bruksanvisning/ (relative image paths need index.html in the URL).
+  async redirects() {
+    return [{ source: "/bruksanvisning", destination: "/bruksanvisning/index.html", permanent: false }];
+  },
   // Security headers on every response. No CSP yet: Next.js inline scripts need nonces.
   async headers() {
     return [

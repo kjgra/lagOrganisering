@@ -103,6 +103,10 @@ export function LoginForm({ notice, demoAccounts }: { notice?: string; demoAccou
         <a className="nm-link" href="/personvern">
           Personvern
         </a>
+        {" · "}
+        <a className="nm-link" href="/bruksanvisning/index.html">
+          Bruksanvisning
+        </a>
       </p>
     </form>
   );
