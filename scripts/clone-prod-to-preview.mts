@@ -175,7 +175,9 @@ function wrap(sql: Sql, root: postgres.Sql): CloneDb {
 }
 
 function connect(url: string): postgres.Sql {
-  return postgres(url, { prepare: false, max: 1, connect_timeout: 15, onnotice: () => {} });
+  // Supabase requires TLS (1.6.1). Only a Postgres on this machine goes without.
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(new URL(url).hostname);
+  return postgres(url, { prepare: false, max: 1, connect_timeout: 15, onnotice: () => {}, ssl: local ? false : "require" });
 }
 
 /** User, host and database, never the password. On Supabase's pooler the user carries the project ref. */
