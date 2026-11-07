@@ -3,6 +3,7 @@ import type { Db } from "@/lib/db";
 import { parseImportFile, previewImport } from "@/lib/plans/exercise-import";
 import { NO_RIGHTS, type Access } from "@/lib/store/access";
 import { importExercises, previewExerciseImport } from "@/lib/store/exercise-import";
+import { listProposals } from "@/lib/store/improvements";
 import { listExercises } from "@/lib/store/training";
 import { testDb } from "../helpers/db";
 
@@ -79,5 +80,44 @@ describe("importExercises", () => {
     const again = await importExercises(d, access, superadmin, "BARN", text);
     expect(again.imported).toEqual([]);
     expect(again.skipped.map((s) => s.status)).toEqual(["finnes", "finnes"]);
+  });
+
+  it("turns a change to an exercise in the bank into a proposal in Forbedringer, only once", async () => {
+    const [t] = (await listExercises(d, access, "BARN")).filter((b) => b.name === "Trafikklys");
+    const text = JSON.stringify({
+      ovelser: [
+        { code: t.code, easier: "Gå i stedet for å løpe", begrunnelse: "Trenerne sier de minste mister ballen for ofte." },
+        { code: t.code, harder: "Dobbelt" },
+        { code: "finnes-ikke", easier: "x" },
+        { code: t.code, name: "Trafikklys" },
+      ],
+    });
+    const preview = await previewExerciseImport(d, access, superadmin, "BARN", text);
+    expect(preview.map((r) => r.status)).toEqual(["endring", "finnes", "feil", "finnes"]);
+    expect(preview[0].note).toBe("Endrer enklere.");
+    const r = await importExercises(d, access, superadmin, "BARN", text);
+    expect(r.proposed).toEqual(["Trafikklys"]);
+    expect(r.imported).toEqual([]);
+    const { open } = await listProposals(d, access, "BARN");
+    expect(open).toHaveLength(1);
+    expect(open[0]).toMatchObject({ exercise_code: t.code, kind: "ny_versjon", reason: "Trenerne sier de minste mister ballen for ofte." });
+    expect(open[0].proposed.easier).toBe("Gå i stedet for å løpe");
+    expect({ ...open[0].proposed, easier: "" }).toEqual({ ...open[0].base_values, easier: "" });
+    // The exercise itself is unchanged until a trainer uses the proposal.
+    expect((await listExercises(d, access, "BARN")).find((b) => b.code === t.code)?.easier).toBe("");
+    const again = await importExercises(d, access, superadmin, "BARN", text);
+    expect(again.proposed).toEqual([]);
+    expect(again.skipped[0].note).toContain("venter");
+  });
+
+  it("refuses a change that breaks the form's checks, and shows no change as none", async () => {
+    const [s] = (await listExercises(d, access, "BARN")).filter((b) => b.name === "Skuddporter");
+    const rows = await previewExerciseImport(d, access, superadmin, "BARN", JSON.stringify([{ code: s.code, category: "tull" }, { code: s.code, name: "Skuddporter" }]));
+    expect(rows.map((r) => [r.status, r.note])).toEqual([
+      ["feil", "Velg en kategori."],
+      ["finnes", "Øvelsen er endret lenger opp i fila."],
+    ]);
+    const same = await previewExerciseImport(d, access, superadmin, "BARN", JSON.stringify([{ code: s.code, name: "Skuddporter" }]));
+    expect(same.map((r) => [r.status, r.note])).toEqual([["finnes", "Ingen endringer."]]);
   });
 });
