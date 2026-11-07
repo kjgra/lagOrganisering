@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.36.1] – 2026-11-07
+
+Bare for oss som drifter appen; trenerne merker ingenting.
+
+### Fikset
+
+- Kopien av prod til testmiljøet (preview) virker igjen. Den stoppet fordi databasen krever kryptert tilkobling.
+
 ## [1.36.0] – 2026-11-07
 
 Øvelsene kan spilles av som animasjon, og øvelser med valg viser begge løsningene.
