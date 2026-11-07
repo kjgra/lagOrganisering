@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.35.0] – 2026-11-07
+
+Forbedrede øvelser kan lastes opp og havner i Forbedringer.
+
+### Lagt til
+
+- «Importer øvelser» tar nå også imot endringer i øvelser som finnes. En endring blir et forslag i Forbedringer med en begrunnelse, og ingenting endres i banken før en trener velger «Bruk» eller «Endre først». Som med KIs forslag blir det en ny versjon, og evalueringene etterpå viser om den ble bedre.
+
 ## [1.34.0] – 2026-11-07
 
 Claude kan lese øvelsesbanken for å foreslå bedre øvelser. Ingenting endres i appen for trenere.

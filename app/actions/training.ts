@@ -346,7 +346,7 @@ export async function previewExerciseImportAction(groupId: string, text: string)
   return runAction("Import av øvelser", async () => {
     const v = importInput.parse({ groupId, text });
     const { user, d } = await trainer(v.groupId);
-    return { data: (await previewExerciseImport(d, user.access, user.rights, v.groupId, v.text)).map((r) => ({ ...r, input: null })) };
+    return { data: (await previewExerciseImport(d, user.access, user.rights, v.groupId, v.text)).map((r) => ({ ...r, input: null, change: null })) };
   });
 }
 
@@ -358,7 +358,10 @@ export async function importExercisesAction(groupId: string, text: string): Prom
     const r = await importExercises(d, user.access, user.rights, v.groupId, v.text);
     refresh();
     const n = r.imported.length;
+    const p = r.proposed.length;
+    const added = n || !p ? `${n === 1 ? "Én øvelse" : `${n} øvelser`} er lagt i banken.` : "";
+    const proposals = p ? ` ${p === 1 ? "Ett forslag" : `${p} forslag`} venter i Forbedringer.` : "";
     const skipped = r.skipped.length ? ` ${r.skipped.length} hoppet over.` : "";
-    return { data: n, message: `${n === 1 ? "Én øvelse" : `${n} øvelser`} er lagt i banken.${skipped}` };
+    return { data: n + p, message: `${added}${proposals}${skipped}`.trim() };
   });
 }
