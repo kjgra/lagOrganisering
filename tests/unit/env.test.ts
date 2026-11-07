@@ -23,6 +23,18 @@ describe("env", () => {
 describe("database region", () => {
   const prod = { VERCEL_ENV: "production", SESSION_SECRET: "x".repeat(40) };
 
+  it("the bank reader goes to the same region, and never in a demo or without the app's database", async () => {
+    const db = "postgresql://nymark_app.ref:p@aws-0-eu-west-1.pooler.supabase.com:6543/postgres";
+    const reader = "postgresql://claude_les.ref:p@aws-0-eu-west-1.pooler.supabase.com:6543/postgres";
+    expect((await load({ ...prod, DATABASE_URL: db, BANK_READ_DATABASE_URL: reader }))().BANK_READ_DATABASE_URL).toBe(reader);
+    const far = await load({ ...prod, DATABASE_URL: db, BANK_READ_DATABASE_URL: reader.replace("eu-west-1", "us-east-1") });
+    expect(() => far()).toThrow(/BANK_READ_DATABASE_URL/);
+    const demo = await load({ ...prod, APP_ENV: "DEMO", SPOND_MOCK: "true", DATABASE_URL: "", BANK_READ_DATABASE_URL: reader });
+    expect(() => demo()).toThrow(/BANK_READ_DATABASE_URL/);
+    const alone = await load({ DATABASE_URL: "", BANK_READ_DATABASE_URL: reader });
+    expect(() => alone()).toThrow(/BANK_READ_DATABASE_URL/);
+  });
+
   it("accepts the Supabase pooler in Ireland in production", async () => {
     const env = await load({ ...prod, DATABASE_URL: "postgresql://postgres.ref:p@aws-0-eu-west-1.pooler.supabase.com:6543/postgres" });
     expect(env().DATABASE_URL).toContain("eu-west-1");

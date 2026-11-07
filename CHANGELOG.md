@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.34.0] – 2026-11-07
+
+Claude kan lese øvelsesbanken for å foreslå bedre øvelser. Ingenting endres i appen for trenere.
+
+### Lagt til
+
+- Egen lesetilgang til øvelsesbanken og det som forbedrer den: øvelser, versjoner, evalueringer, kommentarer, forslag og endringer. Tilgangen kan bare lese, og ser aldri spillere, nivåer, tagger, lagforslag eller hvem som har skrevet hva. Den er av til superadmin slår den på.
+
 ## [1.33.0] – 2026-11-05
 
 Appen kobler flere av lagets egne ord i årshjulet til NFF av seg selv.

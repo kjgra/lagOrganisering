@@ -51,6 +51,8 @@ const schema = z.object({
   PRIVACY_CONTROLLER: z.string().optional().default(""),
   PRIVACY_CONTACT: z.string().optional().default(""),
   GITHUB_FEEDBACK_TOKEN: z.string().optional().default(""),
+  BANK_READ_TOKEN: z.string().optional().default(""),
+  BANK_READ_DATABASE_URL: z.string().optional().default(""),
   GITHUB_FEEDBACK_REPO: z
     .string()
     .optional()
@@ -108,6 +110,7 @@ export function env(): Env {
       parsed.DATABASE_URL && "DATABASE_URL kan ikke brukes i demo",
       parsed.ANTHROPIC_API_KEY && "ANTHROPIC_API_KEY kan ikke brukes i demo",
       parsed.GITHUB_FEEDBACK_TOKEN && "GITHUB_FEEDBACK_TOKEN kan ikke brukes i demo",
+      parsed.BANK_READ_DATABASE_URL && "BANK_READ_DATABASE_URL kan ikke brukes i demo",
       parsed.SESSION_SECRET.length < 32 && "SESSION_SECRET må ha minst 32 tegn",
     ].filter(Boolean);
     if (problems.length) throw new Error(`Feil i miljøvariabler (demo): ${problems.join("; ")}.`);
@@ -118,8 +121,12 @@ export function env(): Env {
       !parsed.DATABASE_URL && "DATABASE_URL mangler",
       parsed.DATABASE_URL && !isDbInRegion(parsed.DATABASE_URL) && `DATABASE_URL må gå til Supabase-pooleren i ${DB_REGION} (Irland)`,
       parsed.SESSION_SECRET.length < 32 && "SESSION_SECRET må ha minst 32 tegn",
+      parsed.BANK_READ_DATABASE_URL && !isDbInRegion(parsed.BANK_READ_DATABASE_URL) && `BANK_READ_DATABASE_URL må gå til Supabase-pooleren i ${DB_REGION} (Irland)`,
     ].filter(Boolean);
     if (problems.length) throw new Error(`Feil i miljøvariabler: ${problems.join("; ")}.`);
+  }
+  if (parsed.BANK_READ_DATABASE_URL && !parsed.DATABASE_URL) {
+    throw new Error("Feil i miljøvariabler: BANK_READ_DATABASE_URL krever DATABASE_URL (lesetilgangen skal gå til samme database som appen).");
   }
   if (parsed.SPOND_MOCK && parsed.DATABASE_URL && !isLocalDb(parsed.DATABASE_URL)) {
     throw new Error("Feil i miljøvariabler: SPOND_MOCK kan ikke brukes med en ekstern DATABASE_URL (demokontoene ville fått tilgang til ekte data).");

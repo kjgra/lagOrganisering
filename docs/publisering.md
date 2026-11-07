@@ -188,6 +188,38 @@ En offentlig demo som alltid er lik prod, men med falsk innlogging, falske spill
 
 Uten `APP_ENV=DEMO` nekter Production fortsatt simulering, så prod-prosjektet kan ikke ved en feil gå i demomodus.
 
+## 12. Lesetilgang til øvelsesbanken for Claude (valgfritt)
+
+Claude kan lese øvelsesbanken og materialet som forbedrer den, men ikke noe annet. Migreringen `20261118000000_ovelsesbank_les.sql` lager skjemaet `ovelsesbank` med views og rollen `claude_les`, som bare kan lese dem:
+
+| View | Innhold |
+| --- | --- |
+| `ovelser` | Øvelsene i den felles banken (alle statuser) |
+| `versjoner` | Hver versjon av en øvelse |
+| `evalueringer` | Trenernes evalueringer av bankøvelser (karakter, tagger om økta, tekst, antall) |
+| `kommentarer` | Kommentarer til en bankøvelse i et opplegg |
+| `observasjoner`, `monstre` | Det analysen har lest ut, og snitt/trend per øvelse og bånd |
+| `forbedringer` | Forbedringsforslagene og hva som ble bestemt |
+| `endringer` | Endringsloggen for bankøvelser |
+| `laerdommer` | Lærdommer på tvers av lag (bare tellinger og snitt) |
+
+Ikke med: spillere, nivåer, tagger på spillere, par, lagforslag, laginnstillinger, og ingen Spond-ID-er for personer, lag eller arrangementer. Viewene lister kolonnene, så nye kolonner kommer ikke med av seg selv; en test stopper personkolonner. Rollen har `default_transaction_read_only`, 15 sekunders tidsgrense og maks 3 tilkoblinger. Fritekst i evalueringer og kommentarer er med; navnefilteret gjelder der som ellers.
+
+Claudes skymiljø når ikke Postgres direkte (bare HTTPS), så Claude leser gjennom appen: `GET /api/ovelsesbank` med `Authorization: Bearer <BANK_READ_TOKEN>`, valgfritt `?del=ovelser,evalueringer`. Endepunktet kobler til som `claude_les` og leser bare viewene.
+
+Etter merge (migreringen kjører av seg selv):
+
+1. **Supabase → SQL Editor** (prod): `ALTER ROLE claude_les WITH LOGIN PASSWORD '<langt passord>';` (lag med `openssl rand -base64 32`, bruk bare bokstaver og tall om du vil slippe URL-koding).
+2. **Vercel → Environment Variables**, bare Production:
+   - `BANK_READ_DATABASE_URL=postgresql://claude_les.<prosjekt-ref>:<passord>@aws-0-eu-west-1.pooler.supabase.com:6543/postgres` (samme delte pooler som `DATABASE_URL`, bare annen bruker)
+   - `BANK_READ_TOKEN=<openssl rand -base64 32>`
+   Deploy på nytt.
+3. **Claude-miljøet** (prosjektinnstillinger → Cloud environment → tannhjulet): legg `lagorganisering.vercel.app` til under Allowed domains, og `BANK_READ_TOKEN` som miljøvariabel. Ikke databasepassordet: Claude trenger bare tokenet.
+
+Slå av: fjern `BANK_READ_TOKEN` i Vercel (endepunktet svarer 404), eller `ALTER ROLE claude_les NOLOGIN;`. Bytt token eller passord ved mistanke om lekkasje.
+
+Supabase-koblingen (MCP) i Claude er ikke et alternativ: den bruker Supabase-kontoen din og kan lese og endre alt.
+
 ## Sjekkliste
 
 - [ ] Secret `SUPABASE_DB_URL` i GitHub, og «Migreringer til prod» kjørt
@@ -199,4 +231,5 @@ Uten `APP_ENV=DEMO` nekter Production fortsatt simulering, så prod-prosjektet k
 - [ ] Eventuelt varsler etter trening (avsnitt 7)
 - [ ] Eventuelt `GITHUB_FEEDBACK_TOKEN` for tilbakemeldinger (avsnitt 9)
 - [ ] Eventuelt demo-app (avsnitt 11)
+- [ ] Eventuelt lesetilgang til øvelsesbanken for Claude (avsnitt 12)
 - [ ] Deploy fra `main`, logg inn, sjekk Innstillinger → Generelt (ingen «simulert»)
