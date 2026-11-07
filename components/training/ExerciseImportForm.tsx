@@ -76,7 +76,7 @@ export function ExerciseImportForm({ groupId, listHref }: { groupId: string; lis
       {rows ? (
         <>
           <p role="status">
-            {rows.length} øvelser i fila: {fresh} blir lagt inn, {changes} blir forslag.
+            {rows.length} øvelser i fila, {fresh} blir lagt inn{changes ? `, ${changes} blir forslag` : ""}.
           </p>
           <ul className="nm-list" style={{ listStyle: "none", margin: 0, padding: 0 }}>
             {rows.map((r) => {
