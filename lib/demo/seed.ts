@@ -1,7 +1,8 @@
 import "server-only";
 import type { Db } from "@/lib/db";
 import { osloDate, osloParts } from "@/lib/format";
-import { compactDrawing } from "@/lib/plans/drawing";
+import { ANIMATED_EXERCISES } from "@/lib/demo/animated";
+import { compactDrawing, validateDrawing } from "@/lib/plans/drawing";
 import { HOVEDTEMA, temaTag } from "@/lib/nff/fagplan";
 import { emptyValues, gapCode, gapReason, metadataReason, missingFields } from "@/lib/plans/bank-proposals";
 import { exerciseValues } from "@/lib/plans/exercise-values";
@@ -123,6 +124,13 @@ async function seedTraining(d: Db): Promise<void> {
         `INSERT INTO exercises (spond_group_id, code, name, category, themes, organisation, execution, learning_points, created_by, updated_by)
          VALUES ('felles', $1, $2, $3, $4::text[], $5, $6, $7, 'P-KJETIL', 'P-KJETIL')`,
         [e.code, e.name, e.category, e.themes, e.organisation, e.execution, e.learning_points],
+      );
+    }
+    for (const e of ANIMATED_EXERCISES) {
+      await t.query(
+        `INSERT INTO exercises (spond_group_id, code, name, category, themes, organisation, execution, learning_points, questions, easier, harder, drawing, created_by, updated_by)
+         VALUES ('felles', $1, $2, $3, $4::text[], $5, $6, $7, $8, $9, $10, $11::jsonb, 'P-KJETIL', 'P-KJETIL')`,
+        [e.code, e.name, e.category, e.themes, e.organisation, e.execution, e.learning_points, e.questions, e.easier, e.harder, JSON.stringify(compactDrawing(validateDrawing(e.drawing)!))],
       );
     }
     // The reference plan's exercises are tagged with NFF's fagplan, so tags and filters can be tried.

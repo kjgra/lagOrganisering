@@ -16,7 +16,7 @@ import {
   View,
   Link,
 } from "@react-pdf/renderer";
-import { drawingShapes, COLOURS, type Drawing, type Shape } from "@/lib/plans/drawing";
+import { ALT_LETTERS, drawingShapes, COLOURS, type Drawing, type Shape } from "@/lib/plans/drawing";
 import { schedule, sourceText, type Plan } from "@/lib/plans/plan";
 
 /**
@@ -323,6 +323,14 @@ function PlanDocument({ plan: p, info, footer, groups }: PdfInput) {
           <Text style={s.exName}>{e.navn}</Text>
           {e.fokus ? <Rich style={{ color: GREY, marginBottom: 4 }} text={`**Fokus:** ${e.fokus}`} /> : null}
           {e.tegning ? <DrawingPdf d={e.tegning} maxWidth={contentWidth} maxHeight={355} /> : null}
+          {e.tegning
+            ? e.tegning.skisser.map((sk, j) => {
+                const v = sk.trinnliste.find((t) => t.valg)?.valg;
+                return v ? (
+                  <Rich key={`valg${j}`} style={{ color: GREY, marginTop: 2 }} text={`**Valg:** ${v.sporsmal ? `${v.sporsmal} ` : ""}${v.alternativer.map((a, k) => `${ALT_LETTERS[k]}: ${a || "–"}`).join(" · ")}`} />
+                ) : null;
+              })
+            : null}
           <View style={s.cols}>
             <View style={s.col}>
               {e.organisering.length ? (

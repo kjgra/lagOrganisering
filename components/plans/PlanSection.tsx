@@ -1,6 +1,6 @@
 import { ClipboardCheck, Copy, FileDown, Pencil, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { DrawingSvg } from "@/components/plans/DrawingSvg";
+import { DrawingPlayer } from "@/components/plans/DrawingPlayer";
 import { PlanComments } from "@/components/plans/PlanComments";
 import { PlanControls } from "@/components/plans/PlanControls";
 import { Icon } from "@/components/ui/icon";
@@ -35,7 +35,7 @@ export function ExerciseBody({ e }: { e: PlanExercise }) {
   return (
     <>
       {e.fokus ? <p style={{ margin: "0 0 var(--space-2)" }}>Fokus: {e.fokus.replaceAll("**", "")}</p> : null}
-      {e.tegning ? <DrawingSvg drawing={e.tegning} title={`Tegning av ${e.navn}`} /> : null}
+      {e.tegning ? <DrawingPlayer drawing={e.tegning} title={`Tegning av ${e.navn}`} /> : null}
       <Lines title="Organisering" items={e.organisering} />
       <Lines title="Gjennomføring" items={e.gjennomforing} />
       <Lines title="Tilpasning" items={e.tilpasning} />

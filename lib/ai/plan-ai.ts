@@ -1,5 +1,6 @@
 import { longDate } from "@/lib/format";
 import { isSensitive, namesProblem } from "@/lib/sensitive";
+import { checkAnimation, fixAnimation } from "@/lib/plans/animation";
 import { compactDrawing, fixDrawing, validateDrawing, DrawingError } from "@/lib/plans/drawing";
 import { FEEDBACK_TAGS, meanText, shouldAvoid } from "@/lib/plans/feedback";
 import {
@@ -769,6 +770,12 @@ function newExercise(e: Partial<AnswerExercise>, k: string, w: string, c: NewExe
     try {
       const d = validateDrawing(e.tegning_json);
       tegning = d ? fixDrawing(d) : null;
+      if (tegning) {
+        // Steps that cannot happen yet move to a later step; what is still wrong is told to the trainer.
+        tegning = { skisser: tegning.skisser.map(fixAnimation) };
+        const left = tegning.skisser.flatMap((sk) => checkAnimation(sk)).map((p) => p.melding);
+        if (left.length) c.warnings.push(`${w}: animasjonen bør sjekkes (${left.slice(0, 2).join(" ")}).`);
+      }
     } catch (err) {
       if (!(err instanceof DrawingError)) throw err;
       c.warnings.push(`${w}: tegningen kunne ikke brukes (${err.message}) og er utelatt.`);
