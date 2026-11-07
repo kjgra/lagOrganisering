@@ -7,6 +7,11 @@
  * titles and captions. A model never writes drawing code: the app checks
  * the JSON, moves what can be moved safely (`fixDrawing`), and renders it
  * (`drawingShapes`) to SVG in the browser and in the PDF.
+ *
+ * Animation (lib/plans/animation.ts): each arrow can have a step (`trinn`),
+ * an alternative of the sketch's one choice (`alternativ`, 1–3), and can be
+ * hidden in the still picture (`skjult`, e.g. a keeper stepping across).
+ * `trinnliste` holds a caption per step and, on one step, the choice.
  */
 
 export class DrawingError extends Error {}
@@ -28,6 +33,32 @@ export interface DrawingObject {
   side?: GoalSide;
 }
 
+export interface Arrow {
+  type: ArrowType;
+  fra: Point;
+  til: Point;
+  bue: number;
+  /** Step in the animation, from 1. */
+  trinn?: number;
+  /** Belongs to this alternative (1–3) of the sketch's choice. */
+  alternativ?: number;
+  /** Only in the animation, not in the still picture. */
+  skjult?: boolean;
+}
+
+export interface Choice {
+  sporsmal: string;
+  alternativer: string[];
+}
+
+export interface StepInfo {
+  tekst: string;
+  /** A caption per alternative, when the step differs between them. */
+  tekster?: string[];
+  /** The decision the players make in this step. */
+  valg?: Choice;
+}
+
 export interface Sketch {
   tittel: string;
   bane: { bredde: number; lengde: number; marg: number; midtlinje: boolean };
@@ -35,9 +66,10 @@ export interface Sketch {
   linjer: { fra: Point; til: Point }[];
   hjelpelinjer: { fra: Point; til: Point; tekst: string }[];
   objekter: DrawingObject[];
-  piler: { type: ArrowType; fra: Point; til: Point; bue: number }[];
+  piler: Arrow[];
   etiketter: { x: number; y: number; tekst: string }[];
   tekster: { x: number; y: number; tekst: string }[];
+  trinnliste: StepInfo[];
 }
 
 export interface Drawing {
@@ -60,7 +92,10 @@ const OBJECT_TYPES: ObjectType[] = ["spiller", "trener", "ball", "kjegle", "maal
 const ARROW_TYPES: ArrowType[] = ["pasning", "lop", "foring"];
 const GOAL_SIDES: GoalSide[] = ["venstre", "hoyre", "topp", "bunn"];
 export const DRAWING_MAX_CHARS = 20000;
-const MAX_ITEMS: Record<string, number> = { objekter: 40, piler: 20, soner: 10, linjer: 20, hjelpelinjer: 10, etiketter: 15, tekster: 15 };
+export const MAX_STEPS = 8;
+/** Letters for the alternatives of a choice. */
+export const ALT_LETTERS = ["A", "B", "C"];
+const MAX_ITEMS: Record<string, number> = { objekter: 40, piler: 20, soner: 10, linjer: 20, hjelpelinjer: 10, etiketter: 15, tekster: 15, trinnliste: MAX_STEPS };
 
 const txt = (x: unknown) => (x === null || x === undefined ? "" : String(x).trim());
 
@@ -152,16 +187,40 @@ export function validateDrawing(input: unknown): Drawing | null {
         }
         return r;
       });
+      const given = (v: unknown) => v !== undefined && v !== null && v !== "";
       const piler = list("piler").map((a) => {
         const type = txt(a.type) as ArrowType;
         if (!ARROW_TYPES.includes(type)) throw new DrawingError(`${w}Ukjent piltype «${txt(a.type)}».`);
-        return {
+        const r: Arrow = {
           type,
           fra: pt(a.fra, "Pilens start"),
           til: pt(a.til, "Pilens slutt"),
           bue: a.bue === undefined || a.bue === null ? 0 : num(a.bue, `${w}Bue`, -1, 1),
         };
+        if (given(a.trinn)) r.trinn = Math.round(num(a.trinn, `${w}Trinn`, 1, MAX_STEPS));
+        if (given(a.alternativ)) r.alternativ = Math.round(num(a.alternativ, `${w}Alternativ`, 1, ALT_LETTERS.length));
+        if (a.skjult === true) r.skjult = true;
+        return r;
       });
+      const trinnliste = list("trinnliste").map((raw, k) => {
+        const t = (raw ?? {}) as Record<string, unknown>;
+        const what = `${w}Trinn ${k + 1}`;
+        const r: StepInfo = { tekst: text(t.tekst, `${what}: Teksten`, 120) };
+        if (Array.isArray(t.tekster) && t.tekster.length) r.tekster = t.tekster.slice(0, ALT_LETTERS.length).map((x) => text(x, `${what}: Teksten`, 120));
+        if (t.valg && typeof t.valg === "object") {
+          const v = t.valg as Record<string, unknown>;
+          const alternativer = (Array.isArray(v.alternativer) ? v.alternativer : []).map((x) => text(x, `${what}: Et alternativ`, 40));
+          if (alternativer.length < 2 || alternativer.length > ALT_LETTERS.length) throw new DrawingError(`${what}: Et valg må ha 2 eller 3 alternativer.`);
+          r.valg = { sporsmal: text(v.sporsmal, `${what}: Spørsmålet`, 60), alternativer };
+        }
+        return r;
+      });
+      const choices = trinnliste.filter((t) => t.valg);
+      if (choices.length > 1) throw new DrawingError(`${w}Bare ett valg per skisse.`);
+      const nAlt = choices[0]?.valg?.alternativer.length ?? 0;
+      for (const a of piler) {
+        if (a.alternativ && a.alternativ > nAlt) throw new DrawingError(`${w}En pil hører til alternativ ${ALT_LETTERS[a.alternativ - 1]}, men skissen har ikke det alternativet.`);
+      }
       const soner = list("soner").map((z) => {
         const r = {
           x: num(z.x, `${w}Sone x`),
@@ -197,6 +256,7 @@ export function validateDrawing(input: unknown): Drawing | null {
         piler,
         etiketter: label("etiketter", "Etiketten"),
         tekster: label("tekster", "Teksten"),
+        trinnliste,
       };
     }),
   };
@@ -261,7 +321,7 @@ export function px(lay: Layout, s: Sketch, i: number, x: number, y: number): Poi
 const people = (s: Sketch) => s.objekter.map((o, i) => ({ o, i })).filter(({ o }) => o.type === "spiller" || o.type === "trener");
 
 /** Points along an arrow in metres: a quadratic curve when `bue` is not 0. */
-export function arrowPath(a: Sketch["piler"][number], n = 40): Point[] {
+export function arrowPath(a: { fra: Point; til: Point; bue: number }, n = 40): Point[] {
   const [p0, p2] = [a.fra, a.til];
   const dx = p2[0] - p0[0];
   const dy = p2[1] - p0[1];
@@ -341,7 +401,7 @@ export function checkDrawing(d: Drawing, widthPx = 1800): DrawingProblem[] {
         }
       }
     }
-    for (const a of s.piler) {
+    for (const a of s.piler.filter((x) => !x.skjult)) {
       const path = arrowPath(a);
       for (const { o } of ppl) {
         const p: Point = [o.x, o.y];
@@ -448,9 +508,10 @@ export function compactDrawing(d: Drawing): unknown {
           objekter: s.objekter.map((o) =>
             drop(o as unknown as Record<string, unknown>, { farge: "oransje", tekst: o.type === "trener" ? "T" : "" }),
           ),
-          piler: s.piler.map((a) => drop(a, { bue: 0 })),
+          piler: s.piler.map((a) => drop(a as unknown as Record<string, unknown>, { bue: 0 })),
           soner: s.soner.map((z) => drop(z, { tekst: "" })),
           hjelpelinjer: s.hjelpelinjer.map((h) => drop(h, { tekst: "" })),
+          trinnliste: s.trinnliste.map((t) => drop(t as unknown as Record<string, unknown>, { tekst: "" })),
         },
         { tittel: "" },
       ),
@@ -571,114 +632,173 @@ function textBox(out: Shape[], x: number, y: number, label: string, lay: Layout,
   });
 }
 
+/** The parts of one sketch, so the animation can move people, balls and arrows on their own. */
+export interface SketchParts {
+  /** Zones, field, lines, goals and cones. */
+  base: Shape[];
+  /** Per arrow; null for a hidden arrow (`skjult`). */
+  arrows: (Shape[] | null)[];
+  /** Per object: a person or ball drawn around (0, 0), else null. */
+  sprites: (Shape[] | null)[];
+  /** Labels, texts and the title, drawn on top. */
+  top: Shape[];
+}
+
+/** Moves shapes by (dx, dy). */
+export function moveShapes(shapes: Shape[], dx: number, dy: number): Shape[] {
+  return shapes.map((sh) => {
+    switch (sh.k) {
+      case "rect":
+        return { ...sh, x: sh.x + dx, y: sh.y + dy };
+      case "circle":
+        return { ...sh, cx: sh.cx + dx, cy: sh.cy + dy };
+      case "poly":
+        return { ...sh, points: sh.points.map(([x, y]) => [x + dx, y + dy] as Point) };
+      case "text":
+        return { ...sh, x: sh.x + dx, y: sh.y + dy };
+    }
+  });
+}
+
+/**
+ * Sketch i of the layout in parts. Arrows are shortened where a person stands
+ * at their ends; `stands` adds positions people take during the animation.
+ */
+export function sketchParts(lay: Layout, s: Sketch, i: number, stands: Point[] = []): SketchParts {
+  const sz = lay.sizes;
+  const b = s.bane;
+  const P = (x: number, y: number) => px(lay, s, i, x, y);
+  const base: Shape[] = [];
+  for (const z of s.soner) {
+    const [a, c] = [P(z.x, z.y), P(z.x + z.b, z.y + z.h)];
+    base.push({ k: "rect", x: Math.min(a[0], c[0]), y: Math.min(a[1], c[1]), w: Math.abs(c[0] - a[0]), h: Math.abs(c[1] - a[1]), fill: "#FFFFFF", opacity: 0.18 });
+    if (z.tekst) {
+      const t = P(z.x + z.b / 2, b.lengde + b.marg / 2);
+      base.push({ k: "text", x: t[0], y: t[1], text: z.tekst, size: sz.font * 0.68, fill: "#FFFFFF", bold: true, anchor: "middle" });
+    }
+  }
+  const [c0, c1] = [P(0, 0), P(b.bredde, b.lengde)];
+  base.push({ k: "rect", x: c0[0], y: c1[1], w: c1[0] - c0[0], h: c0[1] - c1[1], stroke: COLOURS.line, sw: sz.line });
+  if (b.midtlinje) base.push({ k: "poly", points: [P(b.bredde / 2, 0), P(b.bredde / 2, b.lengde)], stroke: COLOURS.line, sw: sz.line, closed: false });
+  for (const l of s.linjer) base.push({ k: "poly", points: [P(...l.fra), P(...l.til)], stroke: COLOURS.line, sw: sz.line, closed: false });
+  for (const l of s.hjelpelinjer) {
+    const m = [P(...l.fra), P(...l.til)];
+    base.push({ k: "poly", points: m, stroke: COLOURS.helper, sw: sz.line * 1.1, closed: false, dash: [sz.line * 3, sz.line * 3] });
+    if (l.tekst) {
+      const top = m[0][1] < m[1][1] ? m[0] : m[1];
+      base.push({ k: "text", x: top[0], y: top[1] - (b.marg * lay.scale) / 2, text: l.tekst, size: sz.font * 0.68, fill: COLOURS.helper, bold: true, anchor: "middle" });
+    }
+  }
+  for (const o of s.objekter) {
+    const p = P(o.x, o.y);
+    if (o.type === "maal" || o.type === "smaamaal") {
+      const depth = (o.type === "maal" ? 1.3 : 0.9) * lay.scale;
+      const half = ((o.bredde ?? 2) / 2) * lay.scale;
+      const horizontal = o.side === "venstre" || o.side === "hoyre";
+      const sign = o.side === "venstre" || o.side === "topp" ? -1 : 1;
+      const cx = horizontal ? p[0] + (sign * depth) / 2 : p[0];
+      const cy = horizontal ? p[1] : p[1] + (sign * depth) / 2;
+      const w = horizontal ? depth : 2 * half;
+      const h = horizontal ? 2 * half : depth;
+      base.push({ k: "rect", x: cx - w / 2, y: cy - h / 2, w, h, fill: "#FFFFFF" });
+      const step = o.type === "maal" ? depth / 3.5 : Math.min(w, h) / 2.2;
+      for (let x = cx - w / 2 + step; x < cx + w / 2; x += step) {
+        base.push({ k: "poly", points: [[x, cy - h / 2], [x, cy + h / 2]], stroke: o.type === "maal" ? "#d8d8d8" : "#555555", sw: sz.line * 0.5, closed: false });
+      }
+      for (let y = cy - h / 2 + step; y < cy + h / 2; y += step) {
+        base.push({ k: "poly", points: [[cx - w / 2, y], [cx + w / 2, y]], stroke: o.type === "maal" ? "#d8d8d8" : "#555555", sw: sz.line * 0.5, closed: false });
+      }
+      base.push({ k: "rect", x: cx - w / 2, y: cy - h / 2, w, h, stroke: "#FFFFFF", sw: sz.line * 1.4 });
+    }
+    if (o.type === "kjegle") {
+      const h = sz.cone;
+      base.push({
+        k: "poly",
+        points: [[p[0] - h / 2, p[1] + h * 0.38], [p[0] + h / 2, p[1] + h * 0.38], [p[0], p[1] - h * 0.5]],
+        fill: COLOURS.cone[o.farge ?? "oransje"],
+        stroke: "#c45c00",
+        sw: sz.line * 0.5,
+        closed: true,
+      });
+    }
+  }
+  const spots: Point[] = [...people(s).map(({ o }) => [o.x, o.y] as Point), ...stands];
+  const near = (pt: Point) => spots.some((o) => Math.hypot(o[0] - pt[0], o[1] - pt[1]) * lay.scale <= sz.playerR * 1.15);
+  const arrows = s.piler.map((a): Shape[] | null => {
+    if (a.skjult) return null;
+    let path = arrowPath(a).map(([x, y]) => P(x, y));
+    if (near(a.fra)) path = trimPath(path, sz.playerR + sz.gap);
+    if (near(a.til)) path = trimPath([...path].reverse(), sz.playerR + sz.gap * 2).reverse();
+    if (path.length < 2) return [];
+    const col = a.type === "pasning" ? "#FFFFFF" : "#121212";
+    const hd = head(path, sz.head);
+    const tip: Point = [(hd[1][0] + hd[2][0]) / 2, (hd[1][1] + hd[2][1]) / 2];
+    let line = [...path.slice(0, -1), tip];
+    if (a.type === "foring") line = wave(line, sz.playerR * 0.28, sz.playerR * 1.1);
+    const out: Shape[] = [
+      { k: "poly", points: line, stroke: col, sw: sz.arrow, closed: false, dash: a.type === "lop" ? [sz.arrow * 2.2, sz.arrow * 2.2] : undefined },
+      { k: "poly", points: hd, fill: col, closed: true },
+    ];
+    if (a.alternativ) {
+      // The alternative's letter in a yellow disc in the middle of the arrow.
+      const m = path[Math.floor(path.length / 2)];
+      const r = sz.playerR * 0.62;
+      out.push({ k: "circle", cx: m[0], cy: m[1], r, fill: COLOURS.helper, stroke: "#121212", sw: sz.line * 0.8 });
+      out.push({ k: "text", x: m[0], y: m[1], text: ALT_LETTERS[a.alternativ - 1], size: r * 1.15, fill: "#121212", bold: true, anchor: "middle" });
+    }
+    return out;
+  });
+  const sprites = s.objekter.map((o): Shape[] | null => {
+    if (o.type === "ball") {
+      return [
+        { k: "circle", cx: 0, cy: 0, r: sz.ballR, fill: "#FFFFFF", stroke: "#121212", sw: sz.line * 0.9 },
+        { k: "circle", cx: 0, cy: 0, r: sz.ballR * 0.38, fill: "#121212" },
+      ];
+    }
+    if (o.type !== "spiller" && o.type !== "trener") return null;
+    const fill = o.type === "trener" ? COLOURS.trainer : COLOURS.team[o.lag ?? "1"];
+    const tc = o.type === "trener" ? "#FFFFFF" : COLOURS.teamText[o.lag ?? "1"];
+    const out: Shape[] = [
+      { k: "circle", cx: sz.playerR * 0.12, cy: sz.playerR * 0.14, r: sz.playerR, fill: COLOURS.shadow },
+      { k: "circle", cx: 0, cy: 0, r: sz.playerR, fill, stroke: "#FFFFFF", sw: sz.line * 1.1 },
+    ];
+    if (o.tekst) out.push({ k: "text", x: 0, y: 0, text: o.tekst, size: sz.font * (o.tekst.length > 1 ? 0.6 : 0.72), fill: tc, bold: true, anchor: "middle" });
+    return out;
+  });
+  const top: Shape[] = [];
+  for (const l of s.etiketter) {
+    const p = P(l.x, l.y);
+    textBox(top, p[0], p[1], l.tekst, lay, 0.85, 18);
+  }
+  for (const l of s.tekster) {
+    const p = P(l.x, l.y);
+    top.push({ k: "text", x: p[0], y: p[1], text: l.tekst, size: sz.font * 0.68, fill: "#FFFFFF", bold: true, anchor: "middle" });
+  }
+  if (s.tittel) {
+    const p = P(b.bredde / 2, b.lengde + b.marg / 2);
+    textBox(top, p[0], p[1], s.tittel, lay, 0.55, 40);
+  }
+  return { base, arrows, sprites, top };
+}
+
+/** Grass: six vertical stripes. */
+export function grassShapes(lay: Layout): Shape[] {
+  return Array.from({ length: 6 }, (_, k): Shape => ({ k: "rect", x: (k * lay.width) / 6, y: 0, w: lay.width / 6 + 1, h: lay.height, fill: COLOURS.grass[k % 2] }));
+}
+
 /** The drawing as shapes in a `width` × `height` pixel box. */
 export function drawingShapes(d: Drawing, widthPx = 1800): { width: number; height: number; shapes: Shape[] } {
   const lay = layout(d, widthPx);
-  const sz = lay.sizes;
-  const out: Shape[] = [];
-  // Grass: six vertical stripes.
-  for (let k = 0; k < 6; k++) {
-    out.push({ k: "rect", x: (k * lay.width) / 6, y: 0, w: lay.width / 6 + 1, h: lay.height, fill: COLOURS.grass[k % 2] });
-  }
+  const out: Shape[] = grassShapes(lay);
   d.skisser.forEach((s, i) => {
-    const b = s.bane;
-    const P = (x: number, y: number) => px(lay, s, i, x, y);
-    for (const z of s.soner) {
-      const [a, c] = [P(z.x, z.y), P(z.x + z.b, z.y + z.h)];
-      out.push({ k: "rect", x: Math.min(a[0], c[0]), y: Math.min(a[1], c[1]), w: Math.abs(c[0] - a[0]), h: Math.abs(c[1] - a[1]), fill: "#FFFFFF", opacity: 0.18 });
-      if (z.tekst) {
-        const t = P(z.x + z.b / 2, b.lengde + b.marg / 2);
-        out.push({ k: "text", x: t[0], y: t[1], text: z.tekst, size: sz.font * 0.68, fill: "#FFFFFF", bold: true, anchor: "middle" });
-      }
-    }
-    const [c0, c1] = [P(0, 0), P(b.bredde, b.lengde)];
-    out.push({ k: "rect", x: c0[0], y: c1[1], w: c1[0] - c0[0], h: c0[1] - c1[1], stroke: COLOURS.line, sw: sz.line });
-    if (b.midtlinje) out.push({ k: "poly", points: [P(b.bredde / 2, 0), P(b.bredde / 2, b.lengde)], stroke: COLOURS.line, sw: sz.line, closed: false });
-    for (const l of s.linjer) out.push({ k: "poly", points: [P(...l.fra), P(...l.til)], stroke: COLOURS.line, sw: sz.line, closed: false });
-    for (const l of s.hjelpelinjer) {
-      const m = [P(...l.fra), P(...l.til)];
-      out.push({ k: "poly", points: m, stroke: COLOURS.helper, sw: sz.line * 1.1, closed: false, dash: [sz.line * 3, sz.line * 3] });
-      if (l.tekst) {
-        const top = m[0][1] < m[1][1] ? m[0] : m[1];
-        out.push({ k: "text", x: top[0], y: top[1] - (b.marg * lay.scale) / 2, text: l.tekst, size: sz.font * 0.68, fill: COLOURS.helper, bold: true, anchor: "middle" });
-      }
-    }
-    for (const o of s.objekter) {
-      const p = P(o.x, o.y);
-      if (o.type === "maal" || o.type === "smaamaal") {
-        const depth = (o.type === "maal" ? 1.3 : 0.9) * lay.scale;
-        const half = ((o.bredde ?? 2) / 2) * lay.scale;
-        const horizontal = o.side === "venstre" || o.side === "hoyre";
-        const sign = o.side === "venstre" || o.side === "topp" ? -1 : 1;
-        const cx = horizontal ? p[0] + (sign * depth) / 2 : p[0];
-        const cy = horizontal ? p[1] : p[1] + (sign * depth) / 2;
-        const w = horizontal ? depth : 2 * half;
-        const h = horizontal ? 2 * half : depth;
-        out.push({ k: "rect", x: cx - w / 2, y: cy - h / 2, w, h, fill: "#FFFFFF" });
-        const step = o.type === "maal" ? depth / 3.5 : Math.min(w, h) / 2.2;
-        for (let x = cx - w / 2 + step; x < cx + w / 2; x += step) {
-          out.push({ k: "poly", points: [[x, cy - h / 2], [x, cy + h / 2]], stroke: o.type === "maal" ? "#d8d8d8" : "#555555", sw: sz.line * 0.5, closed: false });
-        }
-        for (let y = cy - h / 2 + step; y < cy + h / 2; y += step) {
-          out.push({ k: "poly", points: [[cx - w / 2, y], [cx + w / 2, y]], stroke: o.type === "maal" ? "#d8d8d8" : "#555555", sw: sz.line * 0.5, closed: false });
-        }
-        out.push({ k: "rect", x: cx - w / 2, y: cy - h / 2, w, h, stroke: "#FFFFFF", sw: sz.line * 1.4 });
-      }
-      if (o.type === "kjegle") {
-        const h = sz.cone;
-        out.push({
-          k: "poly",
-          points: [[p[0] - h / 2, p[1] + h * 0.38], [p[0] + h / 2, p[1] + h * 0.38], [p[0], p[1] - h * 0.5]],
-          fill: COLOURS.cone[o.farge ?? "oransje"],
-          stroke: "#c45c00",
-          sw: sz.line * 0.5,
-          closed: true,
-        });
-      }
-    }
-    const ppl = people(s).map((x) => x.o);
-    for (const a of s.piler) {
-      let path = arrowPath(a).map(([x, y]) => P(x, y));
-      const near = (pt: Point) => ppl.some((o) => Math.hypot(o.x - pt[0], o.y - pt[1]) * lay.scale <= sz.playerR * 1.15);
-      if (near(a.fra)) path = trimPath(path, sz.playerR + sz.gap);
-      if (near(a.til)) path = trimPath([...path].reverse(), sz.playerR + sz.gap * 2).reverse();
-      if (path.length < 2) continue;
-      const col = a.type === "pasning" ? "#FFFFFF" : "#121212";
-      const hd = head(path, sz.head);
-      const base: Point = [(hd[1][0] + hd[2][0]) / 2, (hd[1][1] + hd[2][1]) / 2];
-      let line = [...path.slice(0, -1), base];
-      if (a.type === "foring") line = wave(line, sz.playerR * 0.28, sz.playerR * 1.1);
-      out.push({ k: "poly", points: line, stroke: col, sw: sz.arrow, closed: false, dash: a.type === "lop" ? [sz.arrow * 2.2, sz.arrow * 2.2] : undefined });
-      out.push({ k: "poly", points: hd, fill: col, closed: true });
-    }
-    for (const o of ppl) {
-      const p = P(o.x, o.y);
-      const fill = o.type === "trener" ? COLOURS.trainer : COLOURS.team[o.lag ?? "1"];
-      const tc = o.type === "trener" ? "#FFFFFF" : COLOURS.teamText[o.lag ?? "1"];
-      out.push({ k: "circle", cx: p[0] + sz.playerR * 0.12, cy: p[1] + sz.playerR * 0.14, r: sz.playerR, fill: COLOURS.shadow });
-      out.push({ k: "circle", cx: p[0], cy: p[1], r: sz.playerR, fill, stroke: "#FFFFFF", sw: sz.line * 1.1 });
-      if (o.tekst) {
-        const f = sz.font * (o.tekst.length > 1 ? 0.6 : 0.72);
-        out.push({ k: "text", x: p[0], y: p[1], text: o.tekst, size: f, fill: tc, bold: true, anchor: "middle" });
-      }
-    }
-    for (const o of s.objekter.filter((x) => x.type === "ball")) {
-      const p = P(o.x, o.y);
-      out.push({ k: "circle", cx: p[0], cy: p[1], r: sz.ballR, fill: "#FFFFFF", stroke: "#121212", sw: sz.line * 0.9 });
-      out.push({ k: "circle", cx: p[0], cy: p[1], r: sz.ballR * 0.38, fill: "#121212" });
-    }
-    for (const l of s.etiketter) {
-      const p = P(l.x, l.y);
-      textBox(out, p[0], p[1], l.tekst, lay, 0.85, 18);
-    }
-    for (const l of s.tekster) {
-      const p = P(l.x, l.y);
-      out.push({ k: "text", x: p[0], y: p[1], text: l.tekst, size: sz.font * 0.68, fill: "#FFFFFF", bold: true, anchor: "middle" });
-    }
-    if (s.tittel) {
-      const p = P(b.bredde / 2, b.lengde + b.marg / 2);
-      textBox(out, p[0], p[1], s.tittel, lay, 0.55, 40);
-    }
+    const parts = sketchParts(lay, s, i);
+    out.push(...parts.base);
+    for (const a of parts.arrows) if (a) out.push(...a);
+    const at = (k: number) => px(lay, s, i, s.objekter[k].x, s.objekter[k].y);
+    const sprite = (k: number) => moveShapes(parts.sprites[k]!, ...at(k));
+    s.objekter.forEach((o, k) => o.type !== "ball" && parts.sprites[k] && out.push(...sprite(k)));
+    s.objekter.forEach((o, k) => o.type === "ball" && out.push(...sprite(k)));
+    out.push(...parts.top);
   });
   return { width: lay.width, height: lay.height, shapes: out };
 }

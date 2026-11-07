@@ -74,6 +74,18 @@ const SHOTS = [
   }],
   ["16-vis-ovelse", `${G}/trening/ovelser/6/vis`],
   ["17-dekning", `${G}/trening/ovelser/dekning`],
+  ["19-animasjon", `${G}/trening/ovelser/8/vis`, async () => {
+    // «2 mot 1 mot mål» fra demobanken: spill av, velg B og stopp midt i trinn 2.
+    await p.setViewportSize({ width: 390, height: 1000 });
+    await p.waitForTimeout(1500);
+    await toTop(p.locator(".nm-player"));
+    await p.getByRole("button", { name: "Spill av" }).click();
+    await p.waitForTimeout(4500);
+    await p.getByRole("button", { name: /Dekker løpet/ }).click();
+    await p.waitForTimeout(2600);
+    await p.getByRole("button", { name: "Pause" }).click().catch(() => {});
+    await toTop(p.locator(".nm-player"));
+  }],
   ["18-bank-pc", `${G}/trening/ovelser`, async () => {
     await p.setViewportSize({ width: 1280, height: 800 });
     await p.waitForTimeout(500);

@@ -4,10 +4,11 @@ import { Save, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { deleteExerciseAction, saveExerciseAction } from "@/app/actions/training";
-import { DrawingSvg } from "@/components/plans/DrawingSvg";
+import { DrawingPlayer } from "@/components/plans/DrawingPlayer";
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
 import { NffTagger } from "@/components/training/NffTagger";
+import { StepEditor } from "@/components/training/StepEditor";
 import { checkDrawing, DrawingError, EXAMPLE_DRAWING, fixDrawing, prettyDrawing, validateDrawing, type Drawing } from "@/lib/plans/drawing";
 import type { ExerciseValues } from "@/lib/plans/exercise-values";
 import { ExerciseLicense } from "@/components/training/ExerciseLicense";
@@ -50,6 +51,13 @@ export function ExerciseForm(p: {
   const set = (k: keyof ExerciseValues) => (e: { target: { value: string } }) => setV((x) => ({ ...x, [k]: e.target.value }));
   type TextKey = { [K in keyof ExerciseValues]: ExerciseValues[K] extends string ? K : never }[keyof ExerciseValues];
   const pv = useMemo(() => preview(v.drawing), [v.drawing]);
+  const raw = useMemo(() => {
+    try {
+      return validateDrawing(v.drawing);
+    } catch {
+      return null;
+    }
+  }, [v.drawing]);
 
   const save = () =>
     start(async () => {
@@ -171,7 +179,8 @@ export function ExerciseForm(p: {
           </div>
         ) : null}
         {pv.warnings.length ? <p className="nm-hint">Merk: {pv.warnings.join(" ")}</p> : null}
-        {pv.drawing ? <DrawingSvg drawing={pv.drawing} title="Forhåndsvisning av tegningen" /> : null}
+        {pv.drawing ? <DrawingPlayer drawing={pv.drawing} title="Forhåndsvisning av tegningen" /> : null}
+        {raw ? <StepEditor drawing={raw} onChange={(d) => setV((x) => ({ ...x, drawing: prettyDrawing(d) }))} /> : null}
       </div>
 
       <ExerciseLicense contribute />

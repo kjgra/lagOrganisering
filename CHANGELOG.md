@@ -8,6 +8,16 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.35.0] – 2026-11-07
+
+Øvelsene kan spilles av som animasjon, og øvelser med valg viser begge løsningene.
+
+### Lagt til
+
+- **Animasjon:** Tegningen av en øvelse kan spilles av. Spillerne og ballen følger pilene trinn for trinn, med en kort tekst for hvert trinn. Du kan gå fram og tilbake, sette farten ned eller bytte til den vanlige skissen. Det virker i øvelsesbanken, i opplegget og på Dagens økt.
+- **Valg i øvelser:** En øvelse kan ha et valg, for eksempel «Hva gjør forsvareren?» i 2 mot 1. Velg A eller B for å se hver løsning. I skissen og PDF-en har pilene merket A eller B.
+- **Rekkefølge og valg:** Under «Endre manuelt» kan du velge trinn for hver pil, skrive tekst til trinnene og legge til et valg. På eldre øvelser gjetter appen rekkefølgen ut fra pilene.
+- KI lager trinn, tekster og eventuelle valg når den lager eller justerer en øvelse.
 ## [1.34.0] – 2026-11-07
 
 Claude kan lese øvelsesbanken for å foreslå bedre øvelser. Ingenting endres i appen for trenere.
