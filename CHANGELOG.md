@@ -8,6 +8,14 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.36.2] – 2026-11-11
+
+Bare for oss som drifter appen; trenerne merker ingenting.
+
+### Sikkerhet
+
+- Next.js er oppdatert til 16.4.6, som retter sikkerhetshullene Next.js varslet om 3. november 2026.
+
 ## [1.36.1] – 2026-11-07
 
 Bare for oss som drifter appen; trenerne merker ingenting.
