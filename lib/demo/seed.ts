@@ -45,9 +45,9 @@ async function seedAccess(d: Db): Promise<void> {
     );
     await t.query(
       `INSERT INTO member_levels (spond_group_id, spond_member_id, level, updated_by) VALUES
-         ('G-FOTBALL', 'M-S-G2016-1', 3, 'P-KJETIL'), ('G-FOTBALL', 'M-S-G2016-3', 3, 'P-KJETIL'),
-         ('G-FOTBALL', 'M-S-G2016-4', 2, 'P-KJETIL'), ('G-FOTBALL', 'M-S-G2016-6', 1, 'P-KJETIL'),
-         ('G-FOTBALL', 'M-S-G2016-8', 2, 'P-KJETIL'), ('G-FOTBALL', 'M-S-G2016-10', 1, 'P-KJETIL')`,
+         ('G-FOTBALL', 'M-S-G2016-1', 8, 'P-KJETIL'), ('G-FOTBALL', 'M-S-G2016-3', 8, 'P-KJETIL'),
+         ('G-FOTBALL', 'M-S-G2016-4', 6, 'P-KJETIL'), ('G-FOTBALL', 'M-S-G2016-6', 5, 'P-KJETIL'),
+         ('G-FOTBALL', 'M-S-G2016-8', 6, 'P-KJETIL'), ('G-FOTBALL', 'M-S-G2016-10', 5, 'P-KJETIL')`,
     );
     await t.query(
       `INSERT INTO member_pairs (spond_group_id, member_a, member_b, created_by) VALUES

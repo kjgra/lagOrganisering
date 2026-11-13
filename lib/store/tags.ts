@@ -1,10 +1,12 @@
 import type { Db } from "@/lib/db";
+import { isLevel, MIN_LEVEL, MAX_LEVEL } from "@/lib/levels";
 import { clean, tagProblem } from "@/lib/sensitive";
+import { isFocus, isStrength, MAX_FOCUS, MAX_STRENGTHS, type FocusKey, type PlayerStrengths, type StrengthKey } from "@/lib/strengths";
 import { assertGroup, assertTags, UserError, type Access, type Rights } from "./access";
 
 /**
  * Tags are the trainers' own labels on players («Keeper», «Ny»), a level
- * (1–5) and pairs of players who play well together. They belong to the main
+ * (lib/levels.ts) and pairs of players who play well together. They belong to the main
  * group, so they show in every subgroup. Only Spond ids are stored. Trainers
  * without the tags right see and use none of it.
  */
@@ -51,7 +53,7 @@ export async function setLevel(d: Db, access: Access, rights: Rights, groupId: s
     await d.query("DELETE FROM member_levels WHERE spond_group_id = $1 AND spond_member_id = $2", [groupId, memberId]);
     return;
   }
-  if (!Number.isInteger(level) || level < 1 || level > 5) throw new UserError("Nivå må være fra 1 til 5.");
+  if (!isLevel(level)) throw new UserError(`Nivå må være fra ${MIN_LEVEL} til ${MAX_LEVEL}.`);
   await d.query(
     `INSERT INTO member_levels (spond_group_id, spond_member_id, level, updated_by) VALUES ($1, $2, $3, $4)
      ON CONFLICT (spond_group_id, spond_member_id) DO UPDATE SET level = EXCLUDED.level, updated_by = EXCLUDED.updated_by, updated_at = now()`,
@@ -100,7 +102,7 @@ export async function addTag(d: Db, access: Access, rights: Rights, groupId: str
   assertTags(rights);
   const problem = tagProblem(tag);
   if (problem) throw new UserError(problem);
-  if (/^\s*[1-5]\s*$/.test(tag)) throw new UserError("Bruk nivå for tallene 1 til 5.");
+  if (/^\s*\d+\s*$/.test(tag)) throw new UserError("Bruk nivå i stedet for et tall.");
   const existing = (await d.query<{ tag: string }>("SELECT DISTINCT tag FROM member_tags WHERE spond_group_id = $1", [groupId])).map(
     (r) => r.tag,
   );
@@ -135,3 +137,51 @@ export function tagSuggestions(tags: TagMap, memberId: string, fixed: string[]):
 }
 
 export const isKeeper = (tags: string[] | undefined) => (tags ?? []).some((t) => t.toLowerCase() === "keeper");
+
+/** Styrketagger per player in a main group (prepared; not shown in the app yet). */
+export async function listStrengths(d: Db, access: Access, rights: Rights, groupId: string): Promise<Map<string, PlayerStrengths>> {
+  assertGroup(access, groupId);
+  const out = new Map<string, PlayerStrengths>();
+  if (!rights.tags) return out;
+  const rows = await d.query<{ spond_member_id: string; kind: "strength" | "focus"; tag: string }>(
+    "SELECT spond_member_id, kind, tag FROM member_strengths WHERE spond_group_id = $1 ORDER BY created_at, tag",
+    [groupId],
+  );
+  for (const r of rows) {
+    const p = out.get(r.spond_member_id) ?? { strengths: [], focus: [] };
+    // A key taken out of the list is ignored, not shown.
+    if (r.kind === "strength" && isStrength(r.tag)) p.strengths.push(r.tag);
+    if (r.kind === "focus" && isFocus(r.tag)) p.focus.push(r.tag);
+    out.set(r.spond_member_id, p);
+  }
+  return out;
+}
+
+/** Replaces a player's strengths and focus. Only keys from the fixed lists, within the limits. */
+export async function setStrengths(
+  d: Db,
+  access: Access,
+  rights: Rights,
+  groupId: string,
+  memberId: string,
+  strengths: string[],
+  focus: string[],
+): Promise<void> {
+  assertGroup(access, groupId);
+  assertTags(rights);
+  const s = [...new Set(strengths)];
+  const f = [...new Set(focus)];
+  if (!s.every(isStrength) || !f.every(isFocus)) throw new UserError("Velg fra listen.");
+  if (s.length > MAX_STRENGTHS) throw new UserError(`Velg høyst ${MAX_STRENGTHS} styrker.`);
+  if (f.length > MAX_FOCUS) throw new UserError(`Velg høyst ${MAX_FOCUS} ting å jobbe med.`);
+  const rows: [string, StrengthKey | FocusKey][] = [...s.map((k) => ["strength", k] as [string, StrengthKey]), ...f.map((k) => ["focus", k] as [string, FocusKey])];
+  await d.tx(async (t) => {
+    await t.query("DELETE FROM member_strengths WHERE spond_group_id = $1 AND spond_member_id = $2", [groupId, memberId]);
+    for (const [kind, tag] of rows) {
+      await t.query(
+        "INSERT INTO member_strengths (spond_group_id, spond_member_id, kind, tag, created_by) VALUES ($1, $2, $3, $4, $5)",
+        [groupId, memberId, kind, tag, access.profileId],
+      );
+    }
+  });
+}

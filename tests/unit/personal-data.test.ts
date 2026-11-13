@@ -11,9 +11,10 @@ const access = { profileId: "P-SA", groupIds: new Set(["G1", "G2"]) };
 beforeAll(async () => {
   d = await testDb();
   await d.query(
-    `INSERT INTO member_levels (spond_group_id, spond_member_id, level, updated_by) VALUES ('G1', 'M-1', 3, 'P-1'), ('G2', 'M-1', 4, 'P-1'), ('G1', 'M-2', 2, 'P-1')`,
+    `INSERT INTO member_levels (spond_group_id, spond_member_id, level, updated_by) VALUES ('G1', 'M-1', 8, 'P-1'), ('G2', 'M-1', 9, 'P-1'), ('G1', 'M-2', 6, 'P-1')`,
   );
   await d.query("INSERT INTO member_tags (spond_group_id, spond_member_id, tag, created_by) VALUES ('G1', 'M-1', 'Keeper', 'P-1')");
+  await d.query("INSERT INTO member_strengths (spond_group_id, spond_member_id, kind, tag, created_by) VALUES ('G1', 'M-1', 'focus', 'begge-bein', 'P-1')");
   await d.query("INSERT INTO member_pairs (spond_group_id, member_a, member_b, created_by) VALUES ('G1', 'M-1', 'M-2', 'P-2')");
   const [p] = await d.query<{ id: number }>("INSERT INTO group_proposals (spond_group_id, name, created_by) VALUES ('G1', 'Lag', 'P-1') RETURNING id");
   await d.query("INSERT INTO group_proposal_labels (proposal_id, label, sort_order) VALUES ($1, 'Lag 1', 0)", [p.id]);
@@ -37,13 +38,13 @@ describe("personal data", () => {
 
   it("shows a player's data in one group only, for the superadmin only", async () => {
     const p = await playerData(d, access, sa, "G1", "M-1");
-    expect(Object.keys(p.rows).sort()).toEqual(["group_proposal_members.spond_member_id", "member_levels.spond_member_id", "member_pairs.member_a", "member_tags.spond_member_id"]);
-    expect(p.count).toBe(4);
+    expect(Object.keys(p.rows).sort()).toEqual(["group_proposal_members.spond_member_id", "member_levels.spond_member_id", "member_pairs.member_a", "member_strengths.spond_member_id", "member_tags.spond_member_id"]);
+    expect(p.count).toBe(5);
     await expect(playerData(d, access, { ...sa, superadmin: false }, "G1", "M-1")).rejects.toThrow();
   });
 
   it("erases a player in one group and keeps the other group", async () => {
-    expect(await erasePlayer(d, access, sa, "G1", "M-1")).toBe(4);
+    expect(await erasePlayer(d, access, sa, "G1", "M-1")).toBe(5);
     expect((await playerData(d, access, sa, "G1", "M-1")).count).toBe(0);
     expect((await playerData(d, access, sa, "G2", "M-1")).count).toBe(1);
     expect((await playerData(d, access, sa, "G1", "M-2")).count).toBe(2);

@@ -123,8 +123,9 @@ describe("unwrap jsonb migration", () => {
 
 describe("tag types migration", () => {
   it("turns number tags into levels, the newest winning, and keeps other tags", async () => {
-    const d = await testDb();
-    // Re-run the conversion from the migration on fresh tags.
+    const d = await testDb({ admin: true });
+    // Re-run the conversion from the migration on fresh tags, on the old 1–5 scale.
+    await d.query("ALTER TABLE member_levels DROP CONSTRAINT member_levels_level_check");
     await d.query(
       `INSERT INTO member_tags (spond_group_id, spond_member_id, tag, created_by, created_at)
        VALUES ('G1', 'M-1', '1', 'P-1', '2026-05-01'), ('G1', 'M-1', '2', 'P-1', '2026-05-02'),
@@ -134,6 +135,23 @@ describe("tag types migration", () => {
     await d.query(sql.slice(sql.indexOf("INSERT INTO member_levels")));
     expect(await d.query("SELECT spond_member_id, level FROM member_levels")).toEqual([{ spond_member_id: "M-1", level: 2 }]);
     expect(await d.query("SELECT tag FROM member_tags ORDER BY tag")).toEqual([{ tag: "7" }, { tag: "Keeper" }]);
+    await d.close();
+  });
+});
+
+describe("level scale 5–10 migration", () => {
+  it("moves the old levels 1–5 lowest to lowest, highest to highest, and refuses anything below 5", async () => {
+    const d = await testDb({ admin: true });
+    await d.query("ALTER TABLE member_levels DROP CONSTRAINT member_levels_level_check");
+    await d.query(
+      `INSERT INTO member_levels (spond_group_id, spond_member_id, level, updated_by)
+       VALUES ('G1', 'M-1', 1, 'P-1'), ('G1', 'M-2', 2, 'P-1'), ('G1', 'M-3', 3, 'P-1'), ('G1', 'M-4', 4, 'P-1'), ('G1', 'M-5', 5, 'P-1')`,
+    );
+    const sql = (await migrationFiles()).find((m) => m.name.endsWith("_levels_and_strengths.sql"))!.sql;
+    await d.query(sql.slice(sql.indexOf("UPDATE member_levels"), sql.indexOf("CREATE TABLE member_strengths")));
+    expect((await d.query<{ level: number }>("SELECT level FROM member_levels ORDER BY spond_member_id")).map((r) => r.level)).toEqual([5, 6, 8, 9, 10]);
+    await expect(d.query("UPDATE member_levels SET level = 4 WHERE spond_member_id = 'M-1'")).rejects.toThrow(/member_levels_level_check/);
+    await expect(d.query("UPDATE member_levels SET level = 11 WHERE spond_member_id = 'M-1'")).rejects.toThrow(/member_levels_level_check/);
     await d.close();
   });
 });

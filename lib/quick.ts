@@ -59,7 +59,8 @@ export function quickMinutes(standard: number | null, start: string | null, end:
 
 export function distributionText(s: BoardSettings | null, hasPrevious: boolean): string {
   if (!s) return "Tilfeldig";
-  const parts = [s.mode === "levels" ? "Nivådelt" : "Jevne lag"];
+  const MODE_TEXT: Record<BoardSettings["mode"], string> = { even: "Jevne lag", levels: "Nivådelt", mix: "Blandede styrker", focus: "Samme mål sammen" };
+  const parts = [MODE_TEXT[s.mode]];
   if (s.roles.length) parts.push(`${s.roles.join(", ").toLowerCase()} spres`);
   if (hasPrevious && s.history === "rotate") parts.push("nye lagkamerater");
   if (hasPrevious && s.history === "same") parts.push("lagkamerater som sist");

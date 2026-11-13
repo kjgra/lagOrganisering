@@ -8,6 +8,18 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.37.0] – 2026-11-13
+
+Nivå har fått en finere skala, som trenergruppa ble enige om.
+
+### Endret
+
+- Nivået på en spiller velges nå på en skala med flere trinn. Nivåene dere allerede har satt, er flyttet over til den nye skalaen, så lagfordelingen fungerer som før. Se gjerne over nivåene og juster der det trengs.
+
+### Lagt til
+
+- Appen er klargjort for styrketagger (det en spiller er god på, og det spilleren jobber med). Dere ser ingenting av dette ennå; det blir bare tatt i bruk hvis trenergruppa vil.
+
 ## [1.36.2] – 2026-11-11
 
 Bare for oss som drifter appen; trenerne merker ingenting.

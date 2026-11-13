@@ -1,7 +1,7 @@
 import type { Db } from "@/lib/db";
 
 /**
- * Players who have left: levels, tags and pairs are deleted when a player
+ * Players who have left: levels, tags, strengths and pairs are deleted when a player
  * has been missing from the Spond group for DEPARTED_DAYS.
  *
  * Runs after a login with the groups the user has an access role in, so
@@ -26,6 +26,7 @@ export interface DepartedResult {
 const MEMBER_DATA = `
   SELECT spond_member_id AS id FROM member_levels WHERE spond_group_id = $1
   UNION SELECT spond_member_id FROM member_tags WHERE spond_group_id = $1
+  UNION SELECT spond_member_id FROM member_strengths WHERE spond_group_id = $1
   UNION SELECT member_a FROM member_pairs WHERE spond_group_id = $1
   UNION SELECT member_b FROM member_pairs WHERE spond_group_id = $1`;
 
@@ -54,6 +55,7 @@ export async function syncDeparted(d: Db, groups: GroupMembers[], now: Date = ne
       if (!gone.length) return;
       await t.query("DELETE FROM member_levels WHERE spond_group_id = $1 AND spond_member_id = ANY($2::text[])", [g.id, gone]);
       await t.query("DELETE FROM member_tags WHERE spond_group_id = $1 AND spond_member_id = ANY($2::text[])", [g.id, gone]);
+      await t.query("DELETE FROM member_strengths WHERE spond_group_id = $1 AND spond_member_id = ANY($2::text[])", [g.id, gone]);
       await t.query("DELETE FROM member_pairs WHERE spond_group_id = $1 AND (member_a = ANY($2::text[]) OR member_b = ANY($2::text[]))", [g.id, gone]);
       res.deleted += gone.length;
     });

@@ -40,7 +40,7 @@ it("finds the next free team name", () => {
 });
 
 describe("distribute with levels and pairs", () => {
-  const lv = [5, 5, 4, 4, 3, 3, 2, 2, 1, 1];
+  const lv = [10, 10, 9, 9, 8, 8, 6, 6, 5, 5];
   const team = lv.map((level, i) => ({ id: `q${i}`, name: `Q${i}`, tags: i === 9 ? ["keeper"] : [], coach: false, level }));
   const sum = (a: Record<string, string>, l: string) => team.filter((p) => a[p.id] === l).reduce((s, p) => s + p.level, 0);
 
@@ -71,7 +71,7 @@ describe("distribute with levels and pairs", () => {
 describe("distribute: Fordeling", () => {
   const sizes = (a: Record<string, string>, labels: string[]) => labels.map((l) => Object.values(a).filter((x) => x === l).length);
   const labels = ["A", "B", "C"];
-  const banded = [5, 5, 5, 5, 3, 3, 3, 3, 1, 1, 1, 1].map((level, i) => ({ id: `b${i}`, name: `B${i}`, coach: false, level }));
+  const banded = [10, 10, 10, 10, 8, 8, 8, 8, 6, 6, 6, 6].map((level, i) => ({ id: `b${i}`, name: `B${i}`, coach: false, level }));
   const levelsOf = (a: Record<string, string>, l: string) => banded.filter((p) => a[p.id] === l).map((p) => p.level);
 
   it("nivådelt puts players of the same level together, in random team order", () => {
@@ -80,23 +80,42 @@ describe("distribute: Fordeling", () => {
       const a = distribute(banded, labels, seed, { mode: "levels" });
       expect(sizes(a, labels)).toEqual([4, 4, 4]);
       for (const l of labels) expect(new Set(levelsOf(a, l)).size).toBe(1);
-      strongest.add(labels.find((l) => levelsOf(a, l)[0] === 5)!);
+      strongest.add(labels.find((l) => levelsOf(a, l)[0] === 10)!);
     }
     expect(strongest.size).toBeGreaterThan(1);
   });
 
   it("jevne lag mixes the same players instead", () => {
     const a = distribute(banded, labels, 1, { mode: "even" });
-    for (const l of labels) expect(levelsOf(a, l).reduce((s, x) => s + x, 0)).toBe(12);
+    for (const l of labels) expect(levelsOf(a, l).reduce((s, x) => s + x, 0)).toBe(32);
   });
 
   it("nivådelt keeps a pair one level apart, but not one far apart", () => {
-    const four = [5, 5, 4, 4, 2, 2, 1, 1].map((level, i) => ({ id: `f${i}`, name: `F${i}`, coach: false, level }));
+    const four = [10, 10, 9, 9, 6, 6, 5, 5].map((level, i) => ({ id: `f${i}`, name: `F${i}`, coach: false, level }));
     for (const seed of [1, 2, 3]) {
       const near = distribute(four, ["A", "B"], seed, { mode: "levels", pairs: [["f0", "f2"]] });
       expect(near.f0).toBe(near.f2);
       const far = distribute(four, ["A", "B"], seed, { mode: "levels", pairs: [["f0", "f7"]] });
       expect(far.f0).not.toBe(far.f7);
+    }
+  });
+
+  it("blandede styrker spreads each kind of strength over the teams, and ignores levels", () => {
+    const kinds = ["rask", "gode-pasninger", "leser-spillet", "lagspiller"];
+    const kids = Array.from({ length: 12 }, (_, i) => ({ id: `s${i}`, name: `S${i}`, coach: false, level: i < 6 ? 10 : 5, strengths: [kinds[Math.floor(i / 3)]] }));
+    for (const seed of [1, 2, 3]) {
+      const a = distribute(kids, labels, seed, { mode: "mix" });
+      expect(sizes(a, labels)).toEqual([4, 4, 4]);
+      for (let k = 0; k < 4; k++) expect(new Set([0, 1, 2].map((j) => a[`s${k * 3 + j}`])).size).toBe(3);
+    }
+  });
+
+  it("samme mål sammen puts players who work on the same thing on one team", () => {
+    const goals = ["begge-bein", "vage-a-utfordre", "mottak-i-fart"];
+    const kids = Array.from({ length: 12 }, (_, i) => ({ id: `m${i}`, name: `M${i}`, coach: false, focus: [goals[i % 3]] }));
+    for (const seed of [1, 2, 3]) {
+      const a = distribute(kids, labels, seed, { mode: "focus" });
+      for (let g = 0; g < 3; g++) expect(new Set(kids.filter((_, i) => i % 3 === g).map((k) => a[k.id])).size).toBe(1);
     }
   });
 
@@ -117,10 +136,10 @@ describe("distribute: Fordeling", () => {
   });
 
   it("is quick for a big group with everything on", () => {
-    const big = Array.from({ length: 40 }, (_, i) => ({ id: `g${i}`, name: `G${i}`, coach: false, level: (i % 5) + 1, tags: i % 8 ? [] : ["Keeper"] }));
+    const big = Array.from({ length: 40 }, (_, i) => ({ id: `g${i}`, name: `G${i}`, coach: false, level: [5, 6, 8, 9, 10][i % 5], tags: i % 8 ? [] : ["Keeper"] }));
     const pairs = Array.from({ length: 10 }, (_, i) => [`g${i}`, `g${i + 20}`] as [string, string]);
     const t = performance.now();
-    for (const mode of ["even", "levels"] as const) distribute(big, ["A", "B", "C", "D"], 3, { mode, pairs });
+    for (const mode of ["even", "levels", "mix", "focus"] as const) distribute(big, ["A", "B", "C", "D"], 3, { mode, pairs });
     expect(performance.now() - t).toBeLessThan(1500);
   });
 });
@@ -151,7 +170,7 @@ describe("distribute: forrige treninger", () => {
   });
 
   it("«Rullér» still keeps the teams even on level", () => {
-    const lv = kids.map((k, i) => ({ ...k, level: (i % 4) + 2 }));
+    const lv = kids.map((k, i) => ({ ...k, level: (i % 4) + 6 }));
     const a = distribute(lv, labels, 1, { history: "rotate", previous: [last, last] });
     const sums = labels.map((l) => lv.filter((p) => a[p.id] === l).reduce((s, p) => s + p.level, 0));
     expect(Math.max(...sums) - Math.min(...sums)).toBeLessThanOrEqual(2);

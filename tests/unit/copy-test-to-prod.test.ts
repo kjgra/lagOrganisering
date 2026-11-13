@@ -98,7 +98,7 @@ describe("copy test to prod", () => {
     await copyTestToProd(x, y, { apply: true });
     expect(await y.query("SELECT spond_member_id, level FROM member_levels ORDER BY spond_member_id")).toEqual([
       { spond_member_id: "M-1", level: 5 },
-      { spond_member_id: "M-2", level: 3 },
+      { spond_member_id: "M-2", level: 8 },
     ]);
     await Promise.all([x.close(), y.close()]);
   });
@@ -191,8 +191,8 @@ describe("copy tags, proposals and plans", () => {
       ai_usage: [1, 0, 0],
     });
     expect(await b.query("SELECT spond_member_id, level FROM member_levels ORDER BY spond_member_id")).toEqual([
-      { spond_member_id: "M-1", level: 2 },
-      { spond_member_id: "M-9", level: 1 },
+      { spond_member_id: "M-1", level: 6 },
+      { spond_member_id: "M-9", level: 5 },
     ]);
     expect(await b.query("SELECT tag FROM member_tags")).toEqual([{ tag: "Keeper" }]);
     expect(rs.find((r) => r.table === "training_plans")?.skipped).toBe(1);
