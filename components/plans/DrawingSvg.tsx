@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { drawingShapes, type Drawing, type Shape } from "@/lib/plans/drawing";
 
 /** One shape from `drawingShapes` as SVG. */
@@ -32,12 +33,27 @@ export function Shapes({ shapes }: { shapes: Shape[] }) {
   );
 }
 
-/** A drawing as inline SVG (scales to its container). */
-export function DrawingSvg({ drawing, title }: { drawing: Drawing; title?: string }) {
+/**
+ * The box a full-size drawing sits in: as wide as the page, but never so tall
+ * that it fills the screen on a PC (the player's buttons sit on the picture).
+ */
+export function fitStyle(width: number, height: number): CSSProperties {
+  return { "--ratio": (width / height).toFixed(3) } as CSSProperties;
+}
+
+/** A drawing as inline SVG (scales to its container). `fit` caps its height to the screen. */
+export function DrawingSvg({ drawing, title, fit }: { drawing: Drawing; title?: string; fit?: boolean }) {
   const { width, height, shapes } = drawingShapes(drawing, 1200);
-  return (
+  const svg = (
     <svg viewBox={`0 0 ${width} ${height}`} width="100%" role="img" aria-label={title ?? "Tegning av øvelsen"} style={{ display: "block", borderRadius: "var(--radius-md)" }}>
       <Shapes shapes={shapes} />
     </svg>
+  );
+  return fit ? (
+    <div className="nm-drawing" style={fitStyle(width, height)}>
+      {svg}
+    </div>
+  ) : (
+    svg
   );
 }

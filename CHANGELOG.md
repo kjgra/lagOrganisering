@@ -8,6 +8,20 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.39.0] – 2026-11-13
+
+Se øvelsene før du velger dem, og tegningene får plass på PC-skjermen.
+
+### Lagt til
+
+- I «Lag opplegg» har hver øvelse i banken et lite bilde av tegningen. Trykk på øvelsen for å se hele: tegning eller animasjon, organisering, gjennomføring, læringsmomenter og hva andre trenere syns. Legg den til eller fjern den rett derfra, og bla videre med «Forrige» og «Neste» (#105).
+
+### Endret
+
+- Tegninger og animasjoner er ikke lenger så store på PC at de fyller hele skjermen. Du ser hele bildet og knappene samtidig.
+- Knappene for forrige trinn, spill av og neste trinn ligger nå på selve bildet, nede i hjørnet. Mens animasjonen spilles, blir de svakere, så du ser hva som skjer under dem. Trykk på bildet for å starte eller stoppe.
+- Valget av fart (½×) er tatt bort.
+
 ## [1.38.0] – 2026-11-13
 
 Evalueringen etter trening går raskere, som trenerne ønsket på trenermøtet.

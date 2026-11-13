@@ -89,6 +89,13 @@ const SHOTS = [
     await p.getByRole("button", { name: "Pause" }).click().catch(() => {});
     await toTop(p.locator(".nm-player"));
   }],
+  ["20-forhandsvis", `${NEXT}/opplegg/endre`, async () => {
+    // Trykk på en øvelse i «Lag opplegg» for å se den før den legges til (#105).
+    await p.waitForTimeout(1500);
+    await p.getByRole("button", { name: /^Vis 2 mot 1 mot mål/ }).first().click();
+    await p.getByRole("dialog", { name: "2 mot 1 mot mål" }).waitFor();
+    await p.waitForTimeout(400);
+  }],
   ["18-bank-pc", `${G}/trening/ovelser`, async () => {
     await p.setViewportSize({ width: 1280, height: 800 });
     await p.waitForTimeout(500);

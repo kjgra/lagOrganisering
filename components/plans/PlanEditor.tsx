@@ -1,13 +1,16 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Plus, Save, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Plus, Save, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { savePlanAction } from "@/app/actions/plans";
+import { DrawingSvg } from "@/components/plans/DrawingSvg";
+import { ExerciseBody } from "@/components/plans/ExerciseBody";
 import { DraftNote, LeaveGuard, useLocalDraft } from "@/components/ui/draft";
 import { Icon } from "@/components/ui/icon";
+import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/toast";
-import type { PlanSettings } from "@/lib/plans/plan";
+import type { PlanExercise, PlanSettings } from "@/lib/plans/plan";
 
 export interface EditorExercise {
   key: string;
@@ -15,6 +18,16 @@ export interface EditorExercise {
   name: string;
   category: string;
   note: string;
+  /** The whole exercise, shown when the coach taps it (issue #105). */
+  preview?: { exercise: PlanExercise; facts: string; rating: string };
+}
+
+const MAX_EXERCISES = 8;
+
+/** The first sketch of an exercise, small, or nothing. */
+function Thumb({ x }: { x: EditorExercise }) {
+  const d = x.preview?.exercise.tegning;
+  return <span className="nm-edthumb">{d?.skisser.length ? <DrawingSvg drawing={{ skisser: [d.skisser[0]] }} title="" /> : null}</span>;
 }
 
 const num = (s: string, lo: number, hi: number) => Math.min(hi, Math.max(lo, Math.round(Number(s) || 0)));
@@ -61,7 +74,36 @@ export function PlanEditor(props: {
     const n = list.length;
     return s.oppvarming + n * s.stasjon + Math.max(0, n - 1) * (n > 1 ? s.bytte : 0) + s.avslutning;
   }, [list.length, s]);
+  // The exercise shown in the sheet, and which list «Forrige»/«Neste» walk through.
+  const [shown, setShown] = useState<{ key: string; from: "list" | "bank" } | null>(null);
   const filtered = props.bank.filter((b) => !list.some((x) => x.key === b.key) && (!query || `${b.name} ${b.category}`.toLowerCase().includes(query.toLowerCase())));
+  const add = (x: EditorExercise) => {
+    if (list.length >= MAX_EXERCISES || list.some((y) => y.key === x.key)) return;
+    setList((l) => [...l, x]);
+    toast(`${x.name} lagt til som nr. ${list.length + 1}`);
+  };
+  const remove = (x: EditorExercise) => {
+    setList((l) => l.filter((y) => y.key !== x.key));
+    toast(`${x.name} fjernet`);
+  };
+  // Walk the list the sheet was opened from; the bank keeps an exercise in place after it is added.
+  const walk = shown ? (shown.from === "list" ? list : props.bank.filter((b) => b.key === shown.key || filtered.includes(b))) : [];
+  const at = shown ? walk.findIndex((x) => x.key === shown.key) : -1;
+  const current = at >= 0 ? walk[at] : null;
+  const open = (x: EditorExercise, from: "list" | "bank") => setShown({ key: x.key, from });
+  const opener = (x: EditorExercise, label: string, from: "list" | "bank") => (
+    <button type="button" className="nm-pick__open" onClick={() => open(x, from)} aria-label={`Vis ${x.name}`}>
+      <Thumb x={x} />
+      <span>
+        <strong>{label}</strong>
+        <span className="nm-hint" style={{ display: "block" }}>
+          {x.category}
+          {x.note ? ` · ${x.note}` : ""}
+        </span>
+      </span>
+    </button>
+  );
+
   const move = (i: number, d: number) =>
     setList((l) => {
       const j = i + d;
@@ -140,22 +182,14 @@ export function PlanEditor(props: {
         {list.length ? null : <p className="nm-muted" style={{ margin: 0 }}>Velg øvelser fra banken under.</p>}
         {list.map((x, i) => (
           <div key={x.key} className="nm-pick">
-            <div>
-              <strong>
-                {i + 1}. {x.name}
-              </strong>
-              <div className="nm-hint">
-                {x.category}
-                {x.note ? ` · ${x.note}` : ""}
-              </div>
-            </div>
+            {opener(x, `${i + 1}. ${x.name}`, "list")}
             <button type="button" className="nm-iconbtn" aria-label={`Flytt ${x.name} opp`} disabled={i === 0} onClick={() => move(i, -1)}>
               <Icon icon={ArrowUp} />
             </button>
             <button type="button" className="nm-iconbtn" aria-label={`Flytt ${x.name} ned`} disabled={i === list.length - 1} onClick={() => move(i, 1)}>
               <Icon icon={ArrowDown} />
             </button>
-            <button type="button" className="nm-iconbtn" aria-label={`Fjern ${x.name}`} onClick={() => setList((l) => l.filter((y) => y.key !== x.key))}>
+            <button type="button" className="nm-iconbtn" aria-label={`Fjern ${x.name}`} onClick={() => remove(x)}>
               <Icon icon={X} />
             </button>
           </div>
@@ -170,14 +204,8 @@ export function PlanEditor(props: {
         <input id="bank-q" className="nm-input" style={{ margin: "var(--space-2) 0" }} placeholder="Søk" value={query} onChange={(e) => setQuery(e.target.value)} />
         {filtered.map((b) => (
           <div key={b.key} className="nm-pick">
-            <div>
-              <strong>{b.name}</strong>
-              <div className="nm-hint">
-                {b.category}
-                {b.note ? ` · ${b.note}` : ""}
-              </div>
-            </div>
-            <button type="button" className="nm-btn nm-btn--secondary" disabled={list.length >= 8} onClick={() => setList((l) => [...l, b])}>
+            {opener(b, b.name, "bank")}
+            <button type="button" className="nm-btn nm-btn--secondary" disabled={list.length >= MAX_EXERCISES} onClick={() => add(b)} aria-label={`Legg til ${b.name}`}>
               <Icon icon={Plus} />
               Legg til
             </button>
@@ -262,6 +290,72 @@ export function PlanEditor(props: {
           {props.baseId && !props.copy ? "Lagre som ny versjon" : "Lagre opplegget"}
         </button>
       </div>
+      {current ? (
+        <Sheet title={current.name} onClose={() => setShown(null)} wide>
+          <div className="nm-preview">
+            {current.preview ? (
+              <>
+                {current.preview.facts ? <p className="nm-hint" style={{ margin: 0 }}>{current.preview.facts}</p> : null}
+                {current.preview.rating ? <p className="nm-hint" style={{ margin: "var(--space-1) 0 0" }}>{current.preview.rating}</p> : null}
+                <ExerciseBody key={current.key} e={current.preview.exercise} />
+              </>
+            ) : (
+              <p className="nm-muted">Ingen detaljer for denne øvelsen.</p>
+            )}
+            <div className="nm-preview__nav">
+              <button type="button" className="nm-btn nm-btn--ghost" disabled={at <= 0} onClick={() => setShown({ ...shown!, key: walk[at - 1].key })}>
+                <Icon icon={ChevronLeft} />
+                Forrige
+              </button>
+              <span className="nm-hint">
+                {at + 1} av {walk.length}
+              </span>
+              <button type="button" className="nm-btn nm-btn--ghost" disabled={at >= walk.length - 1} onClick={() => setShown({ ...shown!, key: walk[at + 1].key })}>
+                Neste
+                <Icon icon={ChevronRight} />
+              </button>
+            </div>
+            <div className="nm-preview__actions">
+              {list.some((y) => y.key === current.key) ? (
+                <>
+                  <button
+                    type="button"
+                    className="nm-btn nm-btn--secondary"
+                    onClick={() => {
+                      remove(current);
+                      setShown(null);
+                    }}
+                  >
+                    <Icon icon={X} />
+                    Fjern fra opplegget
+                  </button>
+                  <button type="button" className="nm-btn nm-btn--primary" onClick={() => setShown(null)}>
+                    Ferdig
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button type="button" className="nm-btn nm-btn--secondary" onClick={() => setShown(null)}>
+                    Lukk
+                  </button>
+                  <button
+                    type="button"
+                    className="nm-btn nm-btn--primary"
+                    disabled={list.length >= MAX_EXERCISES}
+                    onClick={() => {
+                      add(current);
+                      setShown(null);
+                    }}
+                  >
+                    <Icon icon={Plus} />
+                    Legg til i opplegget
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </Sheet>
+      ) : null}
     </form>
   );
 }

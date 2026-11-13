@@ -1,8 +1,8 @@
 "use client";
 
-import { GitBranch, Image as ImageIcon, Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { GitBranch, Image as ImageIcon, Pause, Play, RotateCcw, SkipBack, SkipForward } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { DrawingSvg, Shapes } from "@/components/plans/DrawingSvg";
+import { DrawingSvg, fitStyle, Shapes } from "@/components/plans/DrawingSvg";
 import { Icon } from "@/components/ui/icon";
 import { allStands, buildTimeline, canAnimate, choiceOf, HOLD, positionsAt } from "@/lib/plans/animation";
 import { ALT_LETTERS, grassShapes, layout, px, sketchParts, type Drawing } from "@/lib/plans/drawing";
@@ -12,10 +12,11 @@ const WIDTH = 1200;
 /**
  * A drawing that can be played step by step: people and balls follow the
  * arrows. «Skisse» shows the still picture. Drawings without arrows are just
- * the picture.
+ * the picture. Back, play and forward sit on the picture, like a video, and
+ * the picture is kept low enough on a PC to see it all (issue #105).
  */
 export function DrawingPlayer({ drawing, title }: { drawing: Drawing; title?: string }) {
-  if (!drawing.skisser.some(canAnimate)) return <DrawingSvg drawing={drawing} title={title} />;
+  if (!drawing.skisser.some(canAnimate)) return <DrawingSvg drawing={drawing} title={title} fit />;
   return <Player drawing={drawing} title={title} />;
 }
 
@@ -36,7 +37,6 @@ function Player({ drawing, title }: { drawing: Drawing; title?: string }) {
   const [pick, setPick] = useState(0);
   const [alt, setAlt] = useState(1);
   const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1);
   const [pos, setPos] = useState<Pos>(START);
   // The animation loop reads and writes the position here; the state above is what is drawn.
   const live = useRef<Pos>(START);
@@ -68,7 +68,7 @@ function Player({ drawing, title }: { drawing: Drawing; title?: string }) {
     let raf = 0;
     let last = -1;
     const tick = (now: number) => {
-      const dt = last < 0 ? 0 : (Math.min(100, now - last) / 1000) * speed;
+      const dt = last < 0 ? 0 : Math.min(100, now - last) / 1000;
       last = now;
       const steps = timeline.current.steps;
       const q = { ...live.current };
@@ -94,7 +94,7 @@ function Player({ drawing, title }: { drawing: Drawing; title?: string }) {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [playing, speed]);
+  }, [playing]);
 
   /** Plays step `step` (and the rest when `all`), or jumps to its end without motion. */
   const run = (step: number, all: boolean) => {
@@ -154,7 +154,7 @@ function Player({ drawing, title }: { drawing: Drawing; title?: string }) {
       </div>
       {mode === "static" ? (
         <>
-          <DrawingSvg drawing={drawing} title={title} />
+          <DrawingSvg drawing={drawing} title={title} fit />
           {drawing.skisser.map((s, i) => {
             const c = choiceOf(s);
             return c ? (
@@ -193,46 +193,42 @@ function Player({ drawing, title }: { drawing: Drawing; title?: string }) {
               ))}
             </div>
           ) : null}
-          <svg viewBox={`0 0 ${lay.width} ${lay.height}`} width="100%" role="img" aria-label={`${title ?? "Tegning av øvelsen"}, animert`} className="nm-player__pitch">
-            <Shapes shapes={grass} />
-            <Shapes shapes={parts.base} />
-            {parts.arrows.map((a, i) =>
-              a ? (
-                <g key={i} opacity={opacity(i)} className="nm-player__arrow">
-                  <Shapes shapes={a} />
-                </g>
-              ) : null,
-            )}
-            {[false, true].map((balls) =>
-              parts.sprites.map((sp, i) => {
-                if (!sp || (sketch.objekter[i].type === "ball") !== balls) return null;
-                const at = px(lay, sketch, 0, ...positions[i]);
-                return (
-                  <g key={`${balls}${i}`} transform={`translate(${at[0].toFixed(1)} ${at[1].toFixed(1)})`}>
-                    <Shapes shapes={sp} />
+          <div className="nm-drawing" style={fitStyle(lay.width, lay.height)}>
+            <svg viewBox={`0 0 ${lay.width} ${lay.height}`} width="100%" role="img" aria-label={`${title ?? "Tegning av øvelsen"}, animert`} className="nm-player__pitch" onClick={play}>
+              <Shapes shapes={grass} />
+              <Shapes shapes={parts.base} />
+              {parts.arrows.map((a, i) =>
+                a ? (
+                  <g key={i} opacity={opacity(i)} className="nm-player__arrow">
+                    <Shapes shapes={a} />
                   </g>
-                );
-              }),
-            )}
-            <Shapes shapes={parts.top} />
-          </svg>
-          {choice ? (
-            <div className="nm-player__choice">
-              <p className="nm-player__question">
-                <Icon icon={GitBranch} size={18} />
-                Valg i trinn {choice.step + 1}
-                {choice.sporsmal ? `: ${choice.sporsmal}` : ""}
-              </p>
-              <div className="nm-player__alts" role="group" aria-label={choice.sporsmal || "Velg alternativ"}>
-                {choice.alternativer.map((a, j) => (
-                  <button key={j} type="button" aria-pressed={alt === j + 1} onClick={() => chooseAlt(j + 1)}>
-                    <span className="nm-alt-letter">{ALT_LETTERS[j]}</span>
-                    {a || `Alternativ ${ALT_LETTERS[j]}`}
-                  </button>
-                ))}
-              </div>
+                ) : null,
+              )}
+              {[false, true].map((balls) =>
+                parts.sprites.map((sp, i) => {
+                  if (!sp || (sketch.objekter[i].type === "ball") !== balls) return null;
+                  const at = px(lay, sketch, 0, ...positions[i]);
+                  return (
+                    <g key={`${balls}${i}`} transform={`translate(${at[0].toFixed(1)} ${at[1].toFixed(1)})`}>
+                      <Shapes shapes={sp} />
+                    </g>
+                  );
+                }),
+              )}
+              <Shapes shapes={parts.top} />
+            </svg>
+            <div className="nm-player__overlay" data-playing={playing || undefined}>
+              <button type="button" className="nm-player__ctl" onClick={prev} disabled={k === 0 && t === 0} aria-label="Forrige trinn">
+                <Icon icon={SkipBack} />
+              </button>
+              <button type="button" className="nm-player__ctl nm-player__ctl--play" onClick={play} aria-label={playing ? "Pause" : done ? "Spill igjen" : "Spill av"} title={playing ? "Pause" : done ? "Spill igjen" : "Spill av"}>
+                <Icon icon={playing ? Pause : done ? RotateCcw : Play} />
+              </button>
+              <button type="button" className="nm-player__ctl" onClick={next} disabled={done} aria-label="Neste trinn">
+                <Icon icon={SkipForward} />
+              </button>
             </div>
-          ) : null}
+          </div>
           <div className="nm-player__progress" aria-hidden="true">
             {tl.steps.map((s, i) => (
               <span key={i}>
@@ -251,21 +247,23 @@ function Player({ drawing, title }: { drawing: Drawing; title?: string }) {
               {text || (n > 1 ? `Trinn ${k + 1} av ${n}` : "Alle beveger seg samtidig")}
             </p>
           </div>
-          <div className="nm-player__controls">
-            <button type="button" className="nm-btn nm-btn--secondary nm-player__icon" onClick={prev} disabled={k === 0 && t === 0} aria-label="Forrige trinn">
-              <Icon icon={SkipBack} />
-            </button>
-            <button type="button" className="nm-btn nm-btn--primary nm-btn--lg nm-player__play" onClick={play}>
-              <Icon icon={playing ? Pause : Play} />
-              {playing ? "Pause" : done ? "Spill igjen" : "Spill av"}
-            </button>
-            <button type="button" className="nm-btn nm-btn--secondary nm-player__icon" onClick={next} disabled={done} aria-label="Neste trinn">
-              <Icon icon={SkipForward} />
-            </button>
-            <button type="button" className="nm-btn nm-btn--secondary nm-player__icon" onClick={() => setSpeed(speed === 1 ? 0.5 : 1)} aria-label={speed === 1 ? "Normal fart. Trykk for halv fart" : "Halv fart. Trykk for normal fart"}>
-              {speed === 1 ? "1×" : "½×"}
-            </button>
-          </div>
+          {choice ? (
+            <div className="nm-player__choice">
+              <p className="nm-player__question">
+                <Icon icon={GitBranch} size={18} />
+                Valg i trinn {choice.step + 1}
+                {choice.sporsmal ? `: ${choice.sporsmal}` : ""}
+              </p>
+              <div className="nm-player__alts" role="group" aria-label={choice.sporsmal || "Velg alternativ"}>
+                {choice.alternativer.map((a, j) => (
+                  <button key={j} type="button" aria-pressed={alt === j + 1} onClick={() => chooseAlt(j + 1)}>
+                    <span className="nm-alt-letter">{ALT_LETTERS[j]}</span>
+                    {a || `Alternativ ${ALT_LETTERS[j]}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </>
       )}
     </div>

@@ -1,7 +1,7 @@
 import { CalendarDays, Clock, MapPin } from "lucide-react";
 import { notFound } from "next/navigation";
 import { MiniChip } from "@/components/proposals/ProposalCard";
-import { ExerciseDetails } from "@/components/plans/PlanSection";
+import { ExerciseDetails } from "@/components/plans/ExerciseBody";
 import { SessionTimeline, type TimelineRow } from "@/components/plans/SessionTimeline";
 import { AppShell } from "@/components/shell/AppShell";
 import { Icon } from "@/components/ui/icon";

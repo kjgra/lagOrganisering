@@ -6,8 +6,8 @@ import { db } from "@/lib/db";
 import { findEvent } from "@/lib/events-data";
 import { dayLabel } from "@/lib/format";
 import { eventSub, themeForEvent } from "@/lib/plan-data";
-import { CATEGORIES, defaultSettings, settingsFromPlan } from "@/lib/plans/plan";
-import { meanText } from "@/lib/plans/feedback";
+import { CATEGORIES, defaultSettings, exerciseFacts, exerciseFromBank, settingsFromPlan } from "@/lib/plans/plan";
+import { feedbackSummary, meanText } from "@/lib/plans/feedback";
 import { eventIsPast } from "@/lib/spond/events";
 import { getPlan, getTeamSettings, listExercises } from "@/lib/store/training";
 
@@ -40,9 +40,11 @@ export default async function EditPlanPage(props: PageProps<"/g/[groupId]/[sub]/
       name: b.name,
       category: CATEGORIES[b.category] ?? b.category,
       note: [b.status === "candidate" ? "kandidat" : "", b.fb_n ? `snitt ${meanText(b.fb_mean ?? 0)} av 3 (${b.fb_n})` : "", b.themes.length ? b.themes.join(", ") : ""].filter(Boolean).join(" · "),
+      // Shown when the coach taps the exercise, before adding it (issue #105).
+      preview: { exercise: exerciseFromBank(b), facts: exerciseFacts(b), rating: `Alle trenere: ${feedbackSummary(b)}` },
     }));
   const chosen: EditorExercise[] = base
-    ? base.plan.ovelser.map((e, i) => ({ key: bank.some((b) => b.code === e.kode) && e.kilde === "bank" ? `b:${e.kode}` : `k:${i}`, ref: { keep: i + 1 }, name: e.navn, category: e.kategori, note: copy ? "fra forrige økt" : `fra versjon ${base.version}` }))
+    ? base.plan.ovelser.map((e, i) => ({ key: bank.some((b) => b.code === e.kode) && e.kilde === "bank" ? `b:${e.kode}` : `k:${i}`, ref: { keep: i + 1 }, name: e.navn, category: e.kategori, note: copy ? "fra forrige økt" : `fra versjon ${base.version}`, preview: { exercise: e, facts: e.kategori, rating: "" } }))
     : [];
   const initial = base ? settingsFromPlan(base.plan) : defaultSettings(season?.theme ?? "");
   // Warm-up exercises for the common warm-up, best rated first; a new plan starts with the best one (issue #74).
