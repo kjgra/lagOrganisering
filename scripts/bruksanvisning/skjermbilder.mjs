@@ -55,11 +55,14 @@ const SHOTS = [
   }],
   ["07-dagens-okt", `${PAST}/dagens-okt`],
   ["08-evaluering", `${PAST}/opplegg/1/evaluering`, async () => {
-    const title = p.locator("h2, h3, legend").filter({ hasText: /^1\. / }).first();
+    // Rask evaluering: 👍 på første øvelse, 👎 og «Hva skurret?» på andre.
+    const title = p.locator("legend").filter({ hasText: /^1\. / }).first();
     await toTop(title);
-    const first = p.locator("fieldset, section").filter({ has: title }).first();
-    await first.getByText("Bra").first().click().catch(() => {});
-    for (const t of ["gøy", "høy intensitet", "fikk fram temaet"]) await first.getByText(t, { exact: true }).first().click().catch(() => {});
+    const sets = p.locator("fieldset");
+    await sets.nth(0).getByRole("button", { name: "👍 Bra" }).click().catch(() => {});
+    await sets.nth(1).getByRole("button", { name: "👎 Dårlig" }).click().catch(() => {});
+    await sets.nth(1).getByRole("button", { name: "mye venting/kø" }).click().catch(() => {});
+    await p.waitForTimeout(300);
   }],
   ["10-ovelsesbank", `${G}/trening/ovelser`, async () => {
     await toTop(p.locator(".nm-section-label, h2").filter({ hasText: /Oppvarming/i }).first());

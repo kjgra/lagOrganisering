@@ -8,6 +8,17 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.38.0] – 2026-11-13
+
+Evalueringen etter trening går raskere, som trenerne ønsket på trenermøtet.
+
+### Endret
+
+- Evalueringen viser nå bare 👍 Bra, 👌 OK og 👎 Dårlig for hver øvelse og for hele økta. Ett trykk per øvelse holder. Stikkord, faktisk tid, «Bruke igjen?» og kommentar finner du under «Mer detaljer».
+- Trykker du 👎, kan du med ett trykk til si hva som skurret: kjedelig, mye venting/kø, for vanskelig eller uklar forklaring.
+- 👍 teller nå som «Bruke igjen: Ja», hvis du ikke har valgt noe annet. En kandidat i banken blir da aktiv med én 👍.
+- «Lagre evalueringen» ligger alltid nederst på skjermen og viser hvor mange du har vurdert. Du kan lagre det du rekker.
+
 ## [1.37.0] – 2026-11-13
 
 Nivå har fått en finere skala, som trenergruppa ble enige om.

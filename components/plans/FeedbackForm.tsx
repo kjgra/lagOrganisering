@@ -1,13 +1,13 @@
 "use client";
 
-import { Save } from "lucide-react";
+import { ChevronDown, ChevronUp, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { bankFeedbackAction, feedbackAction } from "@/app/actions/plans";
 import { FeedbackDictation } from "@/components/plans/FeedbackDictation";
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
-import type { FeedbackFill } from "@/lib/plans/feedback";
+import { type FeedbackFill, QUICK_TAGS } from "@/lib/plans/feedback";
 
 export interface FeedbackDraft {
   exercise_no: number | null;
@@ -55,6 +55,9 @@ export function FeedbackForm(p: {
   const [rows, setRows] = useState(p.rows);
   const [error, setError] = useState<string | null>(null);
   const upd = (i: number, ch: Partial<FeedbackDraft>) => setRows((r) => r.map((x, j) => (j === i ? { ...x, ...ch } : x)));
+  // Details are optional: open from the start only when there is one row, or when something besides the rating is filled in.
+  const hasDetails = (x: FeedbackDraft) => Boolean(x.actual_minutes || x.actual_players || x.body || x.use_again || x.tags.some((t) => !QUICK_TAGS.includes(t)));
+  const [open, setOpen] = useState<boolean[]>(() => p.rows.map((x) => p.rows.length === 1 || hasDetails(x)));
   const [filled, setFilled] = useState(0);
   // KI's fields go over what is there; keywords are added. From the bank, KI's exercise 1 is the only row.
   const fill = (fills: FeedbackFill[]) => {
@@ -74,6 +77,8 @@ export function FeedbackForm(p: {
         };
       }),
     );
+    // Show what KI filled in.
+    setOpen((o) => o.map((v, j) => v || fills.some((f) => (plan ? f.exercise_no === rows[j]?.exercise_no : f.exercise_no === 1))));
     setFilled((n) => n + 1);
   };
 
@@ -92,6 +97,10 @@ export function FeedbackForm(p: {
       else router.refresh();
     });
 
+  const [said, setSaid] = useState("");
+  const rated = rows.filter((x) => x.rating !== null).length;
+  const quickTags = QUICK_TAGS.filter((k) => k in p.tags);
+
   return (
     <form
       className="nm-form"
@@ -104,7 +113,7 @@ export function FeedbackForm(p: {
     >
       <p style={{ margin: 0 }}>
         {"planId" in p.target
-          ? "Evalueringene hjelper laget og KI å lage bedre økter."
+          ? "Ett trykk per øvelse holder. Vil du si mer, trykk «Mer detaljer». Evalueringene hjelper laget og KI å lage bedre økter."
           : "Vurder øvelsen slik den har fungert for laget. Den teller sammen med evalueringene etter trening. Tøm feltene og lagre for å fjerne din evaluering."}{" "}
         Skriv uten navn på spillere.
       </p>
@@ -116,73 +125,117 @@ export function FeedbackForm(p: {
       ) : null}
       {rows.map((x, i) => {
         const session = "planId" in p.target && x.exercise_no === null;
+        const isOpen = open[i];
+        const tags = session ? (p.sessionTags ?? {}) : p.tags;
+        const chip = (k: string, label: string) => (
+          <button
+            key={k}
+            type="button"
+            className="nm-chip"
+            style={{ cursor: "pointer" }}
+            aria-pressed={x.tags.includes(k)}
+            onClick={() => upd(i, { tags: x.tags.includes(k) ? x.tags.filter((t) => t !== k) : [...x.tags, k] })}
+          >
+            {label}
+          </button>
+        );
         return (
           <fieldset key={i} className="nm-card nm-proposal" style={{ margin: 0 }}>
             <legend style={{ fontWeight: 700, fontSize: "var(--fs-body-lg)", padding: "0 var(--space-1)" }}>{x.title}</legend>
-            <div className="nm-rate" role="group" aria-label="Vurdering">
+            <div className="nm-rate nm-rate--big" role="group" aria-label="Vurdering">
               {Object.entries(p.ratings)
                 .sort((a, b) => Number(b[0]) - Number(a[0]))
-                .map(([k, label]) => (
-                  <button key={k} type="button" className="nm-btn nm-btn--secondary" aria-pressed={x.rating === Number(k)} onClick={() => upd(i, { rating: x.rating === Number(k) ? null : Number(k) })}>
-                    {label}
-                  </button>
-                ))}
+                .map(([k, label]) => {
+                  const [emoji, ...word] = label.split(" ");
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      className="nm-btn nm-btn--secondary"
+                      aria-pressed={x.rating === Number(k)}
+                      onClick={() => {
+                        const r = x.rating === Number(k) ? null : Number(k);
+                        upd(i, { rating: r });
+                        setSaid(`${x.title}: ${r === null ? "ingen vurdering" : word.join(" ")}`);
+                      }}
+                    >
+                      <span className="nm-rate__emoji">{emoji}</span> {word.join(" ")}
+                    </button>
+                  );
+                })}
             </div>
-            {Object.keys(session ? (p.sessionTags ?? {}) : p.tags).length ? (
-              <div className="nm-row" style={{ gap: "var(--space-2)" }} role="group" aria-label={session ? "Stikkord for hele økta" : "Stikkord"}>
-                {Object.entries(session ? (p.sessionTags ?? {}) : p.tags).map(([k, label]) => (
-                  <button
-                    key={k}
-                    type="button"
-                    className="nm-chip"
-                    style={{ cursor: "pointer" }}
-                    aria-pressed={x.tags.includes(k)}
-                    onClick={() => upd(i, { tags: x.tags.includes(k) ? x.tags.filter((t) => t !== k) : [...x.tags, k] })}
-                  >
-                    {label}
-                  </button>
-                ))}
+            {!session && !isOpen && x.rating === 1 && quickTags.length ? (
+              <div className="nm-note" style={{ flexDirection: "column", gap: "var(--space-2)" }}>
+                <span style={{ fontWeight: 600 }}>Hva skurret? (valgfritt)</span>
+                <div className="nm-row" style={{ gap: "var(--space-2)" }} role="group" aria-label="Hva skurret?">
+                  {quickTags.map((k) => chip(k, p.tags[k]))}
+                </div>
               </div>
             ) : null}
-            {!session ? (
+            {p.rows.length > 1 ? (
+              <div>
+                <button type="button" className="nm-btn nm-btn--ghost nm-more" aria-expanded={isOpen} onClick={() => setOpen((o) => o.map((v, j) => (j === i ? !v : v)))}>
+                  <span className="nm-more__label">Mer detaljer</span>
+                  <Icon icon={isOpen ? ChevronUp : ChevronDown} />
+                  {!isOpen && x.tags.length ? <span className="nm-more__count">{x.tags.length === 1 ? "1 stikkord" : `${x.tags.length} stikkord`}</span> : null}
+                </button>
+              </div>
+            ) : null}
+            {isOpen ? (
               <>
-                <div className="nm-form-row">
+                {Object.keys(tags).length ? (
+                  <div className="nm-row" style={{ gap: "var(--space-2)" }} role="group" aria-label={session ? "Stikkord for hele økta" : "Stikkord"}>
+                    {Object.entries(tags).map(([k, label]) => chip(k, label))}
+                  </div>
+                ) : null}
+                {!session ? (
+                  <div className="nm-form-row">
+                    <label className="nm-field">
+                      <span className="nm-field__label">Faktisk tid (min){x.planned ? ` · plan ${x.planned}` : ""}</span>
+                      <input className="nm-input" type="number" inputMode="numeric" min={0} max={240} value={x.actual_minutes} onChange={(e) => upd(i, { actual_minutes: e.target.value })} />
+                    </label>
+                    <label className="nm-field">
+                      <span className="nm-field__label">Bruke igjen?</span>
+                      <select className="nm-input" value={x.use_again} onChange={(e) => upd(i, { use_again: e.target.value })}>
+                        <option value="">{x.rating === 3 ? "Ja (fordi 👍)" : "–"}</option>
+                        {Object.entries(p.useAgain).map(([k, label]) => (
+                          <option key={k} value={k}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                ) : (
                   <label className="nm-field">
-                    <span className="nm-field__label">Faktisk tid (min){x.planned ? ` · plan ${x.planned}` : ""}</span>
-                    <input className="nm-input" type="number" inputMode="numeric" min={0} max={240} value={x.actual_minutes} onChange={(e) => upd(i, { actual_minutes: e.target.value })} />
+                    <span className="nm-field__label">Antall spillere som kom{"registered" in p.target && p.target.registered !== null ? ` (${p.target.registered} påmeldt)` : ""}</span>
+                    <input className="nm-input" type="number" inputMode="numeric" min={0} max={200} value={x.actual_players} onChange={(e) => upd(i, { actual_players: e.target.value })} />
                   </label>
-                  <label className="nm-field">
-                    <span className="nm-field__label">Bruke igjen?</span>
-                    <select className="nm-input" value={x.use_again} onChange={(e) => upd(i, { use_again: e.target.value })}>
-                      <option value="">–</option>
-                      {Object.entries(p.useAgain).map(([k, label]) => (
-                        <option key={k} value={k}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
+                )}
+                <label className="nm-field">
+                  <span className="nm-field__label">Kommentar</span>
+                  <textarea className="nm-input" style={{ minHeight: 64 }} maxLength={300} value={x.body} onChange={(e) => upd(i, { body: e.target.value })} />
+                </label>
               </>
-            ) : (
-              <label className="nm-field">
-                <span className="nm-field__label">Antall spillere som kom{"registered" in p.target && p.target.registered !== null ? ` (${p.target.registered} påmeldt)` : ""}</span>
-                <input className="nm-input" type="number" inputMode="numeric" min={0} max={200} value={x.actual_players} onChange={(e) => upd(i, { actual_players: e.target.value })} />
-              </label>
-            )}
-            <label className="nm-field">
-              <span className="nm-field__label">Kommentar</span>
-              <textarea className="nm-input" style={{ minHeight: 64 }} maxLength={300} value={x.body} onChange={(e) => upd(i, { body: e.target.value })} />
-            </label>
+            ) : null}
           </fieldset>
         );
       })}
+      <div aria-live="polite" className="nm-sr-only">
+        {said}
+      </div>
       {error ? (
         <div className="nm-alert" role="alert">
           {error}
         </div>
       ) : null}
-      <div>
+      <div className="nm-savebar">
+        {rows.length > 1 ? (
+          <span className="nm-savebar__count">
+            {rated} av {rows.length}
+            <small>vurdert</small>
+          </span>
+        ) : null}
         <button type="submit" className="nm-btn nm-btn--primary nm-btn--lg" disabled={pending}>
           <Icon icon={Save} />
           Lagre evalueringen
