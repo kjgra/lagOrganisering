@@ -16,7 +16,7 @@ test("the superadmin sees and downloads what is stored about a player", async ({
   expect(res.status()).toBe(200);
   const json = await res.json();
   expect(json.spond_medlem_id).toBe("M-S-G2016-3");
-  expect(json.som_spiller["member_levels.spond_member_id"][0].level).toBe(3);
+  expect(json.som_spiller["member_levels.spond_member_id"][0].level).toBe(8);
 });
 
 test("a trainer without superadmin cannot download personal data", async ({ page }) => {

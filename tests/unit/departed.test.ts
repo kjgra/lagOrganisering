@@ -12,16 +12,18 @@ const data = async () => ({
   levels: (await d.query<{ m: string }>("SELECT spond_member_id AS m FROM member_levels ORDER BY 1")).map((r) => r.m),
   tags: (await d.query<{ m: string }>("SELECT spond_member_id AS m FROM member_tags ORDER BY 1")).map((r) => r.m),
   pairs: (await d.query<{ a: string; b: string }>("SELECT member_a AS a, member_b AS b FROM member_pairs ORDER BY 1, 2")),
+  strengths: (await d.query<{ m: string }>("SELECT spond_member_id AS m FROM member_strengths ORDER BY 1")).map((r) => r.m),
 });
 
 beforeAll(async () => {
   d = await testDb();
   await d.query(
     `INSERT INTO member_levels (spond_group_id, spond_member_id, level, updated_by) VALUES
-       ('G1', 'M-1', 3, 'P-1'), ('G1', 'M-2', 2, 'P-1'), ('G1', 'M-3', 4, 'P-1'), ('G2', 'M-2', 5, 'P-1')`,
+       ('G1', 'M-1', 8, 'P-1'), ('G1', 'M-2', 6, 'P-1'), ('G1', 'M-3', 9, 'P-1'), ('G2', 'M-2', 10, 'P-1')`,
   );
   await d.query("INSERT INTO member_tags (spond_group_id, spond_member_id, tag, created_by) VALUES ('G1', 'M-2', 'Keeper', 'P-1')");
   await d.query("INSERT INTO member_pairs (spond_group_id, member_a, member_b, created_by) VALUES ('G1', 'M-1', 'M-2', 'P-1')");
+  await d.query("INSERT INTO member_strengths (spond_group_id, spond_member_id, kind, tag, created_by) VALUES ('G1', 'M-2', 'strength', 'rask', 'P-1')");
 });
 afterAll(() => d.close());
 
@@ -41,11 +43,11 @@ describe("players who have left", () => {
     expect(await d.query("SELECT * FROM departed_members")).toEqual([]);
   });
 
-  it("deletes levels, tags and pairs after the time, only in that group", async () => {
+  it("deletes levels, tags, strengths and pairs after the time, only in that group", async () => {
     await syncDeparted(d, [{ id: "G1", memberIds: ["M-1", "M-3"] }], later(20));
     expect(await syncDeparted(d, [{ id: "G1", memberIds: ["M-1", "M-3"] }], later(20 + DEPARTED_DAYS - 1))).toEqual({ missing: 0, deleted: 0 });
     expect(await syncDeparted(d, [{ id: "G1", memberIds: ["M-1", "M-3"] }], later(21 + DEPARTED_DAYS))).toEqual({ missing: 0, deleted: 1 });
-    expect(await data()).toEqual({ levels: ["M-1", "M-2", "M-3"], tags: [], pairs: [] });
+    expect(await data()).toEqual({ levels: ["M-1", "M-2", "M-3"], tags: [], pairs: [], strengths: [] });
     expect(await d.query("SELECT spond_group_id FROM member_levels WHERE spond_member_id = 'M-2'")).toEqual([{ spond_group_id: "G2" }]);
     expect(await d.query("SELECT * FROM departed_members")).toEqual([]);
   });

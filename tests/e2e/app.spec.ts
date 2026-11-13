@@ -291,8 +291,10 @@ test("tag sheet: set a level and a player who plays well with them", async ({ pa
   await page.locator(".nm-row-btn").first().click();
   const sheet = page.getByRole("dialog");
   const levels = sheet.getByRole("group", { name: "Nivå" });
-  const four = levels.getByRole("button", { name: "4", exact: true });
-  const target = (await four.getAttribute("aria-pressed")) === "true" ? "2" : "4";
+  // The scale starts at 5: there is no button below it.
+  await expect(levels.getByRole("button", { name: "4", exact: true })).toHaveCount(0);
+  const nine = levels.getByRole("button", { name: "9", exact: true });
+  const target = (await nine.getAttribute("aria-pressed")) === "true" ? "6" : "9";
   await levels.getByRole("button", { name: target, exact: true }).click();
   await expect(levels.getByRole("button", { name: target, exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator(".nm-toast")).toContainText(`har nivå ${target}`);

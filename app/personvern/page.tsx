@@ -53,7 +53,7 @@ export default async function PrivacyPage(props: PageProps<"/personvern">) {
             </p>
             <ul>
               <li>
-                <strong>Om spillere:</strong> hvilken gruppe og hvilket lag spilleren er satt på, og eventuelt et nivå fra 1 til 5, korte stikkord (for eksempel «Keeper») og
+                <strong>Om spillere:</strong> hvilken gruppe og hvilket lag spilleren er satt på, og eventuelt et nivå, korte stikkord (for eksempel «Keeper») og
                 hvilke spillere som fungerer godt sammen.
               </li>
               <li>

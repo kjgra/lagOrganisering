@@ -16,6 +16,7 @@ import { assertGroup, assertSuperadmin, UserError, type Access, type Rights } fr
 export const PLAYER_REFS = [
   { table: "member_levels", column: "spond_member_id" },
   { table: "member_tags", column: "spond_member_id" },
+  { table: "member_strengths", column: "spond_member_id" },
   { table: "member_pairs", column: "member_a" },
   { table: "member_pairs", column: "member_b" },
   { table: "departed_members", column: "spond_member_id" },
@@ -54,6 +55,7 @@ export const TRAINER_REFS = [
   { table: "maintenance", column: "run_by", on: "anonymise" },
   { table: "member_levels", column: "updated_by", on: "anonymise" },
   { table: "member_pairs", column: "created_by", on: "anonymise" },
+  { table: "member_strengths", column: "created_by", on: "anonymise" },
   { table: "member_tags", column: "created_by", on: "anonymise" },
   { table: "nff_hidden", column: "hidden_by", on: "anonymise" },
   { table: "nff_learning_points", column: "created_by", on: "anonymise" },
@@ -122,7 +124,7 @@ export async function erasePlayer(d: Db, access: Access, rights: Rights, groupId
   assertGroup(access, groupId);
   return d.tx(async (t) => {
     let n = 0;
-    for (const table of ["member_levels", "member_tags", "departed_members"]) {
+    for (const table of ["member_levels", "member_tags", "member_strengths", "departed_members"]) {
       n += (await t.query(`DELETE FROM ${table} WHERE spond_group_id = $1 AND spond_member_id = $2 RETURNING 1`, [groupId, memberId])).length;
     }
     n += (await t.query("DELETE FROM member_pairs WHERE spond_group_id = $1 AND (member_a = $2 OR member_b = $2) RETURNING 1", [groupId, memberId])).length;

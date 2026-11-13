@@ -40,6 +40,7 @@ export async function personExport(d: Db, user: CurrentUser, group: Group, membe
 export const TABLE_LABELS: Record<string, string> = {
   member_levels: "Nivå",
   member_tags: "Tagger",
+  member_strengths: "Styrker og «jobber med»",
   member_pairs: "«Spiller godt sammen»",
   departed_members: "Merket som sluttet",
   group_proposal_members: "Plass i lagforslag",

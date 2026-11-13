@@ -19,7 +19,7 @@ beforeAll(async () => {
     [p.id],
   );
   await d.query("INSERT INTO member_tags (spond_group_id, spond_member_id, tag, created_by) VALUES ('G1', 'M-1', 'Keeper', 'P-1')");
-  await d.query("INSERT INTO member_levels (spond_group_id, spond_member_id, level, updated_by) VALUES ('G1', 'M-1', 3, 'P-1')");
+  await d.query("INSERT INTO member_levels (spond_group_id, spond_member_id, level, updated_by) VALUES ('G1', 'M-1', 8, 'P-1')");
   setDbForTests(d);
 });
 afterAll(async () => {
@@ -45,7 +45,7 @@ describe("øvelsesbank (lesetilgang for Claude)", () => {
   it("reads the views, and nothing in public", async () => {
     const ex = await asReader((t) => t.query<{ code: string }>("SELECT code FROM ovelsesbank.ovelser"));
     expect(ex.map((e) => e.code)).toEqual(["rondo"]);
-    for (const table of ["member_tags", "member_levels", "exercises", "exercise_feedback", "group_proposal_members"]) {
+    for (const table of ["member_tags", "member_levels", "member_strengths", "exercises", "exercise_feedback", "group_proposal_members"]) {
       await expect(asReader((t) => t.query(`SELECT 1 FROM public.${table}`))).rejects.toThrow(/permission denied/);
     }
     await expect(asReader((t) => t.query("DELETE FROM ovelsesbank.ovelser"))).rejects.toThrow(/permission denied/);

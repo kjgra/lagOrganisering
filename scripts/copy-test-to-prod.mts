@@ -25,7 +25,9 @@
  *
  * Tagger som bare er et tall fra 1 til 5, blir nivå (member_levels), som i
  * migrasjonen 20261024000000_tag_types. Har en spiller flere, gjelder den
- * nyeste, og et nivå i prod overskrives bare av en nyere tagg.
+ * nyeste, og et nivå i prod overskrives bare av en nyere tagg. Test har den
+ * gamle skalaen 1–5; nivåene flyttes til prods skala 5–10 som i migrasjonen
+ * 20261119000000_levels_and_strengths.
  *
  * Tabeller som ikke finnes i test, hoppes over, og kolonner som mangler i test,
  * får standardverdien i prod. Redigeringslåser og vedlikeholdsstatus kopieres
@@ -96,6 +98,8 @@ interface Table {
 }
 
 const TS = "timestamptz";
+/** Old level 1–5 (in test) on prod's 5–10 scale, as in migration 20261119000000_levels_and_strengths. */
+const NEW_LEVEL = (x: string) => `(CASE ${x} WHEN 1 THEN 5 WHEN 2 THEN 6 WHEN 3 THEN 8 WHEN 4 THEN 9 WHEN 5 THEN 10 ELSE ${x} END)::smallint`;
 
 const TABLES: Table[] = [
   {
@@ -158,6 +162,10 @@ const TABLES: Table[] = [
   },
   {
     name: "member_levels",
+    from: {
+      table: "member_levels",
+      sql: `(SELECT spond_group_id, spond_member_id, ${NEW_LEVEL("level")} AS level, updated_by, updated_at FROM member_levels) AS old_levels`,
+    },
     columns: ["spond_group_id", "spond_member_id", "level", "updated_by", "updated_at"],
     key: ["spond_group_id", "spond_member_id"],
     casts: { updated_at: TS },
@@ -168,7 +176,7 @@ const TABLES: Table[] = [
     label: "member_levels (fra tagger)",
     from: {
       table: "member_tags",
-      sql: `(SELECT DISTINCT ON (spond_group_id, spond_member_id) spond_group_id, spond_member_id, btrim(tag)::smallint AS level,
+      sql: `(SELECT DISTINCT ON (spond_group_id, spond_member_id) spond_group_id, spond_member_id, ${NEW_LEVEL("btrim(tag)::smallint")} AS level,
                     created_by AS updated_by, created_at AS updated_at
                FROM member_tags WHERE btrim(tag) ~ '^[1-5]$'
               ORDER BY spond_group_id, spond_member_id, created_at DESC) AS level_tags`,

@@ -9,6 +9,7 @@ import { assertGroup, assertTags, UserError, type Access, type Rights } from "./
  * trainers. It works on tags, levels and pairs, so it needs the tags right.
  */
 
+/** «mix» and «focus» (styrketagger) are ready in the engine and the database, but not offered until the coaches choose them. */
 const MODES: Mode[] = ["even", "levels"];
 const HISTORY: HistoryMode[] = ["off", "same", "rotate"];
 

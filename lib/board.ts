@@ -1,6 +1,7 @@
 /**
  * Pure logic for the team board, shared by the browser and tests.
  */
+import { isStrength, STRENGTHS } from "./strengths";
 
 export type Assignments = Record<string, string>;
 
@@ -10,16 +11,24 @@ export interface BoardMember {
   coach: boolean;
   /** Free tags such as «Keeper»; those chosen as roles are spread over the teams. */
   tags?: string[];
-  /** 1–5, or null when not set. */
+  /** MIN_LEVEL–MAX_LEVEL (lib/levels.ts), or null when not set. */
   level?: number | null;
+  /** Styrketagger (lib/strengths.ts): keys of what the player is good at, and works on. */
+  strengths?: string[];
+  focus?: string[];
   /** No longer coming (or no longer a member): shown, but never placed automatically. */
   out?: boolean;
   /** Has not answered yet: can be placed by hand, but never automatically. */
   maybe?: boolean;
 }
 
-/** «Jevne lag»: about equally strong teams. «Nivådelt»: players on the same level together. */
-export type Mode = "even" | "levels";
+/**
+ * «Jevne lag»: about equally strong teams. «Nivådelt»: players on the same level together.
+ * Prepared for styrketagger, not offered in the app yet: «mix» spreads each
+ * kind of strength over the teams, «focus» puts players who work on the same
+ * thing together.
+ */
+export type Mode = "even" | "levels" | "mix" | "focus";
 export type HistoryMode = "off" | "same" | "rotate";
 
 /** How the automatic distribution works, chosen per subgroup in «Fordeling». */
@@ -74,7 +83,8 @@ function shuffle<T>(list: T[], r: () => number): T[] {
  * (sum or bands), then pairs. A pair is split when keeping it would make the
  * teams clearly uneven, or (nivådelt) put a player more than a level off.
  */
-const WEIGHT = { role: 1000, level: 10, pair: { even: 50, levels: 20 }, history: 4 };
+// The level weight is for the 5–10 scale (steps 1.25 times those of the old 1–5 scale, squared).
+const WEIGHT = { role: 1000, level: 6.4, strength: 10, focus: 10, pair: { even: 50, levels: 20, mix: 50, focus: 20 }, history: 4 };
 const STARTS = 4;
 const MAX_PASSES = 60;
 
@@ -99,8 +109,18 @@ export function distribute(players: BoardMember[], labels: string[], seed: numbe
   const roles = (opts.roles ?? DEFAULT_SETTINGS.roles).map((t) => t.toLowerCase());
   const roleOf = list.map((p) => roles.map((role) => (p.tags ?? []).some((t) => t.toLowerCase() === role)));
   const usedRoles = roles.map((_, k) => roleOf.some((x) => x[k])).flatMap((on, k) => (on ? [k] : []));
-  const level = list.map((p) => p.level || 0);
+  const byLevel = mode === "even" || mode === "levels";
+  const level = list.map((p) => (byLevel ? p.level || 0 : 0));
   const known = level.filter(Boolean);
+  // Styrketagger: per player, how many strengths of each category; and who shares a focus.
+  const categories = mode === "mix" ? [...new Set(Object.values(STRENGTHS).map((x) => x.category))] : [];
+  const strengthCount = list.map((p) =>
+    categories.map((c) => (p.strengths ?? []).filter((k) => isStrength(k) && STRENGTHS[k].category === c).length),
+  );
+  const sameFocus: [number, number][] = [];
+  if (mode === "focus")
+    for (let i = 0; i < m; i++)
+      for (let j = i + 1; j < m; j++) if ((list[i].focus ?? []).some((f) => (list[j].focus ?? []).includes(f))) sameFocus.push([i, j]);
   const avg = known.length ? known.reduce((s, x) => s + x, 0) / known.length : 0;
   const index = new Map(list.map((p, i) => [p.id, i]));
   const pairs = (opts.pairs ?? []).flatMap(([a, b]) => (index.has(a) && index.has(b) && a !== b ? [[index.get(a)!, index.get(b)!]] : []));
@@ -144,6 +164,13 @@ export function distribute(players: BoardMember[], labels: string[], seed: numbe
       if (mode === "even") for (let t = 0; t < n; t++) c += WEIGHT.level * (sum[t] - size[t] * avg) ** 2;
       else for (let i = 0; i < m; i++) if (level[i]) c += WEIGHT.level * (level[i] - sum[team[i]] / size[team[i]]) ** 2;
     }
+    categories.forEach((_, k) => {
+      const count = new Array<number>(n).fill(0);
+      for (let i = 0; i < m; i++) count[team[i]] += strengthCount[i][k];
+      const mean = count.reduce((s, x) => s + x, 0) / n;
+      for (const x of count) c += WEIGHT.strength * (x - mean) ** 2;
+    });
+    for (const [a, b] of sameFocus) if (team[a] !== team[b]) c += WEIGHT.focus;
     for (const [a, b] of pairs) if (team[a] !== team[b]) c += WEIGHT.pair[mode];
     if (history === "same") for (const [a, b, w] of teammates) c += team[a] !== team[b] ? w : 0;
     else for (const [a, b, w] of teammates) c += team[a] === team[b] ? w : 0;

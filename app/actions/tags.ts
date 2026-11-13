@@ -5,9 +5,11 @@ import { z } from "zod";
 import { runAction, type ActionResult } from "@/lib/actions";
 import { requireUser } from "@/lib/auth/current";
 import { db } from "@/lib/db";
+import { MAX_LEVEL, MIN_LEVEL } from "@/lib/levels";
+import { MAX_FOCUS, MAX_STRENGTHS } from "@/lib/strengths";
 import { UserError } from "@/lib/store/access";
 import { memberNames, storedNamesProblem } from "@/lib/sensitive";
-import { addPair, addTag, removePair, removeTag, setLevel } from "@/lib/store/tags";
+import { addPair, addTag, removePair, removeTag, setLevel, setStrengths } from "@/lib/store/tags";
 
 const id = z.string().max(100);
 const input = z.object({ groupId: id, memberId: id, tag: z.string().max(100) });
@@ -49,9 +51,23 @@ export async function removeTagAction(groupId: string, memberId: string, tag: st
 
 export async function setLevelAction(groupId: string, memberId: string, level: number | null): Promise<ActionResult> {
   return runAction("Lagring av nivå", async () => {
-    const v = z.object({ groupId: id, memberId: id, level: z.number().int().min(1).max(5).nullable() }).parse({ groupId, memberId, level });
+    const v = z.object({ groupId: id, memberId: id, level: z.number().int().min(MIN_LEVEL).max(MAX_LEVEL).nullable() }).parse({ groupId, memberId, level });
     const user = await checkMembers(v.groupId, v.memberId);
     await setLevel(await db(), user.access, user.rights, v.groupId, v.memberId, v.level);
+    refresh();
+    return { data: undefined };
+  });
+}
+
+/** Styrketagger (prepared; no screen uses it yet). Keys only, checked against the fixed lists in the store. */
+export async function setStrengthsAction(groupId: string, memberId: string, strengths: string[], focus: string[]): Promise<ActionResult> {
+  return runAction("Lagring av styrker", async () => {
+    const key = z.string().max(40);
+    const v = z
+      .object({ groupId: id, memberId: id, strengths: z.array(key).max(MAX_STRENGTHS), focus: z.array(key).max(MAX_FOCUS) })
+      .parse({ groupId, memberId, strengths, focus });
+    const user = await checkMembers(v.groupId, v.memberId);
+    await setStrengths(await db(), user.access, user.rights, v.groupId, v.memberId, v.strengths, v.focus);
     refresh();
     return { data: undefined };
   });
