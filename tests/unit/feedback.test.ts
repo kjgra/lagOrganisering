@@ -32,7 +32,22 @@ describe("evaluation", () => {
     expect(tagLabel("ko")).toBe("mye venting/kø");
   });
 
-    it("from the bank: the same checks for one exercise, empty means remove", () => {
+  it("👍 counts as «Bruke igjen: Ja» unless the trainer answered otherwise", () => {
+    const rows = validateFeedback(
+      [
+        { exercise_no: 1, rating: 3 },
+        { exercise_no: 2, rating: 3, use_again: "changes" },
+        { exercise_no: 3, rating: 2 },
+        { exercise_no: null, rating: 3 },
+      ],
+      plan,
+      [],
+    );
+    expect(rows.map((r) => r.use_again)).toEqual(["yes", "changes", "", ""]);
+    expect(validateBankFeedback({ exercise_no: null, rating: 3 }, "rondo", [])?.use_again).toBe("yes");
+  });
+
+  it("from the bank: the same checks for one exercise, empty means remove", () => {
     expect(validateBankFeedback({ exercise_no: null, rating: 1, tags: ["ko", "ko"], actual_minutes: "20", actual_players: "9", use_again: "no" }, "rondo", [])).toEqual({
       exercise_no: null,
       exercise_code: "rondo",

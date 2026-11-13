@@ -13,6 +13,9 @@ test("a training with a plan that I have not evaluated is shown, and goes away w
 
   const session = page.locator("fieldset", { hasText: "Hele økta" });
   await session.getByRole("button", { name: "👍 Bra" }).click();
+  // Quick by default: details are behind «Mer detaljer».
+  await expect(session.getByRole("group", { name: "Stikkord for hele økta" })).toHaveCount(0);
+  await session.getByRole("button", { name: "Mer detaljer" }).click();
   // The session has its own keywords.
   const flow = session.getByRole("group", { name: "Stikkord for hele økta" }).getByRole("button", { name: "god flyt mellom øvelsene" });
   await flow.click();

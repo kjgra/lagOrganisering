@@ -404,6 +404,17 @@ select.nm-input { appearance: auto; }
 .nm-pick > div { flex: 1; min-width: 0; }
 .nm-pick--new { outline: var(--border-2) solid var(--border-focus); outline-offset: calc(var(--border-2) * -1); border-radius: var(--radius-sm); scroll-margin-top: calc(var(--space-7) * 2); }
 .nm-rate { display: flex; gap: 6px; flex-wrap: wrap; }
+/* Quick evaluation: three big buttons side by side, emoji over the word */
+.nm-rate--big { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.nm-rate--big > .nm-btn { flex-direction: column; gap: 2px; min-height: var(--row-min); padding: 0 var(--space-1); border-radius: var(--radius-md); font-size: 15px; }
+.nm-rate__emoji { font-size: 26px; line-height: 1; }
+.nm-more { align-self: flex-start; padding: 0 var(--space-1); }
+.nm-more__label { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 2px; }
+.nm-more__count { display: inline-block; margin-left: var(--space-1); padding: 1px var(--space-2); border-radius: var(--radius-pill); background: var(--surface-muted); font-size: 13px; text-decoration: none; }
+/* Save stays in reach of the thumb at the bottom of the screen */
+.nm-savebar { position: sticky; bottom: calc(var(--space-4) * -1); z-index: 2; display: flex; align-items: center; justify-content: flex-end; gap: var(--space-3); margin: 0 calc(var(--space-4) * -1) calc(var(--space-4) * -1); padding: var(--space-3) var(--space-4); padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom)); background: var(--surface-raised); border-top: var(--border-2) solid var(--line-strong); }
+.nm-savebar__count { flex: 1; white-space: nowrap; font-weight: 700; font-size: 16px; line-height: 1.2; }
+.nm-savebar__count small { display: block; font-weight: 500; font-size: 14px; color: var(--ink-muted); }
 .nm-rate button[aria-pressed="true"], .nm-chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 .nm-table { width: 100%; border-collapse: collapse; font-size: 15px; }
 .nm-table th, .nm-table td { text-align: left; padding: 6px 8px; border-bottom: var(--border-1) solid var(--line); vertical-align: top; }

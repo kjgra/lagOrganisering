@@ -28,6 +28,9 @@ export const FEEDBACK_TAGS: Record<string, string> = {
   tema_nei: "fikk ikke fram temaet",
 };
 
+/** «Hva skurret?»: the keywords offered at once when an exercise gets 👎, before «Mer detaljer». */
+export const QUICK_TAGS = ["kjedelig", "ko", "for_vanskelig", "uklar"];
+
 /**
  * Keywords for the session as a whole: how the exercises worked together, not
  * each one. Kept apart from FEEDBACK_TAGS, so they never count for an exercise.
@@ -99,8 +102,10 @@ function checkRow(r: RawFeedback, what: string, session: boolean, names: string[
   if (isSensitive(body)) throw new FeedbackError(`${what}: teksten skal ikke inneholde helseopplysninger eller andre sensitive opplysninger.`);
   const np = namesProblem(body, names, "Skriv uten navn, evalueringene kan oppsummeres av KI");
   if (np) throw new FeedbackError(`${what}: ${np}`);
-  const useAgain = session ? "" : txt(r.use_again);
+  let useAgain = session ? "" : txt(r.use_again);
   if (useAgain && !(useAgain in USE_AGAIN)) throw new FeedbackError(`${what}: ugyldig svar på «Bruke igjen?».`);
+  // 👍 counts as «Bruke igjen: Ja» unless the trainer answered otherwise (the trainers decided 2026-11-13).
+  if (!session && rating === 3 && !useAgain) useAgain = "yes";
   const minutes = session ? null : intIn(r.actual_minutes, `${what}: faktisk tid`, 0, 240);
   const players = session ? intIn(r.actual_players, "Antall spillere", 0, 200) : null;
   const filled = rating !== null || tags.length || body || useAgain || (session && players !== null);

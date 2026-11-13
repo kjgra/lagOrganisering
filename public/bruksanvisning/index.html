@@ -137,7 +137,7 @@
     <img src="bilder/03-lag.png" alt="Lagtavla">
     <img src="bilder/08-evaluering.png" alt="Evaluering av en øvelse">
   </div>
-  <p class="meta"><b>lagorganisering.vercel.app</b> · Gjelder appversjon <b id="VERSJON">1.37.0</b><br>
+  <p class="meta"><b>lagorganisering.vercel.app</b> · Gjelder appversjon <b id="VERSJON">1.38.0</b><br>
   Appen er under utvikling, og bruksanvisningen oppdateres sammen med den. Den nyeste ligger alltid i appen under Innstillinger → Bruksanvisning. Skjermbildene er fra demoversjonen, med oppdiktede navn.</p>
 </div>
 
@@ -253,20 +253,27 @@
   <h2><span class="num">4</span>Etter treningen: evaluer økta</h2>
   <div class="box key">
     <h3>Det viktigste i hele appen</h3>
-    <p>Øvelsesbanken og KI lærer <b>bare</b> av evalueringene deres. Uten evalueringer vet ikke appen hvilke øvelser som fungerer for vår aldersgruppe, og KI fortsetter å foreslå de samme øvelsene – også de som ikke fungerte. Det tar to–tre minutter, og det er de minuttene som gjør neste opplegg bedre.</p>
+    <p>Øvelsesbanken og KI lærer <b>bare</b> av evalueringene deres. Uten evalueringer vet ikke appen hvilke øvelser som fungerer for vår aldersgruppe, og KI fortsetter å foreslå de samme øvelsene – også de som ikke fungerte. Ett trykk per øvelse tar under ett minutt, og det er det minuttet som gjør neste opplegg bedre.</p>
   </div>
 
-  <figure><img src="bilder/08-evaluering.png" alt="Evaluering av en øvelse"><figcaption>Evaluering av én øvelse: tommel, stikkord, faktisk tid og «Bruke igjen?».</figcaption></figure>
+  <figure><img src="bilder/08-evaluering.png" alt="Evaluering av en øvelse"><figcaption>Rask evaluering: ett trykk per øvelse. Ved 👎 kan du si hva som skurret.</figcaption></figure>
   <h3>Slik evaluerer du</h3>
-  <p>Trykk <span class="ui">Evaluer</span> i påminnelsen øverst på forsiden, eller <span class="ui">Evaluer økta</span> på arrangementet. For <b>hver øvelse</b>:</p>
+  <p>Trykk <span class="ui">Evaluer</span> i påminnelsen øverst på forsiden, eller <span class="ui">Evaluer økta</span> på arrangementet. Har du dårlig tid, holder det med <b>ett trykk per øvelse</b>:</p>
   <ol class="steps">
-    <li><b>👍 Bra, 👌 OK eller 👎 Dårlig.</b></li>
+    <li><b>👍 Bra, 👌 OK eller 👎 Dårlig</b> for hver øvelse og for <b>Hele økta</b>.</li>
+    <li>Ved <b>👎</b>: trykk gjerne hva som skurret – <span class="tag">kjedelig</span> <span class="tag">mye venting/kø</span> <span class="tag">for vanskelig</span> <span class="tag">uklar forklaring</span>. Det er valgfritt.</li>
+    <li>Trykk <span class="ui">Lagre evalueringen</span> nederst. Den viser hvor mange du har vurdert, og du kan lagre det du rekker.</li>
+  </ol>
+  <p>👍 teller som <b>«Bruke igjen: Ja»</b>, hvis du ikke velger noe annet.</p>
+  <h3>Mer detaljer (valgfritt)</h3>
+  <p>Har du mer å si, trykker du <span class="ui">Mer detaljer</span> under øvelsen:</p>
+  <ol class="steps">
     <li><b>Stikkord</b> – trykk alle som passer: <span class="tag">for lett</span> <span class="tag">mye venting/kø</span> <span class="tag">uklar forklaring</span> <span class="tag">banen for liten</span> <span class="tag">gøy</span> <span class="tag">fikk fram temaet</span> …</li>
     <li><b>Faktisk tid</b> i minutter, hvis den var annerledes enn planen.</li>
     <li><b>Bruke igjen?</b> Ja, Med endringer eller Nei.</li>
     <li><b>Kommentar</b>: hva bør endres? Konkret og uten navn.</li>
   </ol>
-  <p>Til slutt <b>Hele økta</b>: tommel, stikkord som <span class="tag">god progresjon</span> <span class="tag">mye tid til organisering</span> <span class="tag">for få trenere</span>, og <b>hvor mange spillere som kom</b>. Trykk <span class="ui">Lagre evalueringen</span>.</p>
+  <p>Under <span class="ui">Mer detaljer</span> for <b>Hele økta</b> finner du stikkord som <span class="tag">god progresjon</span> <span class="tag">mye tid til organisering</span> <span class="tag">for få trenere</span>, og <b>hvor mange spillere som kom</b>. Jo mer dere skriver, jo mer lærer appen, men en rask evaluering er mye bedre enn ingen.</p>
   <div class="clear"></div>
 
   <div class="box tip">
@@ -295,7 +302,7 @@
 
   <table>
     <tr><th style="width: 38%">Det dere gjør</th><th>Det skjer i banken</th></tr>
-    <tr><td>👍 + «Bruke igjen: Ja» på en ny øvelse</td><td>Øvelsen går fra <b>kandidat</b> til <b>aktiv</b>. Uten det blir den liggende som kandidat.</td></tr>
+    <tr><td>👍 på en ny øvelse (uten at «Bruke igjen?» er satt til Med endringer eller Nei)</td><td>Øvelsen går fra <b>kandidat</b> til <b>aktiv</b>. Uten det blir den liggende som kandidat.</td></tr>
     <tr><td>Samme stikkord fra flere trenere (f.eks. «mye venting/kø»)</td><td>KI lager et <b>forslag til en bedre versjon</b> av øvelsen, som venter i Forbedringer.</td></tr>
     <tr><td>👎 og «Bruke igjen: Nei» over tid</td><td>KI slutter å foreslå øvelsen for denne aldersgruppa, og den kan bli foreslått arkivert.</td></tr>
     <tr><td>En øvelse er bra for én alder og dårlig for en annen</td><td>Appen foreslår en <b>variant</b> tilpasset aldersgruppa.</td></tr>
@@ -335,7 +342,7 @@
   <p>Under <span class="ui">Trening → Øvelser</span> ligger alle øvelsene, sortert etter kategori. Hver øvelse har en status:</p>
   <ul>
     <li><b>Aktiv</b> – brukes av KI og i opplegg.</li>
-    <li><b>Kandidat</b> – ny øvelse som venter på en 👍 og «Bruke igjen: Ja».</li>
+    <li><b>Kandidat</b> – ny øvelse som venter på en 👍.</li>
     <li><b>Arkivert</b> – brukes ikke lenger.</li>
   </ul>
   <h3>Se, evaluere og justere</h3>
