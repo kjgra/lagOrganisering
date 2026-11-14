@@ -8,6 +8,11 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.39.1] – 2026-11-14
+
+### Sikkerhet
+- Oppdatert en hjelpepakke i utviklerverktøyene (minimatch) for å tette et kjent sikkerhetshull. Ingen endring i appen for trenere.
+
 ## [1.39.0] – 2026-11-13
 
 Se øvelsene før du velger dem, og tegningene får plass på PC-skjermen.
