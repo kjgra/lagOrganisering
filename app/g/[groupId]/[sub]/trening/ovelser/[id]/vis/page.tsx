@@ -1,7 +1,7 @@
 import { ClipboardCheck, Pencil, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ExerciseBody } from "@/components/plans/PlanSection";
+import { ExerciseBody } from "@/components/plans/ExerciseBody";
 import { AppShell } from "@/components/shell/AppShell";
 import { Icon } from "@/components/ui/icon";
 import { contextFromParams } from "@/lib/context";
@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import { shortDate } from "@/lib/format";
 import { nffSummary } from "@/lib/nff/fagplan";
 import { feedbackSummary } from "@/lib/plans/feedback";
-import { CATEGORIES, EXERCISE_STATUSES, exerciseFromBank } from "@/lib/plans/plan";
+import { exerciseFacts, exerciseFromBank } from "@/lib/plans/plan";
 import { getExercise } from "@/lib/store/training";
 import { ExerciseLicense } from "@/components/training/ExerciseLicense";
 
@@ -23,8 +23,7 @@ export default async function ExerciseViewPage(props: PageProps<"/g/[groupId]/[s
   const b = await getExercise(d, ctx.user.access, ctx.group.id, exId).catch(() => null);
   if (!b) notFound();
   const listHref = ctx.path("/trening/ovelser");
-  const players = b.min_players && b.max_players ? `${b.min_players}–${b.max_players} spillere` : b.min_players ? `minst ${b.min_players} spillere` : b.max_players ? `opptil ${b.max_players} spillere` : "";
-  const facts = [CATEGORIES[b.category] ?? b.category, b.duration_minutes ? `${b.duration_minutes} min` : "", players, b.area, EXERCISE_STATUSES[b.status]].filter(Boolean);
+  const facts = exerciseFacts(b, true);
   return (
     <AppShell ctx={ctx} title="Øvelse" section="training" back={listHref}>
       <article style={{ maxWidth: 760 }}>
@@ -32,7 +31,7 @@ export default async function ExerciseViewPage(props: PageProps<"/g/[groupId]/[s
           {b.name}
         </h2>
         <p className="nm-hint" style={{ marginTop: 0 }}>
-          {facts.join(" · ")}
+          {facts}
         </p>
         {b.themes.length ? <p className="nm-hint">Tema: {b.themes.join(", ")}</p> : null}
         {nffSummary(b) ? <p className="nm-hint">NFF: {nffSummary(b)}</p> : null}

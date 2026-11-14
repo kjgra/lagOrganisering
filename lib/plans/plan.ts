@@ -312,6 +312,12 @@ export interface BankExercise {
 }
 
 /** A bank exercise as a plan exercise: a full copy, so later bank changes do not change the plan. */
+/** «Teknikk · 10 min · 6–10 spillere · 20×15 m» for a bank exercise. */
+export function exerciseFacts(b: BankExercise, withStatus = false): string {
+  const players = b.min_players && b.max_players ? `${b.min_players}–${b.max_players} spillere` : b.min_players ? `minst ${b.min_players} spillere` : b.max_players ? `opptil ${b.max_players} spillere` : "";
+  return [CATEGORIES[b.category] ?? b.category, b.duration_minutes ? `${b.duration_minutes} min` : "", players, b.area, withStatus ? EXERCISE_STATUSES[b.status] : ""].filter(Boolean).join(" · ");
+}
+
 export function exerciseFromBank(b: BankExercise): PlanExercise {
   return {
     kode: b.code,

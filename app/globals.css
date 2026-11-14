@@ -384,9 +384,32 @@ select.nm-input { appearance: auto; }
 .nm-player__caption { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; min-height: 56px; }
 .nm-player__caption p { margin: 0; font-size: 18px; line-height: 1.35; }
 .nm-player__num { width: 36px; height: 36px; border-radius: 50%; background: var(--ink); color: var(--surface-raised); display: grid; place-items: center; font: 800 20px var(--font-display); }
-.nm-player__controls { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-.nm-player__icon { padding: 0; width: var(--control-md); }
-.nm-player__play { flex: 1; max-width: 220px; }
+/* A full-size drawing: never taller than most of the screen, and lower on a PC (issue #105). --ratio is width / height. */
+.nm-drawing { position: relative; width: 100%; max-width: calc(var(--ratio, 1.5) * 70svh); margin-inline: auto; }
+@media (min-width: 768px) { .nm-drawing { max-width: min(100%, 720px, calc(var(--ratio, 1.5) * 55vh)); } }
+.nm-player__pitch { cursor: pointer; }
+/* Back, play and forward on the picture, like a video: in the corner, where the pitch has its margin. */
+.nm-player__overlay { position: absolute; right: var(--space-2); bottom: var(--space-2); display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1); border-radius: var(--radius-pill); background: var(--scrim); }
+.nm-player__ctl { display: grid; place-items: center; width: var(--touch-min); height: var(--touch-min); padding: 0; border-radius: var(--radius-pill); border: var(--border-2) solid var(--chrome-line); background: var(--chrome); color: var(--on-chrome); cursor: pointer; }
+.nm-player__ctl:disabled { opacity: 0.45; cursor: default; }
+/* While it plays, the buttons step back so the picture shows through; a tap on the picture pauses. */
+.nm-player__overlay { transition: opacity 150ms; }
+.nm-player__overlay[data-playing] { opacity: 0.35; }
+.nm-player__overlay[data-playing]:hover, .nm-player__overlay[data-playing]:focus-within { opacity: 1; }
+.nm-player__ctl--play { width: var(--control-md); height: var(--control-md); border-color: var(--primary-edge); background: var(--primary); color: var(--on-primary); }
+.nm-player__ctl:focus-visible { outline: var(--border-focus) solid var(--focus-on-chrome); outline-offset: 2px; }
+
+/* «Lag opplegg»: tap an exercise to see it before adding it (issue #105) */
+.nm-pick__open { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-3); min-height: var(--touch-min); padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.nm-pick__open > span:last-child { min-width: 0; }
+.nm-edthumb { flex: none; width: calc(var(--space-7) + var(--space-4)); aspect-ratio: 16 / 10; overflow: hidden; border-radius: var(--radius-sm); border: var(--border-1) solid var(--line); background: var(--surface-muted); }
+.nm-edthumb > svg { width: 100%; height: 100%; border-radius: 0 !important; }
+.nm-preview__nav { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-top: var(--space-4); }
+.nm-preview__actions { position: sticky; bottom: calc(var(--space-5) * -1); display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-2); padding: var(--space-3) 0 var(--space-5); border-top: var(--border-2) solid var(--line); background: var(--surface); }
+@media (min-width: 768px) {
+  .nm-sheet.nm-sheet--wide { left: 0; right: 0; top: var(--space-6); margin-inline: auto; width: min(760px, calc(100vw - var(--space-7) * 2)); max-height: calc(100vh - var(--space-6) * 2); }
+  .nm-sheet-wrap:has(.nm-sheet--wide) .nm-backdrop { background: var(--scrim); }
+}
 .nm-steps { border: var(--border-2) solid var(--line); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); }
 .nm-steps summary { display: flex; align-items: center; gap: var(--space-2); min-height: var(--touch-min); font-weight: 700; cursor: pointer; }
 .nm-steps__sketch { display: grid; gap: var(--space-3); margin-top: var(--space-2); }
