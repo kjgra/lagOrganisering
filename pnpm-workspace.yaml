@@ -1,3 +1,7 @@
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
+
+overrides:
+  # GHSA-g3hv-75wg-m249 (DoS via globparts), fikset i minimatch 11.0.1. Fjern når @typescript-eslint krever ^11.
+  minimatch@>=7.0.0 <11.0.1: ^11.0.1
