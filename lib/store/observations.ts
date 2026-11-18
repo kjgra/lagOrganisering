@@ -1,6 +1,7 @@
 import type { Db } from "@/lib/db";
 import { teamBand } from "@/lib/nff/bands";
 import type { EvaluationRow, ExercisePattern, Observation } from "@/lib/plans/observations";
+import { kiExerciseOutcomes, type OutcomePlanRow } from "@/lib/plans/ranking";
 import { assertGroup, type Access } from "./access";
 import { BANK } from "./bank";
 
@@ -59,7 +60,7 @@ export async function saveObservations(d: Db, found: Map<number, Observation[]>)
 
 /** Everything the pattern needs: evaluations from every group, and the bank's observations. */
 export async function patternInputs(d: Db) {
-  const [rows, observations, removed] = await Promise.all([
+  const [rows, observations, removed, plans] = await Promise.all([
     d.query<Omit<EvaluationRow, "band"> & { birth_years: number[] | null }>(
       `SELECT f.id AS "feedbackId", f.exercise_code AS code, f.rating, f.tags,
               coalesce(f.spond_event_id, 'bank:' || f.author) AS session, f.author,
@@ -82,13 +83,26 @@ export async function patternInputs(d: Db) {
          FROM edit_log l, jsonb_array_elements_text(l.changes->'fjernet') AS c(code)
         WHERE l.kind = 'opplegg_etter_ki'`,
     ),
+    // Every version of the sessions with an approved plan, for what trainers kept of KI's plans (ranking.ts).
+    d.query<Omit<OutcomePlanRow, "birthYear"> & { birth_year: number | null }>(
+      `SELECT p.spond_group_id || '/' || p.spond_event_id AS session, p.version, p.status, p.source,
+              p.context->>'band' AS band,
+              ARRAY(SELECT e->>'kode' FROM jsonb_array_elements(p.plan->'ovelser') AS e WHERE coalesce(e->>'kode', '') <> '') AS codes,
+              coalesce(p.approved_at, p.created_at) AS at,
+              (SELECT t.birth_year FROM team_settings t WHERE t.spond_group_id = p.spond_group_id AND t.spond_subgroup_id = '') AS birth_year
+         FROM training_plans p
+        WHERE p.status <> 'deleted'
+          AND EXISTS (SELECT 1 FROM training_plans a
+                       WHERE a.spond_group_id = p.spond_group_id AND a.spond_event_id = p.spond_event_id AND a.status = 'approved')`,
+    ),
   ]);
   const evaluations: EvaluationRow[] = rows.map(({ birth_years, ...r }) => {
     // One band only: teams in different bands together say nothing about one of them.
     const bands = new Set((birth_years ?? []).map((y) => teamBand(y, new Date(r.at).getFullYear())));
     return { ...r, band: bands.size === 1 ? [...bands][0] : null };
   });
-  return { evaluations, observations, removed };
+  const outcomes = kiExerciseOutcomes(plans.map(({ birth_year, ...p }) => ({ ...p, codes: p.codes ?? [], birthYear: birth_year, at: new Date(p.at) })));
+  return { evaluations, observations, removed, outcomes };
 }
 
 /** Replace the bank's patterns with newly computed ones. */
@@ -97,8 +111,9 @@ export async function savePatterns(d: Db, patterns: ExercisePattern[]): Promise<
     await t.query("DELETE FROM exercise_patterns WHERE spond_group_id = $1", [BANK]);
     for (const p of patterns) {
       await t.query(
-        `INSERT INTO exercise_patterns (spond_group_id, exercise_code, score, ratings, trend, patterns, bands) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb)`,
-        [BANK, p.code, p.score, p.ratings, p.trend, JSON.stringify(p.patterns), JSON.stringify(p.bands)],
+        `INSERT INTO exercise_patterns (spond_group_id, exercise_code, score, ratings, trend, patterns, bands, evidence)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb)`,
+        [BANK, p.code, p.score, p.ratings, p.trend, JSON.stringify(p.patterns), JSON.stringify(p.bands), JSON.stringify(p.evidence ?? [])],
       );
     }
   });
@@ -123,7 +138,7 @@ export async function exercisePattern(d: Db, access: Access, groupId: string, co
 /** Every exercise's pattern in the shared bank, for KI orders (counts and keywords only). */
 export async function allPatterns(d: Db): Promise<ExercisePattern[]> {
   return d.query<ExercisePattern>(
-    `SELECT exercise_code AS code, score::float8 AS score, ratings, trend, patterns, bands FROM exercise_patterns WHERE spond_group_id = $1`,
+    `SELECT exercise_code AS code, score::float8 AS score, ratings, trend, patterns, bands, evidence FROM exercise_patterns WHERE spond_group_id = $1`,
     [BANK],
   );
 }

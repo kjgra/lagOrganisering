@@ -144,10 +144,13 @@ export function ratingsText(counts: Record<string, number>): string {
   return ["3", "2", "1"].filter((k) => counts[k]).map((k) => `${icons[k]} ${counts[k]}`).join(" · ");
 }
 
-/** Exercises KI should not use: rated below OK on average, or most say «Bruke igjen: Nei». */
+/** Evaluations before an exercise can be taken out; with fewer, a poor one only moves it down (lib/plans/ranking.ts). */
+export const AVOID_MIN = 2;
+
+/** Exercises KI should not use: rated below OK on average, or most say «Bruke igjen: Nei», by at least AVOID_MIN evaluations. */
 export function shouldAvoid(b: BankExercise): boolean {
   const again = b.fb_yes + b.fb_changes + b.fb_no;
-  return b.fb_n > 0 && ((b.fb_mean !== null && b.fb_mean < 2) || (again > 0 && b.fb_no * 2 > again));
+  return b.fb_n >= AVOID_MIN && ((b.fb_mean !== null && b.fb_mean < 2) || (again > 0 && b.fb_no * 2 > again));
 }
 
 export const meanText = (x: number) => x.toFixed(1).replace(".", ",");
