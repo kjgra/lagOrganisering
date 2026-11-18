@@ -1,5 +1,6 @@
 import { NFF_BANDS, type NffBand } from "@/lib/nff/bands";
 import { FEEDBACK_TAGS } from "./feedback";
+import type { Evidence } from "./ranking";
 
 type BandKey = NffBand["key"];
 
@@ -92,6 +93,8 @@ export interface ExercisePattern {
   patterns: Pattern[];
   /** Mean rating per age band, for the bands with ratings. */
   bands: BandScore[];
+  /** Ratings and what trainers kept of KI's plans, per age band, for the order KI sees the bank in (ranking.ts). */
+  evidence?: Evidence[];
 }
 
 export interface BandScore {
@@ -114,7 +117,8 @@ const TREND_DAYS = 60;
 const REMOVED_DAYS = 90;
 
 const DAY = 86_400_000;
-const weight = (at: Date, now: Date) => 0.5 ** (Math.max(0, now.getTime() - at.getTime()) / DAY / HALF_LIFE_DAYS);
+/** Newer evaluations count more: 1 now, ½ after HALF_LIFE_DAYS. */
+export const recencyWeight = (at: Date, now: Date) => 0.5 ** (Math.max(0, now.getTime() - at.getTime()) / DAY / HALF_LIFE_DAYS);
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 
 /** The keywords as observations: each is said straight out. */
@@ -128,7 +132,7 @@ export function bankMean(rows: EvaluationRow[], now: Date): number {
   let s = 0;
   for (const r of rows) {
     if (r.rating === null) continue;
-    const w = weight(r.at, now);
+    const w = recencyWeight(r.at, now);
     sw += w;
     s += w * r.rating;
   }
@@ -182,7 +186,7 @@ export function analysePatterns(
     let sw = 0;
     let s = 0;
     for (const r of rated) {
-      const w = weight(r.at, now);
+      const w = recencyWeight(r.at, now);
       sw += w;
       s += w * r.rating!;
     }
