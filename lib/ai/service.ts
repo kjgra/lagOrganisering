@@ -1,7 +1,7 @@
 import "server-only";
 import type { CurrentUser } from "@/lib/auth/current";
 import type { Db } from "@/lib/db";
-import { osloMonthStart, shortDate } from "@/lib/format";
+import { osloDate, osloMonthStart, shortDate } from "@/lib/format";
 import { CATEGORIES, type BankExercise, type Plan } from "@/lib/plans/plan";
 import { FEEDBACK_TAGS, USE_AGAIN } from "@/lib/plans/feedback";
 import { isSensitive, memberNames, namesProblem, redactNames } from "@/lib/sensitive";
@@ -126,7 +126,9 @@ async function kiBasis(
     needs: needsFor(needs, group.id, fit.band, { minSessions: settings.pattern_min_sessions, minTrainers: settings.pattern_min_trainers }),
     insights: insightsFor(sessions.shared, sessions.own, fit.band),
   });
-  let cat = catalogue(bank, theme, 30, { band: fit.band, players: fit.players, patterns, tags: fit.tags, used: uses.map((u) => u.code) });
+  // The same team, theme and day give the same order, so a new try keeps the cached catalogue.
+  const seed = `${group.id}/${sub}/${theme}/${osloDate(now)}`;
+  let cat = catalogue(bank, theme, 30, { band: fit.band, players: fit.players, patterns, tags: fit.tags, used: uses.map((u) => u.code), seed });
   if (experience) cat = `${cat}\n\n${experience}`;
   if (lessons) cat = `${cat}\n\n${lessons}`;
   if (used) cat = `${cat}\n\n${used}`;

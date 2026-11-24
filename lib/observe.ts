@@ -9,6 +9,7 @@ import { osloMonthStart } from "@/lib/format";
 import { measureVersions, proposeImprovements } from "@/lib/improve";
 import { sessionInsights, type Insight } from "@/lib/plans/insights";
 import { analysePatterns, type Observation } from "@/lib/plans/observations";
+import { exerciseEvidence, withEvidence } from "@/lib/plans/ranking";
 import { BANK } from "@/lib/store/bank";
 import { aiSpend, getAiSettings, logAiUsage } from "@/lib/store/ai";
 import { saveInsights, sessionRows } from "@/lib/store/insights";
@@ -135,7 +136,10 @@ export async function analyseBank(d: Db, opts: { actor?: string; now?: Date; ban
   const asked = await classifyNeeds(d, access, now);
 
   const input = await patternInputs(d);
-  const patterns = analysePatterns(input.evaluations, input.observations, input.removed, { minSessions: settings.pattern_min_sessions, minTrainers: settings.pattern_min_trainers }, now);
+  const patterns = withEvidence(
+    analysePatterns(input.evaluations, input.observations, input.removed, { minSessions: settings.pattern_min_sessions, minTrainers: settings.pattern_min_trainers }, now),
+    exerciseEvidence(input.evaluations, input.outcomes, now),
+  );
   await savePatterns(d, patterns);
   const insights = await analyseSessions(d, { minSessions: settings.pattern_min_sessions, minTrainers: settings.pattern_min_trainers });
   const rolledBack = await measureVersions(d, access, groupId);

@@ -8,6 +8,17 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.40.0] – 2026-11-18
+
+KI velger øvelser ut fra det dere har vurdert og beholdt, ikke bare ut fra tema og alder.
+
+### Endret
+- Når KI lager et opplegg, kommer øvelsene som trenerne har vurdert høyt for aldersgruppa, først i banken KI velger fra. Før fikk KI bare se vurderingene som tekst.
+- Det teller også når dere beholder eller bytter ut en øvelse i et opplegg fra KI, uten at dere trykker noe ekstra. Å bytte ut teller mer enn å beholde.
+- Én vurdering flytter en øvelse lite; flere vurderinger fra samme aldersgruppe flytter den mer. Nyere vurderinger teller mer enn gamle.
+- En øvelse blir ikke lenger tatt helt ut av KI-forslagene etter én dårlig vurdering. Det skal minst to til; med én havner den bare lenger ned.
+- Nye øvelser som ingen har prøvd, blir tatt med av og til, så banken ikke bare foreslår de samme øvelsene.
+
 ## [1.39.1] – 2026-11-14
 
 ### Sikkerhet

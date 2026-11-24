@@ -3,6 +3,7 @@ import { isSensitive, namesProblem } from "@/lib/sensitive";
 import { checkAnimation, fixAnimation } from "@/lib/plans/animation";
 import { compactDrawing, fixDrawing, validateDrawing, DrawingError } from "@/lib/plans/drawing";
 import { FEEDBACK_TAGS, meanText, shouldAvoid } from "@/lib/plans/feedback";
+import { rankScores } from "@/lib/plans/ranking";
 import {
   CATEGORIES,
   CODE_RE,
@@ -386,6 +387,8 @@ export interface CatalogueFit {
   tags?: string[];
   /** Exercises the teams use with the theme word (theme-usage.ts): they count as fitting the theme. */
   used?: string[];
+  /** Seed for the Thompson draw (ranking.ts); without it, the expected score. */
+  seed?: string;
 }
 
 /**
@@ -410,11 +413,19 @@ export function catalogue(bank: BankExercise[], theme = "", max = 30, fit: Catal
   const hit = (b: BankExercise) => (!!theme && b.themes.some((t) => t.toLowerCase() === theme.toLowerCase())) || b.nff_tags.some((t) => tags.has(t)) || used.has(b.code);
   const tagged = (b: BankExercise) => bandFit(b.bands, band);
   const fits = (b: BankExercise) => !fit.players || ((b.min_players ?? 0) <= fit.players && fit.players <= (b.max_players ?? 99));
+  // What the trainers rated and kept, for the band, decides among those that fit as well (lib/plans/ranking.ts).
+  const rank = rankScores(
+    usable.map((b) => b.code),
+    fit.patterns ?? [],
+    band,
+    fit.seed,
+  );
   const sorted = [...usable].sort(
     (a, b) =>
       Number(hit(b)) - Number(hit(a)) ||
       tagged(b) - tagged(a) ||
       Number(fits(b)) - Number(fits(a)) ||
+      rank.get(b.code)! - rank.get(a.code)! ||
       Number(a.status !== "active") - Number(b.status !== "active") ||
       cats.indexOf(a.category) - cats.indexOf(b.category) ||
       a.name.localeCompare(b.name, "nb"),
@@ -444,7 +455,7 @@ export function catalogue(bank: BankExercise[], theme = "", max = 30, fit: Catal
     ].filter(Boolean);
     return `- ${parts.join(" | ")}`;
   });
-  return `# Øvelsesbanken\n\nkode | navn | kategori | tema | NFF | spillere | minutter | merknader | kort beskrivelse\n\n${lines.join("\n")}`;
+  return `# Øvelsesbanken\n\nØvelsene står med det som passer best først: tema, alder og gruppestørrelse, deretter det trenerne har vurdert høyt og beholdt i opplegg.\n\nkode | navn | kategori | tema | NFF | spillere | minutter | merknader | kort beskrivelse\n\n${lines.join("\n")}`;
 }
 
 /** 2 when tagged for the team's band, 1 for a band next to it, else 0. */
