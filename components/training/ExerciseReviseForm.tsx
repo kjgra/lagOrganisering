@@ -2,12 +2,14 @@
 
 import { Pencil, RotateCcw, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { exerciseReviseEstimateAction, exerciseReviseRunAction } from "@/app/actions/training";
+import { DrawingPlayer } from "@/components/plans/DrawingPlayer";
 import { ModelFields, PitchFields } from "@/components/plans/KiFields";
 import { ExerciseForm, type ExerciseValues } from "@/components/training/ExerciseForm";
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
+import { validateDrawing, type Drawing } from "@/lib/plans/drawing";
 
 export interface ExerciseReviseFormProps {
   groupId: string;
@@ -46,7 +48,7 @@ export function ExerciseReviseForm(p: ExerciseReviseFormProps) {
   const [prices, setPrices] = useState<Record<string, string> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<{ values: ExerciseValues; warnings: string[]; n: number } | null>(null);
+  const [result, setResult] = useState<{ values: ExerciseValues; warnings: string[]; before: string; n: number } | null>(null);
 
   const num = (x: string) => (x.trim() ? Math.round(Number(x)) : null);
   const input = () => ({ groupId: p.groupId, sub: p.sub, id: p.id, players: num(players), minutes: num(minutes), wish, link, pitchIds, model });
@@ -80,6 +82,7 @@ export function ExerciseReviseForm(p: ExerciseReviseFormProps) {
             Merk: {result.warnings.join(" ")}
           </div>
         ) : null}
+        <DrawingCompare before={result.before} after={result.values.drawing} />
         <div className="nm-row" style={{ gap: "var(--space-2)", marginBottom: "var(--space-4)" }}>
           <button type="button" className="nm-btn nm-btn--secondary" onClick={() => setResult(null)}>
             <Icon icon={RotateCcw} />
@@ -178,5 +181,40 @@ export function ExerciseReviseForm(p: ExerciseReviseFormProps) {
         </button>
       </div>
     </form>
+  );
+}
+
+const parse = (json: string): Drawing | null => {
+  try {
+    return validateDrawing(json);
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * KI's drawing first, played as an animation, with the one it replaces a tap
+ * away. Only when KI changed the drawing.
+ */
+function DrawingCompare({ before, after }: { before: string; after: string }) {
+  const [show, setShow] = useState<"after" | "before">("after");
+  const d = useMemo(() => ({ before: parse(before), after: parse(after) }), [before, after]);
+  if (!d.after || before.trim() === after.trim()) return null;
+  const shown = show === "before" && d.before ? d.before : d.after;
+  return (
+    <section style={{ maxWidth: 760, marginBottom: "var(--space-4)" }} aria-label="Tegningen">
+      <h3 className="nm-h3">Ny tegning</h3>
+      {d.before ? (
+        <div className="nm-seg" role="group" aria-label="Versjon av tegningen">
+          <button type="button" aria-pressed={show === "after"} onClick={() => setShow("after")}>
+            Ny fra KI
+          </button>
+          <button type="button" aria-pressed={show === "before"} onClick={() => setShow("before")}>
+            Slik den var
+          </button>
+        </div>
+      ) : null}
+      <DrawingPlayer key={show} drawing={shown} title={show === "after" ? "Ny tegning fra KI" : "Tegningen slik den var"} />
+    </section>
   );
 }

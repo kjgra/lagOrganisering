@@ -24,6 +24,8 @@ export interface CallInput {
   /** A JSON schema for structured output, or none for plain text. */
   schema?: Record<string, unknown>;
   maxTokens: number;
+  /** Earlier answers and what was wrong with them, for another try in the same conversation. */
+  followUps?: { answer: string; feedback: string }[];
   kind: "draft" | "revision" | "learning" | "exercise" | "feedback" | "observations" | "needs" | "themes";
 }
 
@@ -46,7 +48,13 @@ function body(c: CallInput) {
     model: c.model,
     max_tokens: c.maxTokens,
     system: c.system.map((text) => ({ type: "text" as const, text, cache_control: { type: "ephemeral" as const } })),
-    messages: [{ role: "user" as const, content: c.user }],
+    messages: [
+      { role: "user" as const, content: c.user },
+      ...(c.followUps ?? []).flatMap((f) => [
+        { role: "assistant" as const, content: f.answer },
+        { role: "user" as const, content: f.feedback },
+      ]),
+    ],
     ...(c.schema ? { output_config: { format: { type: "json_schema" as const, schema: c.schema } } } : {}),
   };
 }
