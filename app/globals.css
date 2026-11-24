@@ -192,6 +192,11 @@ body { margin: 0; font-family: var(--font-sans); color: var(--ink); background: 
 .nm-meter .is-kommer { background: var(--success); }
 .nm-meter .is-ikke-svart { background: repeating-linear-gradient(135deg, var(--warning) 0 3px, var(--warning-bg) 3px 6px); }
 .nm-meter .is-kommer-ikke { background: var(--declined); }
+.nm-kiprog { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-md); background: var(--surface-muted); }
+.nm-kiprog__bar { height: 12px; border-radius: var(--radius-pill); background: var(--surface); border: var(--border-1) solid var(--line); overflow: hidden; }
+.nm-kiprog__bar > span { display: block; height: 100%; background: var(--primary); border-radius: var(--radius-pill); transition: width 0.5s linear; }
+.nm-kiprog__step { margin: 0; font-weight: 700; font-size: 16px; line-height: 22px; }
+@media (prefers-reduced-motion: reduce) { .nm-kiprog__bar > span { transition: none; } }
 
 /* Card + event */
 .nm-card { border: var(--border-2) solid var(--line); border-radius: var(--radius-lg); background: var(--surface-raised); }

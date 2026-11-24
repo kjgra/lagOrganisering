@@ -10,7 +10,8 @@ import { dayLabel, decimal, osloMonthStart } from "@/lib/format";
 import { eventSub, pitchEvent, themeForEvent } from "@/lib/plan-data";
 import { pitchFacts } from "@/lib/plans/plan";
 import { eventIsPast, responseCounts } from "@/lib/spond/events";
-import { aiSpend, getAiSettings } from "@/lib/store/ai";
+import { aiSpend, getAiSettings, typicalDuration } from "@/lib/store/ai";
+import { DEFAULT_KI_MS } from "@/lib/ki-progress";
 import { pitchesForEvent } from "@/lib/store/pitch-schedule";
 import { getPlan, getTeamSettings, listPitches, listPlanComments, teamPitches } from "@/lib/store/training";
 
@@ -43,6 +44,10 @@ export default async function KiPage(props: PageProps<"/g/[groupId]/[sub]/arrang
     ? `Laget har brukt ${decimal(budget.groupNok, 2)} av ${settings.group_limit_nok} kr til KI denne måneden.`
     : budget.message;
   const theme = base?.plan.tema ?? season?.theme ?? "";
+  const kind = base ? "revision" : "draft";
+  const expectedMs = Object.fromEntries(
+    await Promise.all(Object.keys(AI_MODELS).map(async (m) => [m, (await typicalDuration(d, [kind], m)) ?? DEFAULT_KI_MS] as const)),
+  );
 
   return (
     <AppShell ctx={ctx} title={base ? `Juster v${base.version} med KI` : `KI-opplegg · ${event.start ? dayLabel(event.start) : event.heading}`} section="events" back={eventPath}>
@@ -66,6 +71,7 @@ export default async function KiPage(props: PageProps<"/g/[groupId]/[sub]/arrang
         budgetText={budgetText}
         simulated={aiMode() === "mock"}
         doneHref={eventPath}
+        expectedMs={expectedMs}
       />
     </AppShell>
   );

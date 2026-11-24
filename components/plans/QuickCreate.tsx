@@ -4,7 +4,9 @@ import { Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { quickCreateAction, quickEstimateAction } from "@/app/actions/plans";
+import { KiProgress } from "@/components/plans/KiProgress";
 import { Icon } from "@/components/ui/icon";
+import { PLAN_STEPS } from "@/lib/ki-progress";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/toast";
 
@@ -28,6 +30,8 @@ export interface QuickCreateProps {
   simulated: boolean;
   /** The invitation is not sent yet: everyone invited is counted. */
   invited: boolean;
+  /** How long a KI plan usually takes, for the progress bar. */
+  expectedMs: number;
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -172,13 +176,7 @@ export function QuickCreate(p: QuickCreateProps) {
                 {error}
               </div>
             ) : null}
-            <div aria-live="polite">
-              {running ? (
-                <div className="nm-note" role="status">
-                  Lager lag og opplegg … Dette tar vanligvis under ett minutt. Ikke lukk siden.
-                </div>
-              ) : null}
-            </div>
+            {running ? <KiProgress expectedMs={p.expectedMs} steps={PLAN_STEPS} /> : null}
             <div>
               <button type="submit" className="nm-btn nm-btn--primary nm-btn--lg" disabled={pending}>
                 <Icon icon={Zap} />

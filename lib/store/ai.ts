@@ -118,6 +118,17 @@ export async function typicalOutput(d: Db, kind: string, model: string): Promise
   return r?.n ?? null;
 }
 
+/** Typical time for a call (median of the last 20 successful ones), for the progress bar while KI works. */
+export async function typicalDuration(d: Db, kinds: string[], model: string): Promise<number | null> {
+  const [r] = await d.query<{ ms: number | null }>(
+    `SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_ms)::float8 AS ms
+       FROM (SELECT duration_ms FROM ai_usage WHERE kind = ANY($1::text[]) AND model = $2 AND status = 'ok' AND duration_ms > 0
+              ORDER BY created_at DESC LIMIT 20) t`,
+    [kinds, model],
+  );
+  return r?.ms ?? null;
+}
+
 /** One group's calls in a period, and the sum for the whole app (admin overview). */
 export async function aiUsagePeriod(d: Db, access: Access, groupId: string, from: Date, to: Date) {
   assertGroup(access, groupId);

@@ -10,6 +10,7 @@ import { Icon } from "@/components/ui/icon";
 import { ResponseCounts, Tag } from "@/components/ui/status";
 import { PlanSection } from "@/components/plans/PlanSection";
 import { QuickCreate } from "@/components/plans/QuickCreate";
+import { DEFAULT_KI_MS } from "@/lib/ki-progress";
 import { AI_MODELS, budgetCheck } from "@/lib/ai/plan-ai";
 import { contextFromParams, pairCandidates } from "@/lib/context";
 import { db } from "@/lib/db";
@@ -22,7 +23,7 @@ import { isPlayerKind } from "@/lib/spond/data";
 import { eventCoaches, eventIsPast, eventParticipants, eventSentTo, placeable, responseCounts } from "@/lib/spond/events";
 import { activeLocks, listProposals, sortProposals } from "@/lib/store/proposals";
 import { quickDefaults } from "@/lib/quick";
-import { aiSpend, getAiSettings } from "@/lib/store/ai";
+import { aiSpend, getAiSettings, typicalDuration } from "@/lib/store/ai";
 import { listPlayerTags, pairsOf, tagSuggestions } from "@/lib/store/tags";
 
 /** An event: who is coming, the team proposals, and the training plan. */
@@ -67,6 +68,7 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
   const quick = !views.length && !newLocks.length && ctx.user.rights.ai ? await quickDefaults(d, ctx.user, ctx.group, ctx.subgroup?.id ?? null, event).catch(() => null) : null;
   const ai = quick ? await Promise.all([getAiSettings(d), aiSpend(d, ctx.user.access, ctx.group.id, osloMonthStart(new Date()))]) : null;
   const budget = ai ? budgetCheck(ai[1], ai[0]) : null;
+  const quickMs = ai ? ((await typicalDuration(d, ["draft"], ai[0].model)) ?? DEFAULT_KI_MS) : DEFAULT_KI_MS;
 
   return (
     <AppShell
@@ -217,6 +219,7 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
                 budgetText={budget.ok ? `Laget har brukt ${decimal(budget.groupNok, 2)} av ${ai[0].group_limit_nok} kr til KI denne måneden.` : budget.message}
                 simulated={aiMode() === "mock"}
                 invited={event.notSent}
+                expectedMs={quickMs}
               />
             </div>
           ) : null}

@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { kiEstimateAction, kiRunAction } from "@/app/actions/plans";
 import { ModelFields, PitchFields } from "@/components/plans/KiFields";
+import { KiProgress } from "@/components/plans/KiProgress";
 import { Icon } from "@/components/ui/icon";
+import { DEFAULT_KI_MS, PLAN_STEPS } from "@/lib/ki-progress";
 import { useToast } from "@/components/ui/toast";
 
 export interface KiFormProps {
@@ -33,6 +35,8 @@ export interface KiFormProps {
   budgetText: string;
   simulated: boolean;
   doneHref: string;
+  /** How long a KI plan usually takes per model, for the progress bar. */
+  expectedMs: Record<string, number>;
 }
 
 /** Order a plan from KI (or an adjustment of a version): theme, length, wishes, links and comments. */
@@ -164,11 +168,7 @@ export function KiForm(p: KiFormProps) {
           {error}
         </div>
       ) : null}
-      {running ? (
-        <div className="nm-note" role="status">
-          KI jobber … Dette tar vanligvis under ett minutt. Ikke lukk siden.
-        </div>
-      ) : null}
+      {running ? <KiProgress expectedMs={p.expectedMs[model] ?? DEFAULT_KI_MS} steps={PLAN_STEPS} /> : null}
       <div>
         <button type="submit" className="nm-btn nm-btn--primary nm-btn--lg" disabled={pending}>
           <Icon icon={Sparkles} />
