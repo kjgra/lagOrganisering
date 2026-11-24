@@ -16,6 +16,7 @@ const input = z.object({
     mode: z.enum(["even", "levels"]),
     roles: z.array(z.string().max(100)).max(20),
     pairs: z.boolean(),
+    apart: z.boolean(),
     history: z.enum(["off", "same", "rotate"]),
   }),
 });

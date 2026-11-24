@@ -8,6 +8,18 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.41.0] – 2026-11-24
+
+Si fra om spillere som ikke bør være på samme lag.
+
+### Lagt til
+- I tagg-arket for en spiller kan du velge andre spillere som ikke bør være på samme lag som spilleren. Du skriver ikke hvorfor, og appen lagrer bare hvem.
+- Lagfordelingen prøver å sette slike par på hvert sitt lag. Roller (som keeper) og like store lag går fortsatt foran. Under «Fordeling» kan dere skru det av med «Ikke på samme lag».
+- Parene vises bare for trenere med tilgang til tagger, aldri på lagtavla, i lagforslagene eller for KI. De slettes som de andre parene når en spiller slutter.
+
+### Endret
+- Personvernerklæringen sier at appen lagrer slike par, og at grunnen aldri lagres.
+
 ## [1.40.0] – 2026-11-18
 
 KI velger øvelser ut fra det dere har vurdert og beholdt, ikke bare ut fra tema og alder.

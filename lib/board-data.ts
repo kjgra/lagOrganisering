@@ -86,6 +86,7 @@ export function boardProps(
     poolLabel: event ? (event.notSent ? "Inviteres, ikke fordelt" : "Tilgjengelige, ikke fordelt") : "Ikke fordelt",
     links: event ? [] : ctx.group.parentLinks,
     pairs: opts.tags.pairs,
+    apart: opts.tags.apart,
     settings: opts.settings,
     settingsScope: ctx.subgroup?.id ?? "",
     previous: opts.previous,

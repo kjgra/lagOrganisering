@@ -9,7 +9,7 @@ import { MAX_LEVEL, MIN_LEVEL } from "@/lib/levels";
 import { MAX_FOCUS, MAX_STRENGTHS } from "@/lib/strengths";
 import { UserError } from "@/lib/store/access";
 import { memberNames, storedNamesProblem } from "@/lib/sensitive";
-import { addPair, addTag, removePair, removeTag, setLevel, setStrengths } from "@/lib/store/tags";
+import { addPair, addTag, removePair, removeTag, setLevel, setStrengths, type PairKind } from "@/lib/store/tags";
 
 const id = z.string().max(100);
 const input = z.object({ groupId: id, memberId: id, tag: z.string().max(100) });
@@ -73,13 +73,16 @@ export async function setStrengthsAction(groupId: string, memberId: string, stre
   });
 }
 
-export async function setPairAction(groupId: string, memberId: string, otherId: string, paired: boolean): Promise<ActionResult> {
+/** «Spiller godt med» (together) or «Bør ikke være på samme lag» (apart). No reason is taken or stored. */
+export async function setPairAction(groupId: string, memberId: string, otherId: string, paired: boolean, kind: PairKind = "together"): Promise<ActionResult> {
   return runAction("Lagring av par", async () => {
-    const v = z.object({ groupId: id, memberId: id, otherId: id, paired: z.boolean() }).parse({ groupId, memberId, otherId, paired });
+    const v = z
+      .object({ groupId: id, memberId: id, otherId: id, paired: z.boolean(), kind: z.enum(["together", "apart"]) })
+      .parse({ groupId, memberId, otherId, paired, kind });
     const user = await checkMembers(v.groupId, v.memberId, v.otherId);
     const d = await db();
-    if (v.paired) await addPair(d, user.access, user.rights, v.groupId, v.memberId, v.otherId);
-    else await removePair(d, user.access, user.rights, v.groupId, v.memberId, v.otherId);
+    if (v.paired) await addPair(d, user.access, user.rights, v.groupId, v.memberId, v.otherId, v.kind);
+    else await removePair(d, user.access, user.rights, v.groupId, v.memberId, v.otherId, v.kind);
     refresh();
     return { data: undefined };
   });

@@ -87,6 +87,7 @@ interface Basis {
   members: BoardMember[];
   settings: BoardSettings | null;
   pairs: [string, string][];
+  apart: [string, string][];
   previous: string[][][];
 }
 
@@ -134,6 +135,7 @@ async function basis(d: Db, user: CurrentUser, group: Group, sub: string | null,
     members,
     settings,
     pairs: info.pairs,
+    apart: info.apart,
     previous,
   };
 }
@@ -177,12 +179,14 @@ async function prepare(d: Db, user: CurrentUser, group: Group, sub: string | nul
     ...DEFAULT_SETTINGS,
     roles: [],
     pairs: false,
+    apart: false,
     history: "off" as const,
   };
   const assignments = distribute(b.members, labels, seed, {
     mode: s.mode,
     roles: s.roles,
     pairs: s.pairs ? b.pairs : [],
+    apart: s.apart ? b.apart : [],
     history: b.previous.length ? s.history : "off",
     previous: b.previous,
   });

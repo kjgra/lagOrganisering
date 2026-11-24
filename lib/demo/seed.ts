@@ -53,6 +53,10 @@ async function seedAccess(d: Db): Promise<void> {
       `INSERT INTO member_pairs (spond_group_id, member_a, member_b, created_by) VALUES
          ('G-FOTBALL', 'M-S-G2016-4', 'M-S-G2016-6', 'P-KJETIL')`,
     );
+    await t.query(
+      `INSERT INTO member_pairs (spond_group_id, member_a, member_b, kind, created_by) VALUES
+         ('G-FOTBALL', 'M-S-G2016-1', 'M-S-G2016-3', 'apart', 'P-KJETIL')`,
+    );
   });
 }
 

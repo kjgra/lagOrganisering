@@ -105,6 +105,19 @@ describe("tags", () => {
     expect([t.levels.size, t.pairs.length]).toEqual([0, 0]);
   });
 
+  it("stores «ikke på samme lag» as its own kind, one kind per pair", async () => {
+    await addPair(d, me, coach, "G1", "m3", "m1", "apart");
+    let t = await listPlayerTags(d, me, coach, "G1");
+    expect([t.pairs, t.apart]).toEqual([[], [["m1", "m3"]]]);
+    // Choosing the other kind changes the pair; removing the wrong kind does nothing.
+    await addPair(d, me, coach, "G1", "m1", "m3", "together");
+    await removePair(d, me, coach, "G1", "m1", "m3", "apart");
+    t = await listPlayerTags(d, me, coach, "G1");
+    expect([t.pairs, t.apart]).toEqual([[["m1", "m3"]], []]);
+    await removePair(d, me, coach, "G1", "m1", "m3", "together");
+    expect((await listPlayerTags(d, me, coach, "G1")).pairs).toEqual([]);
+  });
+
   it("keeps strengths and focus from the fixed lists, within the limits", async () => {
     await setStrengths(d, me, coach, "G1", "m4", ["rask", "lagspiller", "rask"], ["begge-bein"]);
     expect((await listStrengths(d, me, coach, "G1")).get("m4")).toEqual({ strengths: ["lagspiller", "rask"], focus: ["begge-bein"] });

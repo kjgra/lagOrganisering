@@ -6,7 +6,7 @@ import { assertGroup, assertTags, UserError, type Access, type Rights } from "./
 /**
  * «Fordeling»: how the team board distributes the players, per subgroup ('' is
  * the main group, also used by subgroups without their own) and shared by its
- * trainers. It works on tags, levels and pairs, so it needs the tags right.
+ * trainers. It works on tags, levels and pairs (together and apart), so it needs the tags right.
  */
 
 /** «mix» and «focus» (styrketagger) are ready in the engine and the database, but not offered until the coaches choose them. */
@@ -18,12 +18,12 @@ export async function getBoardSettings(d: Db, access: Access, rights: Rights, gr
   assertGroup(access, groupId);
   if (!rights.tags) return null;
   const rows = await d.query<BoardSettings & { spond_subgroup_id: string }>(
-    "SELECT spond_subgroup_id, mode, roles, pairs, history FROM board_settings WHERE spond_group_id = $1 AND spond_subgroup_id IN ($2, '')",
+    "SELECT spond_subgroup_id, mode, roles, pairs, apart, history FROM board_settings WHERE spond_group_id = $1 AND spond_subgroup_id IN ($2, '')",
     [groupId, sub],
   );
   const row = rows.find((r) => r.spond_subgroup_id === sub) ?? rows.find((r) => r.spond_subgroup_id === "");
   if (!row) return DEFAULT_SETTINGS;
-  return { mode: row.mode, roles: [...row.roles], pairs: row.pairs, history: row.history };
+  return { mode: row.mode, roles: [...row.roles], pairs: row.pairs, apart: row.apart, history: row.history };
 }
 
 export function validateBoardSettings(input: BoardSettings): BoardSettings {
@@ -35,7 +35,7 @@ export function validateBoardSettings(input: BoardSettings): BoardSettings {
     if (!roles.some((x) => x.toLowerCase() === r.toLowerCase())) roles.push(r);
   }
   if (roles.length > 20) throw new UserError("Velg maks 20 roller.");
-  return { mode: input.mode, roles, pairs: !!input.pairs, history: input.history };
+  return { mode: input.mode, roles, pairs: !!input.pairs, apart: !!input.apart, history: input.history };
 }
 
 export async function saveBoardSettings(d: Db, access: Access, rights: Rights, groupId: string, sub: string, input: BoardSettings): Promise<BoardSettings> {
@@ -43,11 +43,11 @@ export async function saveBoardSettings(d: Db, access: Access, rights: Rights, g
   assertTags(rights);
   const s = validateBoardSettings(input);
   await d.query(
-    `INSERT INTO board_settings (spond_group_id, spond_subgroup_id, mode, roles, pairs, history, updated_by) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO board_settings (spond_group_id, spond_subgroup_id, mode, roles, pairs, apart, history, updated_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      ON CONFLICT (spond_group_id, spond_subgroup_id) DO UPDATE
-       SET mode = EXCLUDED.mode, roles = EXCLUDED.roles, pairs = EXCLUDED.pairs, history = EXCLUDED.history,
+       SET mode = EXCLUDED.mode, roles = EXCLUDED.roles, pairs = EXCLUDED.pairs, apart = EXCLUDED.apart, history = EXCLUDED.history,
            updated_by = EXCLUDED.updated_by, updated_at = now()`,
-    [groupId, sub, s.mode, s.roles, s.pairs, s.history, access.profileId],
+    [groupId, sub, s.mode, s.roles, s.pairs, s.apart, s.history, access.profileId],
   );
   return s;
 }

@@ -18,6 +18,7 @@ export interface ParticipantRow {
   suggestions: string[];
   level: number | null;
   pairs: string[];
+  apart: string[];
 }
 
 const FILTERS: { key: ResponseStatus; label: string }[] = [
@@ -58,7 +59,7 @@ export function ParticipantList({ groupId, rows, players }: { groupId: string; r
                 <Avatar name={r.name} />
                 <span className="nm-list__main">
                   <span className="nm-list__name">{r.name}</span>
-                  <TagLine level={r.level} pairs={r.pairs} tags={r.tags} nameOf={nameOf} />
+                  <TagLine level={r.level} pairs={r.pairs} apart={r.apart} tags={r.tags} nameOf={nameOf} />
                 </span>
                 <StatusBadge status={r.status} />
               </>
@@ -70,7 +71,7 @@ export function ParticipantList({ groupId, rows, players }: { groupId: string; r
                     type="button"
                     className="nm-row-btn"
                     aria-label={`${r.name}. Endre tagger.`}
-                    onClick={() => setEditing({ memberId: r.memberId, name: r.name, tags: r.tags, suggestions: r.suggestions, level: r.level, pairs: r.pairs })}
+                    onClick={() => setEditing({ memberId: r.memberId, name: r.name, tags: r.tags, suggestions: r.suggestions, level: r.level, pairs: r.pairs, apart: r.apart })}
                   >
                     {body}
                   </button>

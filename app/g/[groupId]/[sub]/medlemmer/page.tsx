@@ -51,6 +51,7 @@ export default async function MembersPage(props: PageProps<"/g/[groupId]/[sub]/m
             suggestions: tagSuggestions(tags, m.id, fixed),
             level: info.levels.get(m.id) ?? null,
             pairs: pairsOf(info.pairs, m.id),
+            apart: pairsOf(info.apart, m.id),
           }))}
         />
       ) : (
@@ -58,7 +59,7 @@ export default async function MembersPage(props: PageProps<"/g/[groupId]/[sub]/m
       )}
       {canTag ? (
         <p className="nm-muted" style={{ fontSize: "var(--fs-caption)" }}>
-          Trykk på en spiller for å endre nivå, hvem spilleren spiller godt med, og tagger. Det gjelder hele {ctx.group.name}.
+          Trykk på en spiller for å endre nivå, hvem spilleren spiller godt med eller ikke bør være på lag med, og tagger. Det gjelder hele {ctx.group.name}.
         </p>
       ) : null}
       {adults.length ? (

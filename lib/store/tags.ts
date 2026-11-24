@@ -6,7 +6,8 @@ import { assertGroup, assertTags, UserError, type Access, type Rights } from "./
 
 /**
  * Tags are the trainers' own labels on players («Keeper», «Ny»), a level
- * (lib/levels.ts) and pairs of players who play well together. They belong to the main
+ * (lib/levels.ts) and pairs of players who play well together, or who should
+ * not be on the same team (no reason is stored). They belong to the main
  * group, so they show in every subgroup. Only Spond ids are stored. Trainers
  * without the tags right see and use none of it.
  */
@@ -17,11 +18,15 @@ export interface PlayerTags {
   tags: TagMap;
   /** Member id -> level. */
   levels: Map<string, number>;
-  /** Each pair once, smallest id first. */
+  /** Players who play well together: each pair once, smallest id first. */
   pairs: [string, string][];
+  /** Players who should not be on the same team, the same way. */
+  apart: [string, string][];
 }
 
-export const NO_TAGS: PlayerTags = { tags: new Map(), levels: new Map(), pairs: [] };
+export type PairKind = "together" | "apart";
+
+export const NO_TAGS: PlayerTags = { tags: new Map(), levels: new Map(), pairs: [], apart: [] };
 
 /** Everything tagged on the players of a main group, or nothing without the tags right. */
 export async function listPlayerTags(d: Db, access: Access, rights: Rights, groupId: string): Promise<PlayerTags> {
@@ -30,15 +35,16 @@ export async function listPlayerTags(d: Db, access: Access, rights: Rights, grou
   const [tags, levels, pairs] = await Promise.all([
     listTags(d, access, groupId),
     d.query<{ spond_member_id: string; level: number }>("SELECT spond_member_id, level FROM member_levels WHERE spond_group_id = $1", [groupId]),
-    d.query<{ member_a: string; member_b: string }>(
-      "SELECT member_a, member_b FROM member_pairs WHERE spond_group_id = $1 ORDER BY member_a, member_b",
+    d.query<{ member_a: string; member_b: string; kind: PairKind }>(
+      "SELECT member_a, member_b, kind FROM member_pairs WHERE spond_group_id = $1 ORDER BY member_a, member_b",
       [groupId],
     ),
   ]);
   return {
     tags,
     levels: new Map(levels.map((r) => [r.spond_member_id, Number(r.level)])),
-    pairs: pairs.map((r) => [r.member_a, r.member_b]),
+    pairs: pairs.filter((r) => r.kind !== "apart").map((r) => [r.member_a, r.member_b]),
+    apart: pairs.filter((r) => r.kind === "apart").map((r) => [r.member_a, r.member_b]),
   };
 }
 
@@ -63,22 +69,26 @@ export async function setLevel(d: Db, access: Access, rights: Rights, groupId: s
 
 const ordered = (x: string, y: string): [string, string] => (x < y ? [x, y] : [y, x]);
 
-export async function addPair(d: Db, access: Access, rights: Rights, groupId: string, x: string, y: string): Promise<void> {
+/** Adds a pair of the kind; a pair already there of the other kind changes kind. */
+export async function addPair(d: Db, access: Access, rights: Rights, groupId: string, x: string, y: string, kind: PairKind = "together"): Promise<void> {
   assertGroup(access, groupId);
   assertTags(rights);
   if (x === y) throw new UserError("Velg en annen spiller.");
   const [a, b] = ordered(x, y);
   await d.query(
-    `INSERT INTO member_pairs (spond_group_id, member_a, member_b, created_by) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
-    [groupId, a, b, access.profileId],
+    `INSERT INTO member_pairs (spond_group_id, member_a, member_b, kind, created_by) VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (spond_group_id, member_a, member_b) DO UPDATE
+       SET kind = EXCLUDED.kind, created_by = EXCLUDED.created_by, created_at = now()
+       WHERE member_pairs.kind <> EXCLUDED.kind`,
+    [groupId, a, b, kind, access.profileId],
   );
 }
 
-export async function removePair(d: Db, access: Access, rights: Rights, groupId: string, x: string, y: string): Promise<void> {
+export async function removePair(d: Db, access: Access, rights: Rights, groupId: string, x: string, y: string, kind: PairKind = "together"): Promise<void> {
   assertGroup(access, groupId);
   assertTags(rights);
   const [a, b] = ordered(x, y);
-  await d.query("DELETE FROM member_pairs WHERE spond_group_id = $1 AND member_a = $2 AND member_b = $3", [groupId, a, b]);
+  await d.query("DELETE FROM member_pairs WHERE spond_group_id = $1 AND member_a = $2 AND member_b = $3 AND kind = $4", [groupId, a, b, kind]);
 }
 
 export async function listTags(d: Db, access: Access, groupId: string): Promise<TagMap> {

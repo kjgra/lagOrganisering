@@ -87,7 +87,7 @@ const TABS: Record<AdminTab, (ctx: AdminContext, sp: Sp) => Promise<React.ReactN
       <>
         <p style={{ marginTop: 0 }}>
           Trenere med profil i Spond, fra alle gruppene du er med i. <strong>App</strong> gir tilgang til å logge inn i appen; ingen andre kommer inn. <strong>KI</strong> gir
-          tilgang til å lage opplegg med KI. <strong>Tagger</strong> gir tilgang til å se og endre nivå, hvem som spiller godt sammen, og tagger på spillere; alle trenere har
+          tilgang til å lage opplegg med KI. <strong>Tagger</strong> gir tilgang til å se og endre nivå, hvem som spiller godt sammen eller ikke bør være på samme lag, og tagger på spillere; alle trenere har
           det som standard. <strong>Admin</strong> gir tannhjulet og alltid app-tilgang. Bare superadmin kan gi admin.
         </p>
         {rows.length ? (

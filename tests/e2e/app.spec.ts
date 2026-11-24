@@ -284,7 +284,7 @@ test("a starred group stays starred", async ({ page }) => {
   await page.getByRole("button", { name: `Fjern ${label} fra favoritter` }).first().click();
 });
 
-test("tag sheet: set a level and a player who plays well with them", async ({ page }) => {
+test("tag sheet: set a level, a player who plays well with them, and one who should not be on the same team", async ({ page }) => {
   await login(page);
   await expect(page).toHaveURL(/arrangementer|velg-gruppe/);
   await page.goto("/g/G-FOTBALL/S-G2016/medlemmer");
@@ -299,13 +299,25 @@ test("tag sheet: set a level and a player who plays well with them", async ({ pa
   await expect(levels.getByRole("button", { name: target, exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator(".nm-toast")).toContainText(`har nivå ${target}`);
 
-  const add = sheet.getByRole("group", { name: "Legg til spiller" }).getByRole("button").first();
+  const add = sheet.getByRole("group", { name: "Legg til spiller som spiller godt med" }).getByRole("button").first();
   const partner = ((await add.getAttribute("aria-label")) ?? "").replace(/^Legg til /, "");
   await add.click();
   await expect(page.locator(".nm-toast")).toContainText("spiller godt sammen");
   const remove = sheet.getByRole("button", { name: `Fjern ${partner}`, exact: true });
   await remove.click();
   await expect(remove).toHaveCount(0);
+
+  // «Bør ikke være på samme lag»: no reason is asked for, and it shows only in the list for trainers.
+  const apart = sheet.getByRole("group", { name: "Legg til spiller som ikke bør være på samme lag" }).getByRole("button").first();
+  const other = ((await apart.getAttribute("aria-label")) ?? "").replace(/^Legg til /, "");
+  await apart.click();
+  await expect(page.locator(".nm-toast")).toContainText("hvert sitt lag");
+  await sheet.getByRole("button", { name: "Lukk" }).click();
+  await expect(page.getByText(`Ikke på lag med ${other}`).first()).toBeVisible();
+  await page.locator(".nm-row-btn").first().click();
+  const undo = page.getByRole("dialog").getByRole("button", { name: `Fjern ${other}`, exact: true });
+  await undo.click();
+  await expect(undo).toHaveCount(0);
 });
 
 test("admin: the tags right can be turned off per trainer", async ({ page }) => {

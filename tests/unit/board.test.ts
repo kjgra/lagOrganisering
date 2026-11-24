@@ -61,6 +61,28 @@ describe("distribute with levels and pairs", () => {
     expect(Object.values(a).filter((x) => x === "A")).toHaveLength(5);
   });
 
+  it("keeps «ikke på samme lag» apart, but spreads keepers first", () => {
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const a = distribute(team, ["A", "B"], seed, { apart: [["q0", "q1"], ["q2", "q3"]] });
+      expect(a.q0).not.toBe(a.q1);
+      expect(a.q2).not.toBe(a.q3);
+      expect(Object.values(a).filter((x) => x === "A")).toHaveLength(5);
+    }
+    // Two keepers who should be apart anyway, and a third: the keepers are still spread.
+    const keepers = team.map((p, i) => ({ ...p, tags: i < 2 ? ["Keeper"] : [] }));
+    const k = distribute(keepers, ["A", "B"], 3, { apart: [["q0", "q1"]], pairs: [["q2", "q3"]] });
+    expect(k.q0).not.toBe(k.q1);
+    expect(k.q2).toBe(k.q3);
+  });
+
+  it("ignores «ikke på samme lag» when it is left out", () => {
+    const together = [1, 2, 3, 4, 5, 6, 7, 8].some((seed) => {
+      const a = distribute(team, ["A", "B"], seed);
+      return a.q0 === a.q1;
+    });
+    expect(together).toBe(true);
+  });
+
   it("splits a group of pairs that is bigger than a team", () => {
     const pairs: [string, string][] = [["q0", "q1"], ["q1", "q2"], ["q2", "q3"], ["q3", "q4"], ["q4", "q5"]];
     const a = distribute(team, ["A", "B"], 1, { pairs });

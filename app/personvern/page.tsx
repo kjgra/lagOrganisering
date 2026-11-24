@@ -53,8 +53,8 @@ export default async function PrivacyPage(props: PageProps<"/personvern">) {
             </p>
             <ul>
               <li>
-                <strong>Om spillere:</strong> hvilken gruppe og hvilket lag spilleren er satt på, og eventuelt et nivå, korte stikkord (for eksempel «Keeper») og
-                hvilke spillere som fungerer godt sammen.
+                <strong>Om spillere:</strong> hvilken gruppe og hvilket lag spilleren er satt på, og eventuelt et nivå, korte stikkord (for eksempel «Keeper»),
+                hvilke spillere som fungerer godt sammen, og hvilke spillere som ikke bør være på samme lag. For det siste lagres bare de to spillerne, aldri hvorfor.
               </li>
               <li>
                 <strong>Om trenere:</strong> tilganger i appen, kommentarer, evalueringer og treningsopplegg treneren har laget, egne innstillinger og varsler, og bruk av KI.
@@ -71,7 +71,8 @@ export default async function PrivacyPage(props: PageProps<"/personvern">) {
             <h2 className="nm-h3">Hvorfor</h2>
             <p>
               For å gi barna et godt treningstilbud: jevne grupper, passende utfordringer og gode økter. Grunnlaget er berettiget interesse (personvernforordningen artikkel
-              6 nr. 1 f). Nivå og par er bare et hjelpemiddel for trenerne og vises aldri på lagtavla som brukes på banen.
+              6 nr. 1 f). Nivå og par er bare et hjelpemiddel for trenerne og vises aldri på lagtavla som brukes på banen, i lagforslagene eller
+              for KI.
             </p>
           </section>
 

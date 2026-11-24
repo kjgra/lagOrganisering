@@ -32,8 +32,8 @@ describe("defaults for «Hurtigopprett»", () => {
 
   it("says how the players are spread", () => {
     expect(distributionText(null, false)).toBe("Tilfeldig");
-    expect(distributionText({ mode: "even", roles: ["Keeper"], pairs: true, history: "rotate" }, true)).toBe("Jevne lag, keeper spres, nye lagkamerater");
-    expect(distributionText({ mode: "levels", roles: [], pairs: false, history: "rotate" }, false)).toBe("Nivådelt");
+    expect(distributionText({ mode: "even", roles: ["Keeper"], pairs: true, apart: true, history: "rotate" }, true)).toBe("Jevne lag, keeper spres, nye lagkamerater");
+    expect(distributionText({ mode: "levels", roles: [], pairs: false, apart: false, history: "rotate" }, false)).toBe("Nivådelt");
   });
 });
 

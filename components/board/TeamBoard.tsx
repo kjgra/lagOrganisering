@@ -66,6 +66,8 @@ export interface BoardProps {
   links: ParentLink[];
   /** Players who play well together; the automatic distribution keeps them on one team. */
   pairs: [string, string][];
+  /** Players who should not be on the same team; the automatic distribution keeps them apart. */
+  apart: [string, string][];
   /** «Fordeling»; null without the tags right (then: random, nothing to choose). */
   settings: BoardSettings | null;
   /** Where «Fordeling» is saved: the page's subgroup, '' for the main group. */
@@ -121,11 +123,12 @@ interface BoardDraft extends Snapshot {
   name: string;
 }
 
-/** Pairs count only when «Spiller godt sammen» is on; history only where there is one. */
-const optionsOf = (s: BoardSettings, p: Pick<BoardProps, "pairs" | "previous">): DistributeOptions => ({
+/** Pairs count only when their switch in «Fordeling» is on; history only where there is one. */
+const optionsOf = (s: BoardSettings, p: Pick<BoardProps, "pairs" | "apart" | "previous">): DistributeOptions => ({
   mode: s.mode,
   roles: s.roles,
   pairs: s.pairs ? p.pairs : [],
+  apart: s.apart ? p.apart : [],
   history: p.previous ? s.history : "off",
   previous: p.previous ?? [],
 });
@@ -595,6 +598,7 @@ export function TeamBoard() {
             rules={b.rules}
             players={b.members.filter((m) => !m.coach)}
             pairs={b.pairs}
+            apart={b.apart}
             previous={b.previous}
             onApply={(next) => {
               setRulesOpen(false);

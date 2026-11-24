@@ -18,8 +18,8 @@ describe("Fordeling (board settings)", () => {
   it("defaults, then the main group's, then the subgroup's own", async () => {
     expect(await getBoardSettings(d, me, tags, "G1", "S1")).toEqual(DEFAULT_SETTINGS);
     expect(DEFAULT_SETTINGS.history).toBe("rotate");
-    await saveBoardSettings(d, me, tags, "G1", "", { mode: "levels", roles: [" Keeper ", "keeper", "Forsvar"], pairs: false, history: "off" });
-    expect(await getBoardSettings(d, me, tags, "G1", "S1")).toEqual({ mode: "levels", roles: ["Keeper", "Forsvar"], pairs: false, history: "off" });
+    await saveBoardSettings(d, me, tags, "G1", "", { mode: "levels", roles: [" Keeper ", "keeper", "Forsvar"], pairs: false, apart: false, history: "off" });
+    expect(await getBoardSettings(d, me, tags, "G1", "S1")).toEqual({ mode: "levels", roles: ["Keeper", "Forsvar"], pairs: false, apart: false, history: "off" });
     await saveBoardSettings(d, me, tags, "G1", "S1", { ...DEFAULT_SETTINGS, roles: [] });
     expect((await getBoardSettings(d, me, tags, "G1", "S1"))?.roles).toEqual([]);
     expect((await getBoardSettings(d, me, tags, "G1", ""))?.mode).toBe("levels");

@@ -38,10 +38,12 @@ export interface BoardSettings {
   roles: string[];
   /** Keep players who play well together on one team. */
   pairs: boolean;
+  /** Keep players who should not be on the same team apart. */
+  apart: boolean;
   history: HistoryMode;
 }
 
-export const DEFAULT_SETTINGS: BoardSettings = { mode: "even", roles: ["Keeper"], pairs: true, history: "rotate" };
+export const DEFAULT_SETTINGS: BoardSettings = { mode: "even", roles: ["Keeper"], pairs: true, apart: true, history: "rotate" };
 
 export interface DistributeOptions {
   mode?: Mode;
@@ -49,6 +51,8 @@ export interface DistributeOptions {
   roles?: string[];
   /** Pairs to keep together; leave out to ignore them. */
   pairs?: [string, string][];
+  /** Pairs to keep on different teams; leave out to ignore them. */
+  apart?: [string, string][];
   /** «Som sist» or «Rullér», with the teams of the last trainings (newest first, member ids). */
   history?: HistoryMode;
   previous?: string[][][];
@@ -82,9 +86,11 @@ function shuffle<T>(list: T[], r: () => number): T[] {
  * Weights, in the order of what matters most: roles spread, then the level
  * (sum or bands), then pairs. A pair is split when keeping it would make the
  * teams clearly uneven, or (nivådelt) put a player more than a level off.
+ * A pair that should not be on the same team counts twice as much as one that
+ * plays well together, but never more than the roles or the team sizes.
  */
 // The level weight is for the 5–10 scale (steps 1.25 times those of the old 1–5 scale, squared).
-const WEIGHT = { role: 1000, level: 6.4, strength: 10, focus: 10, pair: { even: 50, levels: 20, mix: 50, focus: 20 }, history: 4 };
+const WEIGHT = { role: 1000, level: 6.4, strength: 10, focus: 10, pair: { even: 50, levels: 20, mix: 50, focus: 20 }, apart: { even: 100, levels: 40, mix: 100, focus: 40 }, history: 4 };
 const STARTS = 4;
 const MAX_PASSES = 60;
 
@@ -93,7 +99,7 @@ const MAX_PASSES = 60;
  * same size (at most one apart). Within that, the chosen roles are spread,
  * then «Jevne lag» evens out the level sum (a player without a level counts
  * as the average) or «Nivådelt» puts players of the same level together,
- * then pairs are kept together, then «Som sist» keeps last training's
+ * then pairs are kept together and kept apart, then «Som sist» keeps last training's
  * teammates together or «Rullér» gives everyone new teammates. Without any of
  * this it is random.
  * Which team gets which players is random, so a team number never tells the level.
@@ -123,7 +129,10 @@ export function distribute(players: BoardMember[], labels: string[], seed: numbe
       for (let j = i + 1; j < m; j++) if ((list[i].focus ?? []).some((f) => (list[j].focus ?? []).includes(f))) sameFocus.push([i, j]);
   const avg = known.length ? known.reduce((s, x) => s + x, 0) / known.length : 0;
   const index = new Map(list.map((p, i) => [p.id, i]));
-  const pairs = (opts.pairs ?? []).flatMap(([a, b]) => (index.has(a) && index.has(b) && a !== b ? [[index.get(a)!, index.get(b)!]] : []));
+  const indexed = (list: [string, string][] | undefined) =>
+    (list ?? []).flatMap(([a, b]) => (index.has(a) && index.has(b) && a !== b ? [[index.get(a)!, index.get(b)!]] : []));
+  const pairs = indexed(opts.pairs);
+  const apart = indexed(opts.apart);
   // Teammates before, as [i, j, weight]: kept together for «Som sist», kept apart for «Rullér».
   const history = opts.history ?? "off";
   const before = new Map<string, [number, number, number]>();
@@ -172,6 +181,7 @@ export function distribute(players: BoardMember[], labels: string[], seed: numbe
     });
     for (const [a, b] of sameFocus) if (team[a] !== team[b]) c += WEIGHT.focus;
     for (const [a, b] of pairs) if (team[a] !== team[b]) c += WEIGHT.pair[mode];
+    for (const [a, b] of apart) if (team[a] === team[b]) c += WEIGHT.apart[mode];
     if (history === "same") for (const [a, b, w] of teammates) c += team[a] !== team[b] ? w : 0;
     else for (const [a, b, w] of teammates) c += team[a] === team[b] ? w : 0;
     return c;

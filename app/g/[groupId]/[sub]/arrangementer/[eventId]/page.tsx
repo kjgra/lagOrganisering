@@ -57,6 +57,7 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
     suggestions: tagSuggestions(tags, p.memberId, fixed),
     level: info.levels.get(p.memberId) ?? null,
     pairs: pairsOf(info.pairs, p.memberId),
+    apart: pairsOf(info.apart, p.memberId),
   }));
   const nPlaceable = parts.filter((p) => placeable(p.status, event.notSent) && isPlayerKind(p.kind)).length;
   const views = sortProposals(proposals).map((p) => proposalView(p, ctx.group, tags, event, locks, ctx.user.session.profileId));

@@ -13,15 +13,29 @@ export interface MemberRow {
   suggestions: string[];
   level: number | null;
   pairs: string[];
+  apart: string[];
 }
 
 /** Level, pairs and free-text tags of a player, as small tags. */
-export function TagLine({ level, pairs, tags, nameOf }: { level: number | null; pairs: string[]; tags: string[]; nameOf: (id: string) => string }) {
-  if (!level && !pairs.length && !tags.length) return null;
+export function TagLine({
+  level,
+  pairs,
+  apart = [],
+  tags,
+  nameOf,
+}: {
+  level: number | null;
+  pairs: string[];
+  apart?: string[];
+  tags: string[];
+  nameOf: (id: string) => string;
+}) {
+  if (!level && !pairs.length && !apart.length && !tags.length) return null;
   return (
     <span className="nm-row" style={{ gap: "var(--space-2)" }}>
       {level ? <Tag>Nivå {level}</Tag> : null}
       {pairs.length ? <Tag>Godt med {pairs.map(nameOf).join(", ")}</Tag> : null}
+      {apart.length ? <Tag>Ikke på lag med {apart.map(nameOf).join(", ")}</Tag> : null}
       {tags.map((t) => (
         <Tag key={t}>{t}</Tag>
       ))}
@@ -55,7 +69,7 @@ export function MemberList({ groupId, rows, players, canTag }: { groupId: string
               <Avatar name={r.name} />
               <span className="nm-list__main">
                 <span className="nm-list__name">{r.name}</span>
-                <TagLine level={r.level} pairs={r.pairs} tags={r.tags} nameOf={nameOf} />
+                <TagLine level={r.level} pairs={r.pairs} apart={r.apart} tags={r.tags} nameOf={nameOf} />
               </span>
             </>
           );
@@ -65,7 +79,7 @@ export function MemberList({ groupId, rows, players, canTag }: { groupId: string
                 type="button"
                 className="nm-row-btn"
                 aria-label={`${r.name}${tagText(r) ? `, ${tagText(r)}` : ""}. Endre tagger.`}
-                onClick={() => setEditing({ memberId: r.id, name: r.name, tags: r.tags, suggestions: r.suggestions, level: r.level, pairs: r.pairs })}
+                onClick={() => setEditing({ memberId: r.id, name: r.name, tags: r.tags, suggestions: r.suggestions, level: r.level, pairs: r.pairs, apart: r.apart })}
               >
                 {body}
               </button>

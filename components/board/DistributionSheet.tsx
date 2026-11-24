@@ -42,6 +42,7 @@ export function DistributionSheet({
   rules,
   players,
   pairs,
+  apart,
   previous,
   onApply,
   onClose,
@@ -49,6 +50,7 @@ export function DistributionSheet({
   rules: BoardSettings;
   players: SheetPlayer[];
   pairs: [string, string][];
+  apart: [string, string][];
   /** Teams of the last trainings; null for a gruppeutkast (no history). */
   previous: string[][][] | null;
   onApply: (next: BoardSettings) => void;
@@ -57,10 +59,12 @@ export function DistributionSheet({
   const [mode, setMode] = useState(rules.mode);
   const [roles, setRoles] = useState(rules.roles);
   const [keepPairs, setKeepPairs] = useState(rules.pairs);
+  const [keepApart, setKeepApart] = useState(rules.apart);
   const [history, setHistory] = useState(rules.history);
   const choices = roleChoices(players, rules.roles);
   const here = new Set(players.map((p) => p.id));
   const pairsHere = pairs.filter(([a, b]) => here.has(a) && here.has(b)).length;
+  const apartHere = apart.filter(([a, b]) => here.has(a) && here.has(b)).length;
   const withLevel = players.filter((p) => p.level).length;
   const has = (t: string) => roles.some((r) => r.toLowerCase() === t.toLowerCase());
   const toggle = (t: string, on: boolean) => setRoles((rs) => (on ? [...rs.filter((r) => r.toLowerCase() !== t.toLowerCase()), t] : rs.filter((r) => r.toLowerCase() !== t.toLowerCase())));
@@ -128,6 +132,18 @@ export function DistributionSheet({
             </span>
           </label>
         </fieldset>
+        <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+          <legend style={{ fontWeight: 700, fontSize: "var(--fs-body-lg)" }}>Ikke på samme lag</legend>
+          <label className="nm-check">
+            <input type="checkbox" checked={keepApart} onChange={(e) => setKeepApart(e.target.checked)} />
+            <span>
+              Sett dem på hvert sitt lag
+              <span className="nm-hint" style={{ display: "block" }}>
+                {apartHere ? `${apartHere} par blant spillerne her.` : "Ingen par blant spillerne her."}
+              </span>
+            </span>
+          </label>
+        </fieldset>
         {previous ? (
           <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
             <legend style={{ fontWeight: 700, fontSize: "var(--fs-body-lg)" }}>Forrige treninger</legend>
@@ -152,7 +168,7 @@ export function DistributionSheet({
         <p className="nm-hint" style={{ margin: 0 }}>
           Valgene gjelder for alle trenerne i gruppa.
         </p>
-        <button type="button" className="nm-btn nm-btn--primary nm-btn--block" onClick={() => onApply({ ...rules, mode, roles, pairs: keepPairs, history })}>
+        <button type="button" className="nm-btn nm-btn--primary nm-btn--block" onClick={() => onApply({ ...rules, mode, roles, pairs: keepPairs, apart: keepApart, history })}>
           <Icon icon={Shuffle} />
           Bruk og fordel på nytt
         </button>
