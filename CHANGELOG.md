@@ -8,6 +8,16 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.41.0] – 2026-11-24
+
+KI lager animasjoner som viser hele øvelsen, og retter dem selv.
+
+### Endret
+- Når du ber KI om flere trinn i animasjonen, får du det. Før kunne KI bare bruke noen få piler per skisse, så animasjonen ble kuttet.
+- KI viser hele runden: også at ballen går i mål, hvem som henter den, hvem som bytter rolle, og at køen rykker fram.
+- Appen spiller av tegningen fra KI og sjekker den før du ser den. Finner den feil, får KI beskjed og retter dem selv, opptil to ganger. Du skal sjelden måtte ordne trinn og rekkefølge for hånd.
+- I «Juster med KI» ser du den nye animasjonen øverst, og kan bytte til «Slik den var» for å sammenligne.
+
 ## [1.40.0] – 2026-11-18
 
 KI velger øvelser ut fra det dere har vurdert og beholdt, ikke bare ut fra tema og alder.
