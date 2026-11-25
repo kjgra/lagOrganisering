@@ -8,6 +8,13 @@ Hver PR skriver endringene sine under «Ikke utgitt». Ved en ny versjon flyttes
 
 ## [Ikke utgitt]
 
+## [1.42.0] – 2026-11-25
+
+Du ser hva KI gjør mens den lager opplegget.
+
+### Lagt til
+- Når KI lager et opplegg, viser en fremdriftslinje hva KI holder på med og hvor lenge det har gått. Linjen er et anslag ut fra hvor lang tid opplegg pleier å ta. Gjelder både «Lag opplegg med KI» og «Hurtigopprett».
+
 ## [1.41.0] – 2026-11-24
 
 KI lager animasjoner som viser hele øvelsen, og retter dem selv.

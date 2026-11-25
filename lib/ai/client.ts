@@ -137,7 +137,9 @@ const MOCK_EXERCISES = [
 ];
 
 async function mockCall(c: CallInput, t0: number): Promise<CallResult> {
-  await new Promise((r) => setTimeout(r, process.env.NODE_ENV === "test" ? 0 : 1200));
+  // On Vercel previews a plan takes 12 s, so the progress bar can be tried; locally and in e2e it stays quick.
+  const slow = process.env.VERCEL_ENV === "preview" && (c.kind === "draft" || c.kind === "revision");
+  await new Promise((r) => setTimeout(r, process.env.NODE_ENV === "test" ? 0 : slow ? 12_000 : 1200));
   const inTokens = Math.round((c.system.join("").length + c.user.length) / 3.5);
   const usage: Usage = { input_tokens: Math.round(inTokens * 0.2), output_tokens: 5200, cache_read_tokens: Math.round(inTokens * 0.8), cache_write_tokens: 0 };
   let text: string;
