@@ -1,7 +1,7 @@
 import { longDate } from "@/lib/format";
 import { isSensitive, namesProblem } from "@/lib/sensitive";
 import { checkAnimation, fixAnimation } from "@/lib/plans/animation";
-import { compactDrawing, fixDrawing, validateDrawing, DrawingError } from "@/lib/plans/drawing";
+import { ALT_LETTERS, checkDrawing, compactDrawing, fixDrawing, validateDrawing, DrawingError } from "@/lib/plans/drawing";
 import { FEEDBACK_TAGS, meanText, shouldAvoid } from "@/lib/plans/feedback";
 import { rankScores } from "@/lib/plans/ranking";
 import {
@@ -925,6 +925,31 @@ export function planFromAnswer(answer: string, bank: BankExercise[], ctx: Answer
     if (Math.abs(total - ctx.minutes) > 5) warnings.push(`Tidsplanen er ${total} min, men økta er ${ctx.minutes} min.`);
   }
   return { plan, warnings };
+}
+
+/**
+ * What is still wrong with an exercise's drawing after the app has fixed what
+ * it can: the same problems the trainer would see under the drawing.
+ */
+export function drawingProblems(e: Pick<PlanExercise, "tegning">, warnings: string[]): string[] {
+  const out = warnings.filter((w) => /tegningen kunne ikke brukes/.test(w));
+  if (e.tegning) {
+    out.push(...checkDrawing(e.tegning).map((p) => p.melding));
+    e.tegning.skisser.forEach((s, i) =>
+      checkAnimation(s).forEach((p) => out.push(`Skisse ${i + 1}, animasjonen: ${p.melding}${p.alt ? ` (alternativ ${ALT_LETTERS[p.alt - 1]})` : ""}`)),
+    );
+  }
+  return [...new Set(out)];
+}
+
+/** The message that sends drawing problems back to the model for another try. */
+export function drawingFeedbackText(problems: string[]): string {
+  return [
+    "Appen har sjekket tegningen i svaret ditt og spilt den av. Dette er feil:",
+    ...problems.map((p) => `- ${p}`),
+    "",
+    "Rett feilene og svar med hele øvelsen på nytt i samme format. Behold alt annet som det er. Husk at hver pil må starte der en spiller eller ballen står i det trinnet.",
+  ].join("\n");
 }
 
 /** Players, minutes and area for the bank, from an answer to «Ny øvelse med KI». */

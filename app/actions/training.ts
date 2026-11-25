@@ -1,5 +1,7 @@
 "use server";
 
+import { prettyDrawing } from "@/lib/plans/drawing";
+
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { runAction, type ActionResult } from "@/lib/actions";
@@ -328,12 +330,12 @@ export async function exerciseReviseEstimateAction(input: z.input<typeof exercis
 }
 
 /** «Juster med KI» on a bank exercise: KI's version for the form. Nothing is saved until the trainer saves the form. */
-export async function exerciseReviseRunAction(input: z.input<typeof exerciseReviseInput>): Promise<ActionResult<{ values: ExerciseValues; warnings: string[] }>> {
+export async function exerciseReviseRunAction(input: z.input<typeof exerciseReviseInput>): Promise<ActionResult<{ values: ExerciseValues; warnings: string[]; before: string }>> {
   return runAction("KI", async () => {
     const { d, user, prep } = await exerciseRevisePrep(input);
     const r = await reviseExerciseKi(d, user, prep);
     return {
-      data: { values: adjustedValues(r.base, r.exercise, r.extra), warnings: r.warnings },
+      data: { values: adjustedValues(r.base, r.exercise, r.extra), warnings: r.warnings, before: prettyDrawing(r.base.drawing) },
       message: `KI har justert «${r.exercise.navn}» (${r.costText}). Se over og lagre.`,
     };
   });

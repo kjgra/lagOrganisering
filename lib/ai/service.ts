@@ -29,6 +29,7 @@ import { bandInsights, themeUsageRows } from "@/lib/store/insights";
 import { themeUsage, themeUsageText } from "@/lib/ai/theme-usage";
 import { THEME_AI_INSTRUCTIONS, THEME_AI_SCHEMA, fagplanCatalog, themeAiAnswer, themeAiOrder, wordsToAsk } from "@/lib/ai/theme-ai";
 import { reportError } from "@/lib/errors";
+import { aiMode } from "@/lib/env";
 import { needRows } from "@/lib/store/needs";
 import { allPatterns } from "@/lib/store/observations";
 import { callClaude, countTokens, type CallInput } from "./client";
@@ -43,6 +44,8 @@ import {
   catalogue,
   checkLearning,
   EXERCISE_SCHEMA,
+  drawingFeedbackText,
+  drawingProblems,
   exerciseFromAnswer,
   exerciseOrderText,
   exerciseRevisionText,
@@ -251,30 +254,55 @@ export async function prepareExerciseKi(
   };
 }
 
-/** Call the model and log the call (also when it failed, since it may have cost money). */
+/** How many times KI may fix its own drawing, and for how long we keep asking. */
+const DRAWING_RETRIES = 2;
+const RETRY_UNTIL_MS = 150_000;
+
+/**
+ * Call the model and log each call (also when it failed, since it may have cost
+ * money). When the drawing still has problems after the app's own fixes, they
+ * are sent back to the model, up to twice, so the trainer gets a finished
+ * proposal instead of a list of things to fix by hand.
+ */
 async function callExerciseKi(d: Db, user: KiActor, prep: ExerciseKiPrep) {
-  const r = await callClaude(prep.call);
-  let result: ReturnType<typeof exerciseFromAnswer> | null = null;
-  let errorCode = r.errorCode;
-  let message = r.message;
-  if (r.ok) {
-    try {
-      result = exerciseFromAnswer(r.text, prep.bank, { linkUrls: prep.linkUrls, base: prep.base });
-      // An ordered category is kept, also when KI chose another one.
-      if (prep.category) result.exercise.kategori = CATEGORIES[prep.category];
-    } catch (err) {
-      errorCode = "ugyldig_svar";
-      message = `KI-svaret kunne ikke brukes: ${(err as Error).message}`;
-    }
+  const t0 = Date.now();
+  // A simulated answer would be the same again.
+  const retries = aiMode() === "mock" ? 0 : DRAWING_RETRIES;
+  const followUps: NonNullable<CallInput["followUps"]> = [];
+  type Result = ReturnType<typeof exerciseFromAnswer>;
+  let result: Result | null = null;
+  let message = "";
+  let cost = 0;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const r = await callClaude({ ...prep.call, followUps: [...followUps] });
+    let next: Result | null = null;
+    let errorCode = r.errorCode;
+    if (r.ok) {
+      try {
+        next = exerciseFromAnswer(r.text, prep.bank, { linkUrls: prep.linkUrls, base: prep.base });
+        // An ordered category is kept, also when KI chose another one.
+        if (prep.category) next.exercise.kategori = CATEGORIES[prep.category];
+      } catch (err) {
+        errorCode = "ugyldig_svar";
+        message = `KI-svaret kunne ikke brukes: ${(err as Error).message}`;
+      }
+    } else message = r.message;
+    const c = aiCost(r.usage, prep.model);
+    cost += c;
+    await logAiUsage(
+      d,
+      user.access,
+      prep.groupId,
+      { kind: "exercise", model: prep.model, ...r.usage, cost_usd: c, duration_ms: r.durationMs, status: next ? "ok" : "error", error_code: errorCode },
+      null,
+    );
+    // A failed retry keeps the last good answer.
+    if (!next) break;
+    result = next;
+    const problems = drawingProblems(next.exercise, next.warnings);
+    if (!problems.length || attempt === retries || Date.now() - t0 > RETRY_UNTIL_MS) break;
+    followUps.push({ answer: r.text, feedback: drawingFeedbackText(problems) });
   }
-  const cost = aiCost(r.usage, prep.model);
-  await logAiUsage(
-    d,
-    user.access,
-    prep.groupId,
-    { kind: "exercise", model: prep.model, ...r.usage, cost_usd: cost, duration_ms: r.durationMs, status: result ? "ok" : "error", error_code: errorCode },
-    null,
-  );
   if (!result) throw new AiError(message || "Noe gikk galt med KI. Prøv igjen om litt.");
   return { ...result, costUsd: cost, costText: formatNok(cost, prep.settings.usd_nok) };
 }
