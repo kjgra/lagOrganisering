@@ -68,7 +68,7 @@ export default async function EventPage(props: PageProps<"/g/[groupId]/[sub]/arr
   const quick = !views.length && !newLocks.length && ctx.user.rights.ai ? await quickDefaults(d, ctx.user, ctx.group, ctx.subgroup?.id ?? null, event).catch(() => null) : null;
   const ai = quick ? await Promise.all([getAiSettings(d), aiSpend(d, ctx.user.access, ctx.group.id, osloMonthStart(new Date()))]) : null;
   const budget = ai ? budgetCheck(ai[1], ai[0]) : null;
-  const quickMs = ai ? ((await typicalDuration(d, ["draft"], ai[0].model)) ?? DEFAULT_KI_MS) : DEFAULT_KI_MS;
+  const quickMs = ai ? ((await typicalDuration(d, ["draft"], ai[0].model)) ?? (aiMode() === "mock" ? 12_000 : DEFAULT_KI_MS)) : DEFAULT_KI_MS;
 
   return (
     <AppShell

@@ -46,7 +46,7 @@ export default async function KiPage(props: PageProps<"/g/[groupId]/[sub]/arrang
   const theme = base?.plan.tema ?? season?.theme ?? "";
   const kind = base ? "revision" : "draft";
   const expectedMs = Object.fromEntries(
-    await Promise.all(Object.keys(AI_MODELS).map(async (m) => [m, (await typicalDuration(d, [kind], m)) ?? DEFAULT_KI_MS] as const)),
+    await Promise.all(Object.keys(AI_MODELS).map(async (m) => [m, (await typicalDuration(d, [kind], m)) ?? (aiMode() === "mock" ? 12_000 : DEFAULT_KI_MS)] as const)),
   );
 
   return (
